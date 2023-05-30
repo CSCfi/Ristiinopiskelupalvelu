@@ -1,0 +1,162 @@
+{
+  "id": "classpath:/messageschemas/v8/studyrecord/studyRecordOther.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Ristiinopiskeluun liittymättömän opintosuorituksen tiedot (routingType = 'OTHER')",
+  "required": [
+    "student",
+    "routingType"
+  ],
+  "allOf": [
+    {
+      "$ref": "studyRecord.json"
+    },
+    {
+      "properties": {
+        "student": {
+          "type": "object",
+          "description": "Opiskelijan tiedot",
+          "allOf": [
+            {
+              "homeEppn": {
+                "description": "EPPN kotikorkeakoulussa",
+                "type": [ "null", "string"]
+              },
+              "hostEppn": {
+                "description": "EPPN kohdekorkeakoulussa",
+                "type": [ "null", "string"]
+              },
+              "firstNames": {
+                "description": "Etunimet",
+                "type": [ "null", "string"]
+              },
+              "surName": {
+                "description": "Sukunimi",
+                "type": [ "null", "string"]
+              },
+              "givenName": {
+                "description": "Kutsumanimi",
+                "type": [ "null", "string"]
+              },
+              "homeStudentNumber": {
+                "description": "Opiskelijanumero kotikorkeakoulussa",
+                "type": [ "null", "string"]
+              },
+              "hostStudentNumber": {
+                "description": "Opiskelijanumero kohdekorkeakoulussa",
+                "type": [ "null", "string"]
+              },
+              "homeStudyRightIdentifier": {
+                "description": "Opiskeluoikeuden tiedot kotikorkeakoulussa",
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "organisationTkCodeReference": {
+                        "description": "Organisaation tilastokeskuskoodi",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "studyRightId": {
+                        "description": "Opiskeluoikeuden tunniste",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              "hostStudyRightIdentifier": {
+                "description": "Opiskeluoikeuden tiedot kohdekorkeakoulussa",
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "organisationTkCodeReference": {
+                        "description": "Organisaation tilastokeskuskoodi",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "studyRightId": {
+                        "description": "Opiskeluoikeuden tunniste",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "oid"
+                  ],
+                  "properties": {
+                    "oid": {
+                      "description": "Kansallinen oppijanumero",
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "personId": {
+                      "description": "Henkilötunnus",
+                      "type": "null"
+                    }
+                  }
+                },
+                {
+                  "required": [
+                    "personId"
+                  ],
+                  "properties": {
+                    "oid": {
+                      "description": "Kansallinen oppijanumero",
+                      "type": "null"
+                    },
+                    "personId": {
+                      "description": "Henkilötunnus",
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                {
+                  "required": [
+                    "oid",
+                    "personId"
+                  ],
+                  "properties": {
+                    "oid": {
+                      "description": "Kansallinen oppijanumero",
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "personId": {
+                      "description": "Henkilötunnus",
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "routingType": {
+          "type": ["string"],
+          "description": "Viestin reititystyyppi. Ristiinopiskeluun liittymättömässä opintosuorituksessa aina OTHER (ei validoida Ristiinopiskelupalvelussa olevia tietoja vasten)",
+          "enum": [
+            "OTHER"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+# Note that this is supposed to be automated
+# But for now migrations are ran by hand, instructions below
+
+! Folders that contain reindex.json are the ones that contain some changes, but you are supposed to reindex all indices
+! to new indices with current version numbering and swap alias to point for that index.
+
+# Running version migrations by hand:
+
+    1. Create new index with current version number eg.
+    PUT /[indexname_v1.0.0]/
+    {
+        "mappings": [mapper.json here]
+    }
+
+    2. Reindex documents from latest version index to new index
+    POST /_reindex
+    {
+        [reindex.json here]
+    }
+
+    3. Switch alias to point new index
+    POST /_aliases
+    {
+        [alias.json here]
+    }
+
+# NOTE: Remember to create new history indices and make sure their mappers match new versions of original indices.
+# No need to run reindex for history indices since we do not want to modify data. Just move aliases to point new history indices.

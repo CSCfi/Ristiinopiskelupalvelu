@@ -1,0 +1,41 @@
+{
+  "id": "classpath:/messageschemas/v8/realisation/updateRealisationRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Toteutuksen päivitysviesti.",
+  "type": "object",
+  "required": [
+    "realisation"
+  ],
+  "properties": {
+    "realisation": {
+      "description": "Päivitettävän toteutuksen tiedot. Null-arvot ja tyhjät taulukot käsitellään siten, että ne ylikirjoittavat olemassa olevat arvot.",
+      "allOf": [
+        {
+          "$ref": "realisation.json"
+        },
+        {
+          "required": [
+            "realisationId"
+          ]
+        },
+        {
+          "properties": {
+            "status": {
+              "description": "Toteutuksen tila.",
+              "type": "string",
+              "enum": ["ACTIVE", "CANCELLED", "ARCHIVED"]
+            },
+            "cooperationNetworks": {
+              "description": "Toteutuksen verkostoviittaukset, eli mille verkostoille toteutus on tarjolla.",
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "$ref": "../common/cooperationNetwork.json"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

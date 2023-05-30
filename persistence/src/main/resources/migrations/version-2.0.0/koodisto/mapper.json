@@ -1,0 +1,61 @@
+{
+  "koodi": {
+    "dynamic": false,
+    "properties": {
+      "codeUri": {
+        "type": "keyword"
+      },
+      "resourceUri": {
+        "type": "text"
+      },
+      "codeSet": {
+        "properties": {
+          "key": {
+            "type": "keyword"
+          },
+          "organisationOid": {
+            "type": "keyword"
+          },
+          "version": {
+            "type": "integer"
+          }
+        }
+      },
+      "key": {
+        "type": "keyword"
+      },
+      "codeVersion": {
+        "type": "integer"
+      },
+      "updateDate": {
+        "type": "date"
+      },
+      "validityStartDate": {
+        "type": "date"
+      },
+      "validityEndDate": {
+        "type": "date"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "codeValues": {
+        "type": "nested",
+        "properties": {
+          "language": {
+            "type": "keyword"
+          },
+          "value": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "abbreviation": {
+            "type": "text"
+          }
+        }
+      }
+    }
+  }
+}

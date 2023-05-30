@@ -1,0 +1,183 @@
+{
+  "opiskelija": {
+    "dynamic": false,
+    "properties": {
+      "studentRequestId": {
+        "type": "keyword"
+      },
+      "homeEppn": {
+        "type": "keyword"
+      },
+      "hostEppn": {
+        "type": "keyword"
+      },
+      "sourceNumber": {
+        "type": "keyword"
+      },
+      "firstNames": {
+        "type": "text"
+      },
+      "givenName": {
+        "type": "text"
+      },
+      "surName": {
+        "type": "text"
+      },
+      "homeStudyRight": {
+        "properties": {
+          "identifiers": {
+            "properties": {
+              "organisation": {
+                "type": "keyword"
+              },
+              "organisationTkCodeReference": {
+                "type": "keyword"
+              },
+              "studyRightId": {
+                "type": "keyword"
+              }
+            }
+          },
+          "studyRightStatus": {
+            "properties": {
+              "studyRightStatusValue": {
+                "type": "short"
+              },
+              "startDate": {
+                "type": "date"
+              },
+              "endDate": {
+                "type": "date"
+              }
+            }
+          },
+          "studyRightType": {
+            "type": "keyword"
+          },
+          "keywords": {
+            "type": "nested",
+            "properties": {
+              "key": {
+                "type": "keyword"
+              },
+              "value": {
+                "type": "keyword"
+              },
+              "keySet": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "hostStudyRight": {
+        "properties": {
+          "identifiers": {
+            "properties": {
+              "organisation": {
+                "type": "keyword"
+              },
+              "organisationTkCodeReference": {
+                "type": "keyword"
+              },
+              "studyRightId": {
+                "type": "keyword"
+              }
+            }
+          },
+          "studyRightStatus": {
+            "properties": {
+              "studyRightStatusValue": {
+                "type": "short"
+              },
+              "startDate": {
+                "type": "date"
+              },
+              "endDate": {
+                "type": "date"
+              }
+            }
+          },
+          "studyRightType": {
+            "type": "keyword"
+          },
+          "keywords": {
+            "type": "nested",
+            "properties": {
+              "key": {
+                "type": "keyword"
+              },
+              "value": {
+                "type": "keyword"
+              },
+              "keySet": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "addresses": {
+        "type": "nested",
+        "properties": {
+          "street": {
+            "type": "text"
+          },
+          "postalCode": {
+            "type": "keyword"
+          },
+          "postOffice": {
+            "type": "text"
+          },
+          "country": {
+            "type": "keyword"
+          }
+        }
+      },
+      "countryOfCitizenship": {
+        "type": "keyword"
+      },
+      "municipalityOfResidence": {
+        "type": "keyword"
+      },
+      "motherTongue": {
+        "type": "keyword"
+      },
+      "preferredLanguage": {
+        "type": "keyword"
+      },
+      "email": {
+        "type": "keyword"
+      },
+      "phone": {
+        "type": "nested",
+        "properties": {
+          "number": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          }
+        }
+      },
+      "eligibleForNetworkStudies": {
+        "type": "boolean"
+      },
+      "statuses": {
+        "type": "nested",
+        "properties": {
+          "organisationId": {
+            "type": "keyword"
+          },
+          "status": {
+            "type": "keyword"
+          }
+        }
+      },
+      "timestamp": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "source": {
+    "index": "opintokokonaisuudet"
+  },
+  "dest": {
+    "index": "opintokokonaisuudet_v4.0.0"
+  },
+  "script": {
+    "source": """,
+    // RIPA-353 change keyword.value field from string to localisedstring
+    def keywords = ctx._source.keywords;
+    if(keywords != null && keywords.length > 0) {
+      for (int i = 0; i < ctx._source.keywords.length; i++) {
+        def value = ctx._source.keywords[i].value;
+        ctx._source.keywords[i].value = null;
+        if(value != null) {
+          ctx._source.keywords[i].value = [
+            "fi": value,
+            "en": value,
+            "sv": value
+          ]
+        }
+      }
+    }
+    """,
+    "lang": "painless"
+  }
+}

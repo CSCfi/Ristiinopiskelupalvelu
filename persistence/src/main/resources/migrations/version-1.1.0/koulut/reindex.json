@@ -1,0 +1,13 @@
+{
+  "source": {
+    "index": "koulut"
+  },
+  "dest": {
+    "index": "koulut_v1.1.0"
+  },
+  "script": {
+    "source": """
+    """,
+    "lang": "painless"
+  }
+}

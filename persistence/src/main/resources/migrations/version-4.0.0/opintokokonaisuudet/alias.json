@@ -1,0 +1,16 @@
+{
+  "actions" : [
+    {
+      "remove" : {
+        "index" : "opintokokonaisuudet_v3.0.0",
+        "alias" : "opintokokonaisuudet"
+      }
+    },
+    {
+      "add" : {
+        "index" : "opintokokonaisuudet_v4.0.0",
+        "alias" : "opintokokonaisuudet"
+      }
+    }
+  ]
+}

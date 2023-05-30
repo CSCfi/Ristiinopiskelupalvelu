@@ -1,0 +1,68 @@
+
+{
+  "id": "classpath:/messageschemas/v8/notification/notification.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Notifikaattiviesti tarjontamuutoksista ilmoittamiseen. Viestin tyyppi voi olla COURSEUNIT_CREATED_NOTIFICATION,  STUDYMODULE_CREATED_NOTIFICATION,  REALISATION_CREATED_NOTIFICATION, COURSEUNIT_UPDATED_NOTIFICATION, STUDYMODULE_UPDATED_NOTIFICATION,  REALISATION_UPDATED_NOTIFICATION, COURSEUNIT_DELETED_NOTIFICATION, STUDYMODULE_DELETED_NOTIFICATION tai REALISATION_DELETED_NOTIFICATION.",
+  "type": "object",
+  "required": [
+    "sendingOrganisationTkCode",
+    "timestamp"
+  ],
+  "properties": {
+    "sendingOrganisationTkCode":{
+      "description": "Tarjonnan luoneen organisaation tilastokeskuskoodi.",
+      "type": "string",
+      "minLength": 1
+    },
+    "timestamp":{
+      "description": "Notifikaattiviestin lähehetysaika.",
+      "type": "datetime"
+    },
+    "created": {
+      "description": "Lista uusista tarjonnoista.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "./studyElementReference.json"
+          }
+        }
+      ]
+    },
+    "updated": {
+      "description": "Lista päivittyneistä tarjonnoista,",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "./studyElementReference.json"
+          }
+        }
+      ]
+    },
+    "deleted": {
+      "description": "Lista poistetuista tarjonnoista.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "./studyElementReference.json"
+          }
+        }
+      ]
+    },
+    "additionalProperties": false
+  }
+}

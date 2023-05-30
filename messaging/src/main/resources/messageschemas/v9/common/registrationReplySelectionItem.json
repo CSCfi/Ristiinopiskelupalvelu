@@ -1,0 +1,61 @@
+{
+  "type": "object",
+  "id": "classpath:/messageschemas/v9/common/registrationReplySelectionItem.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Valitun opintoelementin tiedot johon opiskelija on ilmoittautunut",
+  "required": [
+    "selectionItemId",
+    "selectionItemType",
+    "selectionItemStatus"
+  ],
+  "properties": {
+    "selectionItemId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Valitun opintoelementin tekninen tunniste"
+    },
+    "selectionItemType": {
+      "description": "Valitun opintoelementin tyyppi",
+      "type": "string",
+      "enum": ["COURSE_UNIT", "REALISATION"]
+    },
+    "selectionItemStatus": {
+      "description": "Valitun opintoelementin valinnan status. Sallitut arvot 0 = NOT_ENROLLED, 1 = PENDING, 2 = ACCEPTED, 3 = REJECTED, 4 = ABORTED_BY_STUDENT, 5 = ABORTED_BY_TEACHER.",
+      "enum": [0, 1, 2, 3, 4, 5]
+    },
+    "selectionItemStatusInfo": {
+      "description": "Valitun opintoelementin valinnan statuksen lisätieto",
+      "type": ["null", "string"]
+    },
+    "subGroupSelections": {
+      "description": "Alaryhmävalinnat, esim. harjoitusryhmä (ks. realisation.groupSelections.selectionValue.id)",
+      "type": ["null", "array"],
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "rank": {
+      "description": "Ilmoittautumisen järjestysnumerotiedot (monesko ilmoittautuja opiskelija oli ilmoittautumishetkellä)",
+      "type": ["null", "object"],
+      "properties": {
+        "rankAll": {
+          "description": "Monesko ilmoittautuja opiskelija oli kaikista opiskelijoista",
+          "type": ["null", "integer"]
+        },
+        "maxSeatsAll": {
+          "description": "Montako paikkaa kaikille opiskelijoille on varattu yhteensä",
+          "type": ["null", "integer"]
+        },
+        "rankCrossStudy": {
+          "description": "Monesko ilmoittautuja opiskelija oli ristiinopiskelijoista",
+          "type": ["null", "integer"]
+        },
+        "maxSeatsCrossStudy": {
+          "description": "Montako paikkaa ristiinopiskelijoille on varattu yhteensä",
+          "type": ["null", "integer"]
+        }
+      }
+    }
+  }
+}

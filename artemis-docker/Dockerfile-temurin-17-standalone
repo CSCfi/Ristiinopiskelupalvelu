@@ -1,0 +1,88 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# ActiveMQ Artemis
+
+FROM eclipse-temurin:17-jdk
+LABEL maintainer="Apache ActiveMQ Team"
+# Make sure pipes are considered to determine success, see: https://github.com/hadolint/hadolint/wiki/DL4006
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+WORKDIR /opt
+
+# Web Server
+EXPOSE 8161 \
+# JMX Exporter
+    9404 \
+# Port for CORE,MQTT,AMQP,HORNETQ,STOMP,OPENWIRE
+    61616 \
+# Port for HORNETQ,STOMP
+    5445 \
+# Port for AMQP
+    5672 \
+# Port for MQTT
+    1883 \
+#Port for STOMP
+    61613
+
+ENV ARTEMIS_VERSION 2.22.0
+ENV ARTEMIS_DIST_FILE_NAME apache-artemis-${ARTEMIS_VERSION}-bin.tar.gz
+
+# NOTE: this needs to be changed manually depending on version. Current release is downloadable from separate url than the current one.
+ENV ARTEMIS_DIST_FILE_URL https://archive.apache.org/dist/activemq/activemq-artemis/${ARTEMIS_VERSION}/apache-artemis-${ARTEMIS_VERSION}-bin.tar.gz
+
+ENV ARTEMIS_DIR_NAME apache-artemis-${ARTEMIS_VERSION}
+ENV ARTEMIS_USER artemis
+ENV ARTEMIS_PASSWORD artemis
+ENV ANONYMOUS_LOGIN false
+ENV EXTRA_ARGS --http-host 0.0.0.0 --relax-jolokia
+
+# add user and group for artemis
+RUN groupadd -g 1000 -r ${ARTEMIS_USER} && useradd -r -u 1000 -g ${ARTEMIS_USER} ${ARTEMIS_USER} \
+ && apt-get -qq -o=Dpkg::Use-Pty=0 update && \
+    apt-get -qq -o=Dpkg::Use-Pty=0 install -y libaio1 && \
+    apt-get -qq -o=Dpkg::Use-Pty=0 install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# download & unpack the artemis distribution
+RUN curl --progress-bar "${ARTEMIS_DIST_FILE_URL}" --output ./${ARTEMIS_DIST_FILE_NAME}
+RUN tar zxf ${ARTEMIS_DIST_FILE_NAME}
+RUN rm -f ${ARTEMIS_DIST_FILE_NAME}
+RUN mv ${ARTEMIS_DIR_NAME} activemq-artemis
+
+RUN mkdir /var/lib/artemis-instance && chown -R ${ARTEMIS_USER}.${ARTEMIS_USER} /var/lib/artemis-instance
+
+COPY ./docker-run.sh /
+
+USER artemis
+
+# create instance
+WORKDIR /var/lib/artemis-instance
+
+RUN /opt/activemq-artemis/bin/artemis create --user ${ARTEMIS_USER} --password ${ARTEMIS_PASSWORD} --require-login --silent .
+
+USER root
+
+# copy tracker dependencies
+RUN mkdir log_lib
+COPY ./log_lib/* log_lib/
+COPY ./lib/* lib/
+RUN chown -R ${ARTEMIS_USER}.${ARTEMIS_USER} lib/ && chown -R ${ARTEMIS_USER}.${ARTEMIS_USER} log_lib/
+
+USER artemis
+
+ENTRYPOINT ["/docker-run.sh"]
+CMD ["run"]

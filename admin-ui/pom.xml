@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>fi.csc.ristiinopiskelu</groupId>
+    <artifactId>admin-ui-parent</artifactId>
+    <version>9.0.12</version>
+    <packaging>pom</packaging>
+
+    <name>admin-ui-parent</name>
+    <description>Ristiinopiskelupalvelu admin UI parent</description>
+
+    <parent>
+        <groupId>fi.uta.ristiinopiskelu</groupId>
+        <artifactId>parent</artifactId>
+        <version>9.0.12</version>
+        <relativePath>../</relativePath> <!-- lookup parent from repository -->
+    </parent>
+    
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <java.version>17</java.version>
+    </properties>
+
+    <modules>
+        <module>frontend</module>
+        <module>backend</module>
+    </modules>
+
+</project>

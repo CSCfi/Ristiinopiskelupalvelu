@@ -1,0 +1,556 @@
+{
+  "toteutus": {
+    "dynamic": false,
+    "properties": {
+      "realisationId": {
+        "type": "keyword"
+      },
+      "realisationIdentifierCode": {
+        "type": "keyword"
+      },
+      "organizingOrganisationId": {
+        "type": "keyword"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "name": {
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "studyElementReferences": {
+        "type": "nested",
+        "properties": {
+          "referenceIdentifier": {
+            "type": "keyword"
+          },
+          "referenceCode": {
+            "type": "keyword"
+          },
+          "referenceOrganizer": {
+            "type": "keyword"
+          },
+          "referenceType": {
+            "type": "keyword"
+          },
+          "referenceAssessmentItemId": {
+            "type": "keyword"
+          }
+        }
+      },
+      "createdTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "updateTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "creditsMin": {
+        "type": "float"
+      },
+      "creditsMax": {
+        "type": "float"
+      },
+      "selections": {
+        "type": "nested",
+        "properties": {
+          "type": {
+            "type": "keyword"
+          },
+          "title": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          },
+          "selectionValues": {
+            "type": "nested",
+            "properties": {
+              "minSeats": {
+                "type": "integer"
+              },
+              "maxSeats": {
+                "type": "integer"
+              },
+              "name": {
+                "properties": {
+                  "values": {
+                    "properties": {
+                      "fi": {
+                        "type": "text",
+                        "copy_to": "search_fi"
+                      },
+                      "en": {
+                        "type": "text",
+                        "copy_to": "search_en"
+                      },
+                      "sv": {
+                        "type": "text",
+                        "copy_to": "search_sv"
+                      }
+                    }
+                  }
+                }
+              },
+              "id": {
+                "type": "keyword"
+              },
+              "groupQuotas": {
+                "type": "nested",
+                "properties": {
+                  "networkIdentifiers": {
+                    "type": "keyword"
+                  },
+                  "minSeats": {
+                    "type": "integer"
+                  },
+                  "maxSeats": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "questionSets": {
+        "type": "nested",
+        "properties": {
+          "title": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          },
+          "questions": {
+            "type": "nested",
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "enrollmentStartDateTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "enrollmentEndDateTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "startDate": {
+        "type": "date"
+      },
+      "endDate": {
+        "type": "date"
+      },
+      "personReferences": {
+        "type": "nested",
+        "properties": {
+          "role": {
+            "properties": {
+              "key": {
+                "type": "keyword"
+              },
+              "codeSetKey": {
+                "type": "keyword"
+              }
+            }
+          },
+          "person": {
+            "properties": {
+              "homeEppn": {
+                "type": "keyword"
+              },
+              "hostEppn": {
+                "type": "keyword"
+              },
+              "sourceNumber": {
+                "type": "keyword"
+              },
+              "firstNames": {
+                "type": "text"
+              },
+              "givenName": {
+                "type": "text"
+              },
+              "surName": {
+                "type": "text"
+              }
+            }
+          },
+          "definition": {
+            "type": "text"
+          }
+        }
+      },
+      "minSeats": {
+        "type": "integer"
+      },
+      "maxSeats": {
+        "type": "integer"
+      },
+      "location": {
+        "properties": {
+          "street": {
+            "type": "text"
+          },
+          "postalCode": {
+            "type": "keyword"
+          },
+          "postOffice": {
+            "type": "text"
+          },
+          "country": {
+            "type": "keyword"
+          }
+        }
+      },
+      "organisationSpecificDescriptions": {
+        "type": "nested",
+        "properties": {
+          "key": {
+            "type": "keyword"
+          },
+          "name": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          },
+          "value": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "organisationReferences": {
+        "type": "nested",
+        "properties": {
+          "percent": {
+            "type": "integer"
+          },
+          "organisationRole": {
+            "type": "short"
+          },
+          "target": {
+            "properties": {
+              "organisationIdentifier": {
+                "type": "keyword"
+              },
+              "organisationTkCode": {
+                "type": "keyword"
+              },
+              "organisationName": {
+                "properties": {
+                  "fi": { "type": "text", "copy_to": "search_fi" },
+                  "en": { "type": "text", "copy_to": "search_en" },
+                  "sv": { "type": "text", "copy_to": "search_sv" }
+                }
+              },
+              "unitName": {
+                "properties": {
+                  "fi": { "type": "text", "copy_to": "search_fi" },
+                  "en": { "type": "text", "copy_to": "search_en" },
+                  "sv": { "type": "text", "copy_to": "search_sv" }
+                }
+              },
+              "nameDescription": {
+                "properties": {
+                  "fi": { "type": "text", "copy_to": "search_fi" },
+                  "en": { "type": "text", "copy_to": "search_en" },
+                  "sv": { "type": "text", "copy_to": "search_sv" }
+                }
+              },
+              "postalAddress": {
+                "properties": {
+                  "street": { "type": "text" },
+                  "postalCode": { "type": "integer" },
+                  "postOffice": { "type": "text" },
+                  "country": { "type": "keyword" }
+                }
+              },
+              "streetAddress": {
+                "properties": {
+                  "street": { "type": "text" },
+                  "postalCode": { "type": "integer" },
+                  "postOffice": { "type": "text" },
+                  "country": { "type": "keyword" }
+                }
+              },
+              "municipalityCode": {
+                "type": "keyword"
+              },
+              "phone": {
+                "properties": {
+                  "description": {
+                    "type": "text"
+                  },
+                  "number": {
+                    "type": "text"
+                  }
+                }
+              },
+              "url": {
+                "type": "keyword"
+              }
+            }
+          },
+          "description": {
+            "properties": {
+              "fi": { "type": "text", "copy_to": "search_fi" },
+              "en": { "type": "text", "copy_to": "search_en" },
+              "sv": { "type": "text", "copy_to": "search_sv" }
+            }
+          }
+        }
+      },
+      "groupSelections": {
+        "type": "nested",
+        "properties": {
+          "type": {
+            "type": "keyword"
+          },
+          "title": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          },
+          "selectionValues": {
+            "type": "nested",
+            "properties": {
+              "minSeats": {
+                "type": "integer"
+              },
+              "maxSeats": {
+                "type": "integer"
+              },
+              "name": {
+                "properties": {
+                  "values": {
+                    "properties": {
+                      "fi": {
+                        "type": "text",
+                        "copy_to": "search_fi"
+                      },
+                      "en": {
+                        "type": "text",
+                        "copy_to": "search_en"
+                      },
+                      "sv": {
+                        "type": "text",
+                        "copy_to": "search_sv"
+                      }
+                    }
+                  }
+                }
+              },
+              "id": {
+                "type": "keyword"
+              },
+              "groupQuotas": {
+                "type": "nested",
+                "properties": {
+                  "networkIdentifiers": {
+                    "type": "keyword"
+                  },
+                  "minSeats": {
+                    "type": "integer"
+                  },
+                  "maxSeats": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "cooperationNetworks": {
+        "type": "nested",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          },
+          "status": {
+            "type": "boolean"
+          },
+          "validityStartDate": {
+            "type": "date"
+          },
+          "validityEndDate": {
+            "type": "date"
+          },
+          "enrollable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "groupQuotas": {
+        "type": "nested",
+        "properties": {
+          "networkIdentifiers": {
+            "type": "keyword"
+          },
+          "minSeats": {
+            "type": "integer"
+          },
+          "maxSeats": {
+            "type": "integer"
+          }
+        }
+      },
+      "search_fi": {
+        "type": "text",
+        "analyzer": "finnish"
+      },
+      "search_en": {
+        "type": "text",
+        "analyzer": "english"
+      },
+      "search_sv": {
+        "type": "text",
+        "analyzer": "swedish"
+      },
+      "teachingLanguage": {
+        "type": "keyword"
+      }
+    },
+    "dynamic_templates": [
+      {
+        "strings": {
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "text",
+            "analyzer": "standard"
+          }
+        }
+      }
+    ]
+  }
+}

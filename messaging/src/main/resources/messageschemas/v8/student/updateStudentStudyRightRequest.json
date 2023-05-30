@@ -1,0 +1,74 @@
+{
+  "id": "classpath:/messageschemas/v8/student/updateStudentStudyRightRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Päivitysviesti, jolla voidaan päivittää opiskelijan opinto-oikeuden tietoja. Kansallinen oppijanumero tai henkilötunnus on pakollinen tieto.",
+  "type": "object",
+  "required": [
+    "homeStudyRight"
+  ],
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "required": [
+                "personId"
+              ]
+            },
+            {
+              "properties": {
+                "oid": {
+                  "description": "Kansallinen oppijanumero.",
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "personId": {
+                  "description": "Henkilötunnus.",
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "required": [
+                "oid"
+              ]
+            },
+            {
+              "properties": {
+                "oid": {
+                  "description": "Kansallinen oppijanumero.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "personId": {
+                  "description": "Henkilötunnus.",
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "properties": {
+        "homeStudyRight" : {
+          "description": "Kotikorkeakoulun opinto-oikeuden tiedot.",
+          "type": "object",
+          "$ref": "../common/studyRight.json"
+        }
+      }
+    }
+  ]
+}

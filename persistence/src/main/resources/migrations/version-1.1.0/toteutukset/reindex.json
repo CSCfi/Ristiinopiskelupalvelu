@@ -1,0 +1,13 @@
+{
+  "source": {
+    "index": "toteutukset"
+  },
+  "dest": {
+    "index": "toteutukset_v1.1.0"
+  },
+  "script": {
+    "source": """
+    """,
+    "lang": "painless"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "classpath:/messageschemas/v9/realisation/deleteRealisationRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Toteutuksen poistoviesti. Poistoviestillä voi poistaa vain oman organisaation luomia toteutuksia.",
+  "type": "object",
+  "required": [
+    "realisationId"
+  ],
+  "properties": {
+    "realisationId": {
+      "description": "Poistettavan toteutuksen tekninen tunniste.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

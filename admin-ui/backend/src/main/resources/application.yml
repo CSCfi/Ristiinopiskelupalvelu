@@ -1,0 +1,37 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /admin-ui
+    session:
+      timeout: 1800s
+
+spring:
+  artemis:
+    user: ${activemq_admin_ui_username}
+    password: ${activemq_admin_ui_password}
+    broker-url: ${activemq_hosts}
+    embedded:
+      enabled: false
+    pool:
+      enabled: true
+      max-connections: 10
+  jms:
+    template:
+      receive-timeout: 5000ms
+
+tomcat:
+  ajp:
+    port: 8009
+
+general:
+  elasticsearch:
+    hosts: ${elasticsearch_hosts}
+    clusterName: ripa-cluster
+    username: ${elasticsearch_username}
+    password: ${elasticsearch_password}
+    caCertificatePath: ${elasticsearch_cacertificatepath}
+    
+ristiinopiskelupalvelu:
+  hakaLogoutUrl: ${shibboleth_logout_url}
+  activemq:
+    queueName: handler

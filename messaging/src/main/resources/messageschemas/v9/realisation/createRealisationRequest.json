@@ -1,0 +1,47 @@
+{
+  "id": "classpath:/messageschemas/v9/realisation/createRealisationRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Toteutuksien luontiviesti.",
+  "type": "object",
+  "required": [
+    "realisations"
+  ],
+  "properties": {
+    "realisations": {
+      "description": "Lista luotavia toteutuksia.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "realisation.json"
+          },
+          {
+            "required": [
+              "realisationId",
+              "studyElementReferences",
+              "name",
+              "startDate",
+              "endDate",
+              "organisationReferences",
+              "cooperationNetworks",
+              "status"
+            ]
+          },
+          {
+            "properties": {
+              "cooperationNetworks": {
+                "description": "Toteutuksen verkostoviittaukset, eli mille verkostoille toteutus halutaan tarjota.",
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "../common/cooperationNetwork.json"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

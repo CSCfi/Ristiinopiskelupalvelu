@@ -1,0 +1,180 @@
+{
+  "id": {
+    "type": "text",
+    "label": "id",
+    "flex": { "xs": 12 },
+    "disabled": true,
+    "sort": 1
+  },
+  "published": {
+    "type": "switch",
+    "label": "published",
+    "flex": { "xs": 12 },
+    "required": true,
+    "sort": 2
+  },
+  "networkType": {
+    "type": "select",
+    "items": ["CURRICULUM_LEVEL", "FREEDOM_OF_CHOICE"],
+    "label": "network type",
+    "flex": { "xs": 12 },
+    "required": true,
+    "sort": 3
+  },
+  "abbreviation": {
+    "type": "text",
+    "label": "abbreviation",
+    "flex": { "xs": 12 },
+    "required": true,
+    "sort": 4
+  },
+  "name": {
+    "values": {
+      "fi": { "type": "text", "label": "Name fi", "flex": { "xs": 12 }, "sort": 5 },
+      "en": { "type": "text", "label": "Name en", "flex": { "xs": 12 }, "sort": 6 },
+      "sv": { "type": "text", "label": "Name sv", "flex": { "xs": 12 }, "sort": 7 }
+    }
+  },
+  "description": {
+    "values": {
+      "fi": { "type": "textarea", "label": "Description fi", "flex": { "xs": 12 }, "sort": 8 },
+      "en": { "type": "textarea", "label": "Description en", "flex": { "xs": 12 }, "sort": 9 },
+      "sv": { "type": "textarea", "label": "Description sv", "flex": { "xs": 12 }, "sort": 10 }
+    }
+  },
+  "furtherInformation": {
+    "values": {
+      "fi": {
+        "type": "textarea",
+        "label": "Further information fi",
+        "flex": { "xs": 12 },
+        "sort": 11
+      },
+      "en": {
+        "type": "textarea",
+        "label": "Further information en",
+        "flex": { "xs": 12 },
+        "sort": 12
+      },
+      "sv": {
+        "type": "textarea",
+        "label": "Further information sv",
+        "flex": { "xs": 12 },
+        "sort": 13
+      }
+    }
+  },
+  "organisations": {
+    "type": "array",
+    "schema": {
+      "organisationTkCode": {
+        "type": "select",
+        "items": [],
+        "label": "identifier",
+        "flex": { "xs": 6 }
+      },
+      "isCoordinator": { "type": "switch", "label": "is coordinator", "flex": { "xs": 6 } },
+      "validityInNetwork": {
+        "start": {
+          "type": "date",
+          "locale": "##datelocale##",
+          "label": "start",
+          "required": true,
+          "flex": { "xs": 6 }
+        },
+        "end": {
+          "type": "date",
+          "locale": "##datelocale##",
+          "label": "end",
+          "required": true,
+          "flex": { "xs": 6 }
+        },
+        "continuity": {
+          "type": "select",
+          "items": ["FIXED", "INDEFINITELY"],
+          "label": "continuity",
+          "required": true,
+          "flex": { "xs": 12 }
+        }
+      }
+    },
+    "sort": 14
+  },
+  "validity": {
+    "start": {
+      "type": "date",
+      "label": "Validity start",
+      "locale": "##datelocale##",
+      "flex": { "xs": 6 },
+      "required": true,
+      "sort": 15
+    },
+    "end": {
+      "type": "date",
+      "label": "Validity end",
+      "locale": "##datelocale##",
+      "flex": { "xs": 6 },
+      "required": true,
+      "sort": 16
+    },
+    "continuity": {
+      "type": "select",
+      "items": ["FIXED", "INDEFINITELY"],
+      "label": "Validity continuity",
+      "flex": { "xs": 12 },
+      "required": true,
+      "sort": 18
+    }
+  },
+  "targetGroups": {
+    "type": "array",
+    "key": {
+      "type": "text",
+      "label": "targetGroups key",
+      "flex": { "xs": 12 },
+      "sort": 20
+    },
+    "codeSetKey": {
+      "type": "text",
+      "label": "targetGroups codeSetKey",
+      "flex": { "xs": 12 },
+      "sort": 21
+    }
+  },
+  "restrictions": {
+    "type": "array",
+    "key": {
+      "type": "text",
+      "label": "restrictions",
+      "flex": { "xs": 12 },
+      "sort": 20
+    },
+    "codeSetKey": {
+      "type": "text",
+      "label": "restrictions",
+      "flex": { "xs": 12 },
+      "sort": 21
+    }
+  },
+  "expenses": {
+    "pay": {
+      "type": "switch",
+      "label": "Pay",
+      "flex": { "xs": 4 },
+      "sort": 21
+    },
+    "pricingBasis": {
+      "type": "select",
+      "label": "Pricing basis",
+      "items": ["EURO_PER_CREDIT", "OTHER_PRICING_BASIS"],
+      "flex": { "xs": 4 },
+      "sort": 22
+    },
+    "price": {
+      "type": "number",
+      "label": "Price",
+      "flex": { "xs": 4 },
+      "sort": 23
+    }
+  }
+}

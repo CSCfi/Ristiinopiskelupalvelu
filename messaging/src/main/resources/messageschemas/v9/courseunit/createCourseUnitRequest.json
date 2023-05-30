@@ -1,0 +1,85 @@
+{
+  "id": "classpath:/messageschemas/v9/courseunit/createCourseUnitRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintojakson luontipyyntöviesti.",
+  "type": "object",
+  "required": [
+    "courseUnits"
+  ],
+  "properties": {
+    "courseUnits": {
+      "description": "Lista tarjottavista opintojaksoista.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "courseunit.json"
+          },
+          {
+            "required": [
+              "studyElementId",
+              "name",
+              "type",
+              "organisationReferences",
+              "cooperationNetworks",
+              "sendingTime"
+            ]
+          },
+          {
+            "properties": {
+              "realisations": {
+                "description": "Opintojakson toteukset.",
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "array",
+                    "minItems": 0,
+                    "items": {
+                      "allOf": [
+                        {
+                          "$ref": "../realisation/realisation.json"
+                        },
+                        {
+                          "required": [
+                            "realisationId",
+                            "name",
+                            "organisationReferences",
+                            "cooperationNetworks"
+                          ]
+                        },
+                        {
+                          "properties": {
+                            "cooperationNetworks": {
+                              "description": "Opintojakson toteutusten verkostoviittaukset, eli mille verkostoille toteutus halutaan tarjota.",
+                              "type": "array",
+                              "minItems": 1,
+                              "items": {
+                                "$ref": "../common/cooperationNetwork.json"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "cooperationNetworks": {
+                "description": "Opintojakson verkostoviittaukset, eli mille verkostoille opintojakso halutaan tarjota.",
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "../common/cooperationNetwork.json"
+                }
+              }
+            }           
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

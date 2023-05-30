@@ -1,0 +1,25 @@
+{
+  "source": {
+    "index": "opintokokonaisuudet"
+  },
+  "dest": {
+    "index": "opintokokonaisuudet_v3.0.0"
+  },
+  "script": {
+    "source": """
+      ctx._source.missing = ctx._source._missing;
+      ctx._source.remove('_missing');
+
+      ctx._source.studyElementPermanentId = ctx._source._groupId;
+      ctx._source.remove('_groupId');
+
+      def organisationReferences = ctx._source.organisationReferences;
+      if(organisationReferences != null) {
+        for(organisationReference in organisationReferences) {
+          organisationReference.description = null;
+        }
+      }
+    """,
+    "lang": "painless"
+  }
+}

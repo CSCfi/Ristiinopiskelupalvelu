@@ -1,0 +1,336 @@
+{
+  "rekisterointi": {
+    "dynamic": false,
+    "properties": {
+      "sendingOrganisationTkCode": {
+        "type": "keyword"
+      },
+      "receivingOrganisationTkCode": {
+        "type": "keyword"
+      },
+      "networkIdentifier": {
+        "type": "keyword"
+      },
+      "networkDescription": {
+        "type": "text"
+      },
+      "sendDateTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "receivingDateTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "enrolmentDateTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "statusInfo": {
+        "type": "text"
+      },
+      "student": {
+        "properties": {
+          "homeEppn": {
+            "type": "keyword"
+          },
+          "hostEppn": {
+            "type": "keyword"
+          },
+          "firstNames": {
+            "type": "text"
+          },
+          "surName": {
+            "type": "text"
+          },
+          "givenName": {
+            "type": "text"
+          },
+          "oid": {
+            "type": "keyword"
+          },
+          "personId": {
+            "type": "keyword"
+          },
+          "homeStudentNumber": {
+            "type": "keyword"
+          },
+          "hostStudentNumber": {
+            "type": "keyword"
+          },
+          "dateOfBirth": {
+            "type": "date"
+          },
+          "addresses": {
+            "type": "nested",
+            "properties": {
+              "street": {
+                "type": "text"
+              },
+              "postalCode": {
+                "type": "keyword"
+              },
+              "postOffice": {
+                "type": "text"
+              },
+              "country": {
+                "type": "keyword"
+              }
+            }
+          },
+          "countryOfCitizenship": {
+            "type": "keyword"
+          },
+          "municipalityOfResidence": {
+            "type": "keyword"
+          },
+          "motherTongue": {
+            "type": "keyword"
+          },
+          "preferredLanguage": {
+            "type": "keyword"
+          },
+          "email": {
+            "type": "keyword"
+          },
+          "phone": {
+            "type": "nested",
+            "properties": {
+              "number": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              }
+            }
+          },
+          "eligibleForNetworkStudies": {
+            "type": "boolean"
+          },
+          "homeStudyRight": {
+            "properties": {
+              "identifiers": {
+                "properties": {
+                  "organisationTkCodeReference": {
+                    "type": "keyword"
+                  },
+                  "studyRightId": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "studyRightStatus": {
+                "properties": {
+                  "studyRightStatusValue": {
+                    "type": "short"
+                  },
+                  "startDate": {
+                    "type": "date"
+                  },
+                  "endDate": {
+                    "type": "date"
+                  }
+                }
+              },
+              "studyRightType": {
+                "type": "keyword"
+              },
+              "keywords": {
+                "type": "nested",
+                "properties": {
+                  "key": {
+                    "type": "keyword"
+                  },
+                  "value": {
+                    "type": "keyword"
+                  },
+                  "keySet": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          },
+          "hostStudyRight": {
+            "properties": {
+              "identifiers": {
+                "properties": {
+                  "organisationTkCodeReference": {
+                    "type": "keyword"
+                  },
+                  "studyRightId": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "studyRightStatus": {
+                "properties": {
+                  "studyRightStatusValue": {
+                    "type": "short"
+                  },
+                  "startDate": {
+                    "type": "date"
+                  },
+                  "endDate": {
+                    "type": "date"
+                  }
+                }
+              },
+              "studyRightType": {
+                "type": "keyword"
+              },
+              "keywords": {
+                "type": "nested",
+                "properties": {
+                  "key": {
+                    "type": "keyword"
+                  },
+                  "value": {
+                    "type": "keyword"
+                  },
+                  "keySet": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "selections": {
+        "type": "nested",
+        "properties": {
+          "selectionItemId": {
+            "type": "keyword"
+          },
+          "selectionItemIdentifierCode": {
+            "type": "keyword"
+          },
+          "selectionItemType": {
+            "type": "keyword"
+          },
+          "selectionItemStatus": {
+            "type": "short"
+          },
+          "selectionItemStatusInfo": {
+            "type": "text"
+          },
+          "subGroupSelections": {
+            "type": "nested",
+            "properties": {
+              "type": {
+                "type": "keyword"
+              },
+              "title": {
+                "properties": {
+                  "values": {
+                    "properties": {
+                      "fi": {
+                        "type": "text",
+                        "copy_to": "search_fi"
+                      },
+                      "en": {
+                        "type": "text",
+                        "copy_to": "search_en"
+                      },
+                      "sv": {
+                        "type": "text",
+                        "copy_to": "search_sv"
+                      }
+                    }
+                  }
+                }
+              },
+              "selectionValues": {
+                "type": "nested",
+                "properties": {
+                  "values": {
+                    "properties": {
+                      "fi": {
+                        "type": "text",
+                        "copy_to": "search_fi"
+                      },
+                      "en": {
+                        "type": "text",
+                        "copy_to": "search_en"
+                      },
+                      "sv": {
+                        "type": "text",
+                        "copy_to": "search_sv"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "parent": {
+            "properties": {
+              "selectionItemId": {
+                "type": "keyword"
+              },
+              "selectionItemIdentifierCode": {
+                "type": "keyword"
+              },
+              "selectionItemType": {
+                "type": "keyword"
+              },
+              "parent": {
+                "properties": {
+                  "selectionItemId": {
+                    "type": "keyword"
+                  },
+                  "selectionItemIdentifierCode": {
+                    "type": "keyword"
+                  },
+                  "selectionItemType": {
+                    "type": "keyword"
+                  },
+                  "parent": {
+                    "properties": {
+                      "selectionItemId": {
+                        "type": "keyword"
+                      },
+                      "selectionItemIdentifierCode": {
+                        "type": "keyword"
+                      },
+                      "selectionItemType": {
+                        "type": "keyword"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "search_fi": {
+        "type": "text",
+        "analyzer": "finnish"
+      },
+      "search_en": {
+        "type": "text",
+        "analyzer": "english"
+      },
+      "search_sv": {
+        "type": "text",
+        "analyzer": "swedish"
+      }
+    },
+    "dynamic_templates": [
+      {
+        "strings": {
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "text",
+            "analyzer": "standard"
+          }
+        }
+      }
+    ]
+  }
+}

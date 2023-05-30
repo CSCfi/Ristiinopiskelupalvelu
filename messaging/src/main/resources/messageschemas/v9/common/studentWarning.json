@@ -1,0 +1,63 @@
+{
+  "type" : "object",
+  "id": "classpath:/messageschemas/v9/common/studentWarning.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opiskelijavaroitus.",
+  "required": [
+    "type"
+  ],
+  "properties" : {
+    "type" : {
+      "description": "Opiskelijavaroituksen tyyppi (NOT_ELIGIBLE_FOR_CROSS_STUDIES = Opiskelijalla ei ole ristiinopiskeluoikeutta, OTHER = Muu varoitus.",
+      "type": "string",
+      "enum": ["NOT_ELIGIBLE_FOR_CROSS_STUDIES", "OTHER"]
+    },
+    "description" : {
+      "description": "Varoituksen kuvaus kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "startDate": {
+      "description": "Varoituksen voimassaolon alkamispäivämäärä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date"
+        }
+      ]
+    },
+    "endDate": {
+      "description": "Varoituksen voimassaolon päättymispäivämäärä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date"
+        }
+      ]
+    },
+    "studyRightId": {
+      "description": "Opiskelijan opiskeluoikeuden tekninen tunniste kotikorkeakoulussa.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    }
+  }
+}

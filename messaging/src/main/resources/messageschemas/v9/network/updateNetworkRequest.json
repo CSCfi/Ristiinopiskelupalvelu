@@ -1,0 +1,24 @@
+{
+  "id": "classpath:/messageschemas/v9/network/updateNetworkRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Verkoston päivitysviesti. Voi lähettää vain ylläpitokäyttöliittymästä.",
+  "required": [
+    "network"
+  ],
+  "properties": {
+    "network": {
+      "allOf": [
+        {
+          "$ref": "network.json"
+        },
+        {
+          "required": [
+            "id"
+          ]
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

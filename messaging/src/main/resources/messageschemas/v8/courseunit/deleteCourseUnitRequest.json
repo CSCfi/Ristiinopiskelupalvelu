@@ -1,0 +1,22 @@
+{
+  "id": "classpath:/messageschemas/v8/courseunit/deleteCourseUnitRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Viestipyyntö opintojakson poistamiseen. Poistoviestillä voi poistaa vain oman organisaation luomia opintojaksoja.",
+  "type": "object",
+  "required": [
+    "studyElementId",
+    "deleteRealisations"
+  ],
+  "properties": {
+    "studyElementId": {
+      "description": "Poistettavan opintojakson tekninen tunniste Ristiinopiskelupalvelussa.",
+      "type": "string",
+      "minLength": 1
+    },
+    "deleteRealisations": {
+      "description": "Poistetaanko myös viittaukset opintojakson toteutuksilta. Mikäli tämä opintojakso on ainoa, johon toteuksella on viittauksia, poistetaan myös toteutus kokonaan.",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

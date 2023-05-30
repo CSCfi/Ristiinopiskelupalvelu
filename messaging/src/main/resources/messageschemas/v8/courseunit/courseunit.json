@@ -1,0 +1,235 @@
+{
+  "id": "classpath:/messageschemas/v8/courseunit/courseunit.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintojakso.",
+  "definitions": {
+    "assessmentItem": {
+      "description": "Arvioinnin kohde.",
+      "type": "object",
+      "required": [
+        "assessmentItemId"
+      ],
+      "properties": {
+        "assessmentItemId": {
+          "description": "Arvioinnin kohteen tekninen avain.",
+          "type": "string",
+          "minLength": 1
+        },
+        "primaryCourseUnitId": {
+          "description": "Kenttä ei käytössä, poistuu seuraavassa versiossa.",
+          "type": ["null", "string"]
+        },
+        "type": {
+          "description": "Arvioinnin kohteen tyyppi.",
+          "type" : ["null", "string"],
+          "enum" : [ null, "INDEPENDENT_WORK", "EXAM", "TEACHING_PARTICIPATION" ]
+        },
+        "name": {
+          "description": "Arvioinnin kohteen nimi kieleistettynä.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "../common/localisedString.json"
+            }
+          ]
+        },
+        "creditsMin": {
+           "description": "Pienin mahdollinen opintopistemäärä. Mikäli arvioinnin kohteella on vain tietty opintopistemäärä, se tulee asettaa sekä creditsMin- että creditsMax-kenttin.",
+           "type": ["null", "number"]
+         },
+        "creditsMax": {
+          "description": "Suurin mahdollinen opintopistemäärä. Mikäli arvioinnin kohteella on vain tietty opintopistemäärä, se tulee asettaa sekä creditsMin- että creditsMax-kenttin.",
+          "type": ["null", "number"]
+        },
+        "realisations": {
+          "description": "Arvioinnin kohteen toteutukset. Tässä listatut toteutukset luodaan indeksiin luontiviestin yhteydessä, mutta päivitysviesin yhteydessä niitä ei huomioida. Tämä elementti pitäisi siirtää createCourseUniti.jsoniin.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "required": [
+                  "realisationId",
+                  "name",
+                  "organisationReferences"
+                ],
+                "$ref": "../realisation/realisation.json"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "../common/studyElement.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "description": "Opintoelementin tyyppi, tässä tilanteessa aina COURSE_UNIT",
+          "enum": ["COURSE_UNIT"]
+        },
+        "assessmentScale": {
+          "description": "VIRTA: Arvosana-asteikot (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Arvosana-asteikot,Vitsordsskalor), 1 = Viisiportainen, 2 = Hyväksytty, 3 = Toinen kotimainen ??? Tänne tulisi liästä 4 = tutkielma",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "enum": [1, 2, 3]
+            }
+          ]
+        },
+        "learningMaterials": {
+          "description": "Opetusmateriaalien kuvaukset kieleistettynä.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "../common/localisedString.json"
+              }
+            }
+          ]
+        },
+        "examBookEnquiry": {
+          "description": "??? Onko tämä kirjatentti?",
+          "type": ["null","boolean"]
+        },
+        "groupSize": {
+          "description": "Opetusryhmäkoko.",
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "completionOptions": {
+          "description": "Opintojakson suoritusvaihtoehdot.",
+          "type": ["null", "array"],
+          "items": {
+            "type": "object",
+            "required": [
+              "completionOptionId"
+            ],
+            "properties": {
+              "completionOptionId": {
+                "description": "Suoritusvaihtoehdon tekninen tunniste.",
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "description": "Suoritusvaihtoehdon kuvaus.",
+                "type": ["null","string"]
+              },
+              "name": {
+                "description": "Suoritusvaihtoehdon nimi kieleistettynä.",
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "../common/localisedString.json"
+                  }
+                ]
+              },
+              "assessmentItems": {
+                "description": "Suoritusvaihtoehdon arviointikohteet.",
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/assessmentItem"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "realisations": {
+          "description":  "Opintojakson toteutukset. Tässä listatut toteutukset luodaan indeksiin luontiviestin yhteydessä, mutta päivitysviesin yhteydessä niitä ei huomioida. Tämä elementti pitäisi siirtää createCourseUniti.jsoniin.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "required": [
+                  "realisationId",
+                  "name",
+                  "organisationReferences",
+                  "cooperationNetworks"
+                ],
+                "$ref": "../realisation/realisation.json"
+              }
+            }
+          ]
+        },
+        "parents": {
+          "description": "Opintojakson vanhemmat eli opintoelementtihierarkiassa ylempänä olevat elementit.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "required": [
+                  "referenceIdentifier",
+                  "referenceOrganizer",
+                  "referenceType"
+                ],
+                "properties": {
+                  "referenceIdentifier": {
+                    "description": "Viitattavan elementin tekninen tunniste. Tulee löytyä tarjonnasta.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "referenceOrganizer": {
+                    "description": "Viitattavan elementin järjestävän organisaation tilastokeskuskoodi.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "referenceType": {
+                    "description": "Viitattavan opintoelementin tyyppi. Ainoa vaihtoehto on opintokokonaisuus",
+                    "type": "string",
+                    "enum": ["STUDY_MODULE"]
+                  },
+                  "onlyEnrollableWithParent": {
+                    "description": "Tuleeko tälle opintokokonaisuuteen ilmoittautua samalla kun ilmoittautuu opintojaksolle.",
+                    "type": ["null", "boolean"]
+                  },
+                  "referenceCode": {
+                    "description": "Ei käytössä, poistuu seuraavassa versiossa.",
+                    "type": ["null", "string"]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "onlyEnrollableWithParent": {
+          "description": "Onko opintojakson vanhemmalle ilmoittauduttava samalla kun ilmoittautuu opintojaksolle. Kenttä huomioidaan vain silloin kun opintojako on mukana opintokokonaisuuden luontiviestissä alielementtinä. Tämän voisi siis siirtää createStudyModulenRequest.jsoniin.",
+          "type": ["null", "boolean"]
+        }
+      }
+    }
+  ]
+}

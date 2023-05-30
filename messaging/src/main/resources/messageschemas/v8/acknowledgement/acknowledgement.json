@@ -1,0 +1,25 @@
+{
+  "id": "classpath:/messageschemas/v8/acknowledgement/acknowledgement.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Viestityyppi jolla voidaan kuitata viesti saapuneeksi viestin lähettäneelle organiaatiolle.",
+  "required": [
+    "receivingOrganisationTkCode"
+  ],
+  "properties": {
+    "receivingOrganisationTkCode": {
+      "description": "Sen organisaation tilastokeskuskoodi, jonka lähettämä viesti halutaan kuitata.",
+      "type": "string",
+      "minLength": 1
+    },
+    "messageType": {
+      "description": "Kuitattavan viestin viestityyppi. Sallitut arvot: CREATE_REGISTRATION_REQUEST, CREATE_STUDYRECORD_REQUEST, UPDATE_STUDENT_REQUEST, UPDATE_STUDENT_STUDYRIGHT_REQUEST. Voisi olla hyvä muuttaa enumeraatioksi",
+      "type": ["null", "string"]
+    },
+    "requestId": {
+      "description": "Kuitattavan pyynnön, eli viestin tekninen avain.",
+      "type": ["null", "string"]
+    }
+  },
+  "additionalProperties": false
+}

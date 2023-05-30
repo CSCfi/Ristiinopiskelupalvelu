@@ -1,0 +1,44 @@
+{
+  "id": "classpath:/messageschemas/v8/common/externalCode.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Ristiinopiskelupalvelun ulkopuoleinen koodisto",
+  "type": "object",
+  "required": [
+    "codeKey",
+    "codeValue"
+  ],
+  "properties": {
+    "codeKey": {
+      "description": "Koodin avain.",
+      "type": "string"
+    },
+    "codeValue": {
+      "description": "Koodin arvo.",
+      "type": "string",
+    },
+    "codeStartDate": {
+      "description": "Koodin voimassaolon alkamispäivämäärä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date"
+        }
+      ]
+    },
+    "codeEndDate": {
+      "description": "Koodiston voimassaolon päättymispäivämäärä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date"
+        }
+      ]
+    }
+  }
+}

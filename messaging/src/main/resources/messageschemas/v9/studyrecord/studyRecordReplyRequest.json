@@ -1,0 +1,36 @@
+{
+  "id": "classpath:/messageschemas/v9/studyrecord/studyRecordReplyRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Opintosuorituksen vastauspyyntö",
+  "required": [
+    "studyRecordRequestId",
+    "status"
+  ],
+  "properties": {
+    "studyRecordRequestId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Ristiinopiskelupalvelun luoma opintosuorituspyynnön tunniste"
+    },
+    "status": {
+      "type": "string",
+      "description": "Opintosuorituspyynnön tila",
+      "enum": [
+        "RECORDED",
+        "RECORD_REJECTED"
+      ]
+    },
+    "rejectionReason": {
+      "description": "Opintosuorituspyynnön hylkäyksen syy",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    }
+  }
+}

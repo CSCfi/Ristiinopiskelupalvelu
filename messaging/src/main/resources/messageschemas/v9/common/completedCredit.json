@@ -1,0 +1,358 @@
+{
+  "id": "classpath:/messageschemas/v9/common/completedCredit.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintosuorituspyynnön suoritettujen opintojen tiedot.",
+  "type": "object",
+  "required": [
+      "completedCreditTarget",
+      "completedCreditName",
+      "completedCreditStatus",
+      "scope",
+      "assessment",
+      "completionDate",
+      "languagesOfCompletion",
+      "acceptors",
+      "transaction",
+      "type",
+      "minEduGuidanceArea"
+    ],
+  "properties" : {
+    "educationInstitution" : {
+      "description": "Oppilaitos (kentän olemassaolon tarpeellisuus epävarma).",
+      "type" : ["null", "string"]
+    },
+    "completedCreditIdentifier" : {
+      "description": "Opintosuorituksen tekninen avain kohdekorkeakoulussa.",
+      "type" : ["null", "string"]
+    },
+    "completedCreditTarget" : {
+      "description": "Suoritetun opinnon yksilöivät tiedot.",
+      "type" : "object",
+      "required": [
+        "completedCreditTargetType",
+        "completedCreditTargetId"
+      ],
+      "properties" : {
+        "completedCreditTargetType" : {
+          "description": "Suoritetun opinnon tyyppi (ASSESSMENT_ITEM = Arvioinnin kohde, COURSE_UNIT = Opintojakso, DEGREE = Tutkinto, STUDY_MODULE = Opintokokonaisuus, REALISATION = Toteutus)",
+          "type" : "string",
+          "enum" : [ "ASSESSMENT_ITEM", "COURSE_UNIT", "DEGREE", "STUDY_MODULE", "REALISATION"]
+        },
+        "completedCreditTargetId" : {
+          "description": "Suoritetun opinnon tekninen tunniste. Tunnisteen avulla yhdistetään tietyllä ajanhetkellä voimassa oleva tieto. Jos samaan opintoon liittyy useita versioita, tällä tunnisteella viitataan tiettyyn versioon. Käyttö tarkennettava Pepin ja Sisun välisessä keskustelussa.",
+          "type" : "string",
+          "minLength": 1
+        },
+        "completedCreditTargetIdentifierCode" : {
+          "description": "Suoritetun opinnon ihmisluettava tunnistekoodi.",
+          "type" : ["null", "string"]
+        }
+      }
+    },
+    "completedCreditAssociations" : {
+      "description": "Koostettuun opintosuoritukseen liitetyt suoritukset.",
+      "type" : ["null", "array"],
+      "items" : {
+        "type" : "object",
+        "required": [
+          "completedCreditAssociationType",
+          "completedCreditAssociationId"
+        ],
+        "properties" : {
+          "completedCreditAssociationType" : {
+            "description": "Liitetyn elementin tyyppi (COMPLETION_OPTION = Suoritustapa, ASSESSMENT_ITEM = Arvioinnin kohde, COURSE_UNIT = Opintojakso, STUDY_MODULE = Opintokokonaisuus, DEGREE = Tutkinto, REALISATION = Toteutus)",
+            "type" : "string",
+            "enum" : [ "COMPLETION_OPTION", "ASSESSMENT_ITEM", "COURSE_UNIT", "STUDY_MODULE", "DEGREE", "REALISATION" ]
+          },
+          "completedCreditAssociationId" : {
+            "description": "Liitetyn elementin tekninen tunniste",
+            "type" : "string",
+            "minLength": 1
+          },
+          "completedCreditAssociationIdentifierCode" : {
+            "description": "Liitetyn elementin ihmisluettava tunnistekoodi.",
+            "type" : ["null", "string"]
+          }
+        }
+      }
+    },
+    "assessmentItemRealisationsOfMethodOfCompletion" : {
+      "description": "Käyttötapa ja tarpeellisuus selvitettävä.",
+      "type" : ["null", "array"],
+      "items" : {
+        "type" : "string"
+      }
+    },
+    "completedCreditName" : {
+      "description": "Suoritetun opinnon nimi kieleistettynä.",
+      "type" : "object",
+      "$ref": "../common/localisedString.json"
+    },
+    "completedCreditObjective" : {
+      "description": "Suoritetun opinnon osaamistavoitteet kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "completedCreditContent" : {
+      "description": "Suoritetun opinnon sisällön kuvaus kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "completedCreditStatus" : {
+      "description": "Opintosuorituksen tila",
+      "type" : "string",
+      "enum" : [ "NOT_PARTICIPATED", "ATTEMPT_ABANDONED", "ACCEPTED", "UNFINISHED" ]
+    },
+    "scope" : {
+      "description": "Opintosuorituksen laajuus opintopisteinä",
+      "type" : "number"
+    },
+    "assessment" : {
+      "description": "Opintosuorituksen arviointi",
+      "type" : "object",
+      "required": [
+        "gradingScale",
+        "grade"
+      ],
+      "properties" : {
+        "gradingScale" : {
+          "description": "Arviointi-asteikko",
+          "type" : "object",
+          "required": [
+            "scale"
+          ],
+          "properties" : {
+            "scale" : {
+              "description": "VIRTA: Arvosana-asteikot (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Arvosana-asteikot,Vitsordsskalor), 1 = Viisiportainen, 2 = Hyväksytty, 3 = Toinen kotimainen ??? Tänne tulisi lisätä 4 = tutkielma",
+              "type" : "integer",
+              "enum" : [ 1, 2, 3 ]
+            }
+          }
+        },
+        "grade" : {
+          "description": "Arvosana",
+          "type": "object",
+          "required": [
+            "code"
+          ],
+          "properties": {
+            "egtCode": {
+              "description": "ECTS-koodi (ECTS grading table). Käyttötapa ratkaistaan myöhemmin.",
+              "type": ["null", "string"]
+            },
+            "code": {
+              "description": "VIRTA: Arvosana (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Arvosana-asteikot,Vitsordsskalor)",
+              "type" : "string",
+              "enum" : ["HYL", "HYV", "1", "2", "3", "4", "5", "TT", "HT", "KH", "A", "B", "N", "C", "M", "E", "L" ]
+            }
+          }
+        },
+        "egt" : {
+          "description": "ECTS-asteikko (ECTS grading table) Käyttötapa ratkaistaan myöhemmin.",
+          "type" : ["null", "string"]
+        },
+        "description" : {
+          "description": "Arvointiin liittyvä opintosuoritusotteelle haluttu opintosuorituksen lisätieto.",
+          "type" : ["null", "string"]
+        }
+      }
+    },
+    "completionDate" : {
+      "description": "Suorituspäivämäärä.",
+      "type" : "string",
+      "format" : "date"
+    },
+    "languagesOfCompletion" : {
+      "description": "Suorituskielet (ISO-639-1 koodi)",
+      "type" : "array",
+      "minItems": 1,
+      "items" : {
+        "type" : "string"
+      }
+    },
+    "acceptors" : {
+      "description": "Suorituksen hyväksyjä(t)",
+      "type" : "array",
+      "minItems": 1,
+      "items" : {
+        "type" : "object",
+        "required": [
+          "surName"
+        ],
+        "$ref": "../common/person.json"
+      }
+    },
+    "organisationResponsibleForCompletion" : {
+      "description": "Suorituksen myöntänyt organisaatio TODO: Tämän voisi muuttaa listaksi organisationReferencejä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "organisationTkCode"
+          ],
+          "properties" : {
+            "erasmusCode" : {
+              "description": "Korkeakoulun Erasmus-tunniste.",
+              "type": ["null", "string"]
+            },
+            "erasmusCharterCode" : {
+              "description": "Erasmus-sopimuksen tunniste.",
+              "type": ["null", "string"]
+            },
+            "erasmusOrganisationStatisticsCode" : {
+              "description": "Käyttötarkoitus ja tiedon lähde epäselvä.",
+              "type" : ["null", "integer"]
+            },
+            "erasmusOrganisationName" : {
+              "description": "Käyttötarkoitus ja tiedon lähde epäselvä.",
+              "type": ["null", "string"]
+            },
+            "pic" : {
+              "description": "Participation identification code. Käyttötarkoitus ja tiedon lähde epäselvä.",
+              "type" : ["null", "integer"]
+            },
+            "hei" : {
+              "description": "Higher education institution. Käyttötarkoitus ja tiedon lähde epäselvä.",
+              "type": ["null", "string"]
+            },
+            "organisationIdentifier" : {
+              "description": "Organisaation yksilöivä tunniste. Käyttötarkoitus ja tiedon lähde epäselvä.",
+              "type" : ["null", "string"]
+            },
+            "organisationTkCode" : {
+              "description": "Organisaation tilastokeskuskoodi.",
+              "type" : "string",
+              "minLength": 1
+            },
+            "organisationName" : {
+              "description": "Organisaation nimi kieleistettynä.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "$ref": "../common/localisedString.json"
+                }
+              ]
+            },
+            "unitName" : {
+              "description": "Suorituksen myöntäneen organisaation suorituksesta vastaavan aliyksikön nimi kieleistettynä.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "$ref": "../common/localisedString.json"
+                }
+              ]
+            },
+            "nameDescription" : {
+              "description": "Nimen kuvaus kieleistettynä. Käyttötarkoitus epäselvä.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "$ref": "../common/localisedString.json"
+                }
+              ]
+            },
+            "postalAddress" : {
+              "description": "Suorituksen myöntäneen organisaation postiosoite.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "$ref": "../common/address.json"
+                }
+              ]
+            },
+            "streetAddress" : {
+              "description": "Suorituksen myöntäneen organisaation käyntiosoite.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "$ref": "../common/address.json"
+                }
+              ]
+            },
+            "municipalityCode" : {
+              "description": "Suorituksen myöntäneen organisaation kuntanumero (https://www2.stat.fi/fi/luokitukset/kunta/)",
+              "type" : ["null", "string"]
+            },
+            "phone" : {
+              "description": "Suorituksen myöntäneen organisaation puhelinnumero, tulee korjata phone-tyyppiseksi.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "$ref": "../common/keyword.json"
+                }
+              ]
+            },
+            "url" : {
+              "description": "Suorituksen myöntäneen organisaation verkkosivujen osoite.",
+              "type" : ["null", "string"]
+            }
+          }
+        }
+      ]
+    },
+    "transaction" : {
+      "description": "Suorituksen kirjaustyyppi (uusi suoritus/uusi suoritus, joka korvaa aiemman/olemassa olevan suorituksen korjaus/suorituksen poisto).",
+      "type" : "string",
+      "enum" : [ "NEW_COMPLETED_CREDIT", "NEW_CREDIT_REPLACES_FORMER", "CORRECTION", "REMOVAL" ]
+    },
+    "type" : {
+      "description": "VIRTA: Opintosuorituksen laji (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Opintosuorituksenlaji,Studieprestationensart.1)",
+      "type" : "integer",
+      "enum" : [1, 2, 3]
+    },
+    "minEduGuidanceArea" : {
+      "description": "VIRTA: Koulutusala/Ohjauksen ala (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Koulutusala,Utbildningsomr%C3%A5de)",
+      "type" : "integer",
+      "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    "assessmentDate": {
+      "description": "Suorituksen kirjauspäivämäärä.",
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}
+
+

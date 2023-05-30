@@ -1,0 +1,55 @@
+{
+  "source": {
+    "index": "toteutukset"
+  },
+  "dest": {
+    "index": "toteutukset_v2.0.0"
+  },
+  "script": {
+    "source": """
+      // RIPA-288 changing organisationRole field from object to short
+      def orgReferences = ctx._source.organisationReferences;
+      if(orgReferences != null) {
+        for(orgRef in orgReferences) {
+          if(orgRef.organisationRole != null && orgRef.organisationRole.key.equals('mainlyResponsible')) {
+            orgRef.organisationRole = 1;
+          } else {
+            orgRef.organisationRole = 2;
+          }
+
+          // RIPA-282
+          if(orgRef.target != null) {
+            if(orgRef.target.postalAddress != null) {
+              if(orgRef.target.postalAddress.country != null) {
+                orgRef.target.postalAddress.country = "246";
+              }
+            }
+            if(orgRef.target.streetAddress != null) {
+              if(orgRef.target.streetAddress.country != null) {
+                orgRef.target.streetAddress.country = "246";
+              }
+            }
+          }
+        }
+      }
+
+      def location = ctx._source.location;
+      if(location != null && location.country != null) {
+        location.country = "246";
+      }
+
+      // RIPA-285 remove realisation.credits field and fill creditsMin & creditsMax if does not have values
+      if(ctx._source.creditsMin == null && ctx._source.creditsMax == null) {
+        ctx._source.creditsMin = ctx._source.credits;
+        ctx._source.creditsMax = ctx._source.credits;
+      } else if (ctx._source.creditsMin != null && ctx._source.creditsMax == null) {
+        ctx._source.creditsMax = ctx._source.creditsMin + 5;
+      } else if (ctx._source.creditsMin == null && ctx._source.creditsMax != null) {
+        ctx._source.creditsMin = (ctx._source.creditsMax - 5) > 0 ? ctx._source.creditsMax - 5 : 1;
+      }
+
+      ctx._source.remove('credits');
+    """,
+    "lang": "painless"
+  }
+}

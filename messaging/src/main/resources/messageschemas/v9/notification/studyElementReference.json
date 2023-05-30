@@ -1,0 +1,21 @@
+{
+  "id": "classpath:/messageschemas/v9/notification/studyElementReference.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Tarjontaviittaus.",
+  "type": "object",
+  "properties": {
+    "referenceIdentifier":{
+      "description": "Tarjonnan tekninen tunniste.",
+      "type": "string"
+    },     
+    "referenceOrganizer": {
+      "description": "Tarjonnan järjestäjän tilastokeskuskoodi.",
+      "type": "string" 
+    },
+    "type": {
+      "description": "Tarjonnan tyyppi.",
+      "type": "string",
+      "enum": [ "STUDY_MODULE", "COURSE_UNIT", "DEGREE", "REALISATION" ] 
+    }
+  }
+}

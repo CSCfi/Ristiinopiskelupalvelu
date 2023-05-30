@@ -1,0 +1,21 @@
+{
+  "id": "classpath:/messageschemas/v9/responses/authenticationFailedResponse.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Vastaustviesti epäonnistuneeseen autentikaatioon. Käytetään tilanteissa, joissa organisaatio ei saatu tunnistettu viestin JMXUserID-otsikosta.",
+  "type": "object",
+  "required": [
+    "status",
+    "message"
+  ],
+  "properties": {
+    "status": {
+      "description": "Käsittelyssä olleen viestin käsittelyn tila.",
+      "type": "string",
+      "enum": ["FAILED"]
+    },
+    "message": {
+      "description": "Tarkempi kuvaus viestin käsittelyn tilasta.",
+      "type": "string"
+    }
+  }
+}

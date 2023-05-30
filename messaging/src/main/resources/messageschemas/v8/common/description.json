@@ -1,0 +1,27 @@
+{
+  "type" : "object",
+  "id": "classpath:/messageschemas/v8/common/description.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Ristiinopiskelussa käytettävä vakiomuotoinen kuvaus",
+  "required": [
+    "key",
+    "name",
+    "value"
+  ],
+  "properties" : {
+    "key" : {
+      "description": "Kuvauksen avain.",
+      "type": "string"
+    },
+    "name" : {
+      "description": "Kuvauksen nimet kieleistettynä.",
+      "type": "object",
+      "$ref": "localisedString.json"
+    },
+    "value": {
+      "description": "Kuvaksen arvot kieleistettynä.",
+      "type": "object",
+      "$ref": "localisedString.json"
+    }
+  }
+}

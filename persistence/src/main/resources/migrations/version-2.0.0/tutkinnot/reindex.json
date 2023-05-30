@@ -1,0 +1,13 @@
+{
+  "source": {
+    "index": "tutkinnot"
+  },
+  "dest": {
+    "index": "tutkinnot_v2.0.0"
+  },
+  "script": {
+    "source": """
+    """,
+    "lang": "painless"
+  }
+}

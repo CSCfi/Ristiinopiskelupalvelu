@@ -1,0 +1,387 @@
+{
+  "id": "classpath:/messageschemas/v9/realisation/realisation.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintoelementin toteutus.",
+  "type": "object",
+  "properties": {
+    "realisationId": {
+      "description": "Toteutuksen tekninen tunniste.",
+      "type": "string",
+      "minLength": 1
+    },
+    "realisationIdentifierCode": {
+      "description": "Toteutuksen ihmisluettava tunniste.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    },
+    "status": {
+      "description": "Toteutuksen tila.",
+      "type": ["null", "string"],
+      "enum": [null, "ACTIVE", "CANCELLED", "ARCHIVED"]
+    },
+    "creditsMin": {
+      "description": "Pienin mahdollinen opintopistemäärä. Mikäli arvioinnin kohteella on vain tietty opintopistemäärä, se tulee asettaa sekä creditsMin- että creditsMax-kenttin.",
+      "type": ["null", "number"]
+    },
+    "creditsMax": {
+      "description": "Suurin mahdollinen opintopistemäärä. Mikäli arvioinnin kohteella on vain tietty opintopistemäärä, se tulee asettaa sekä creditsMin- että creditsMax-kenttin.",
+      "type": ["null", "number"]
+    },
+    "selections": {
+      "description": "Tarpeellisuus ja käyttö kyseenalainen",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "description": "???",
+                "$ref": "../common/localisedString.json"
+              },
+              "type": {
+                "description": "Valinnan tyyppi ????",
+                "enum": [
+                  "CHOOSE_ONE",
+                  "CHOOSE_MANY"
+                ]
+              },
+              "selectionValues": {
+                "description": "Valintojen arvot ???",
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "../common/selectionValue.json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "questionSets": {
+      "description": "Kysymykset opiskelijalle ilmoittautumisvaiheessa.",
+      "type": [
+        "null",
+        "array"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "description": "Kysymysjoukon otsikko kieleistettynä.",
+            "$ref": "../common/localisedString.json"
+          },
+          "questions": {
+            "description": "Kysymysjoukon kysymykset kieleistettynä.",
+            "type": "array",
+            "items": {
+              "$ref": "../common/localisedString.json"
+            }
+          }
+        }
+      }
+    },
+    "enrollmentStartDateTime": {
+      "description": "Ilmoittautumisen alkamisaika.",
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date-time"
+    },
+    "enrollmentEndDateTime": {
+      "description": "Ilmoittautumisen päättymisaika.",
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date-time"
+    },
+    "startDate": {
+      "description": "Toteutuksen alkamispäivämäärä.",
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date"
+    },
+    "endDate": {
+      "description": "Toteutuksen päättymispäivämäärä.",
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date"
+    },
+    "minSeats": {
+      "description": "Kertoo kuinka paljon ilmoittautuneita pitää vähintään olla, jotta toteutus järjestetään.",
+      "type": [
+        "null",
+        "integer"
+      ]
+    },
+    "maxSeats": {
+      "description": "Toteutuksen maksimipaikkamäärä.",
+      "type": [
+        "null",
+        "integer"
+      ]
+    },
+    "personReferences": {
+      "description": "Henkilöviittaukset toteuksen vastuuhenkilöistä. Joko henkilön tiedot ja rooli tai lisätieto henkilöliitokselle on pakollinen tieto.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "person",
+                  "personRole"
+                ],
+                "properties": {
+                  "person": {
+                    "description": "Toteukseen liittyvän henkilön tiedot.",
+                    "type": "object",
+                    "$ref": "../common/person.json"
+                  },
+                  "personRole": {
+                    "description": "Toteutukseen liittyvän henkilöroolin koodistoviittaus.",
+                    "$ref": "../common/code.json"
+                  },
+                  "definition": {
+                    "description": "Lisätieto henkilöliitokselle.",
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "definition"
+                ],
+                "properties": {
+                  "person": {
+                    "type": "object",
+                    "$ref": "../common/person.json"
+                  },
+                  "personRole": {
+                    "oneOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "$ref": "../common/code.json"
+                      }
+                    ]
+                  },
+                  "definition": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "location": {
+      "description": "Paikka jossa toteutus järjestetään.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "$ref": "../common/address.json"
+        }
+      ]
+    },
+    "organisationSpecificDescriptions": {
+      "description": "Organisaatiokohtaiset kuvaukset. Kuvauksen avain-kenttään asetetaan sen organisaation tilastokeskuskoodi, jolle kuvaus on tarkoitettu.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "../common/description.json"
+          }
+        }
+      ]
+    },
+    "studyElementReferences": {
+      "description": "Opintoelementit, joihin toteutus liittyy. Toteutus voi liittyä vain opintojaksoon tai arvioinnin kohteeseen.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "referenceIdentifier",
+              "referenceOrganizer",
+              "referenceType"
+            ],
+            "properties": {
+              "referenceIdentifier": {
+                "description": "Viitatun opintojakson tekninen tunniste.",
+                "type": "string",
+                "minLength": 1
+              },
+              "referenceOrganizer": {
+                "description": "Viitatun opintojakson järjestävän organisaation tilastokeskuskoodi.",
+                "type": "string",
+                "minLength": 1
+              },
+              "referenceType": {
+                "description": "Viitatun opintoelementin tyyppi.",
+                "type": "string",
+                "enum": ["COURSE_UNIT"]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "referenceIdentifier",
+              "referenceOrganizer",
+              "referenceType",
+              "referenceAssessmentItemId"
+            ],
+            "properties": {
+              "referenceIdentifier": {
+                "description": "Arvioinnin kohteen opintojakson tekninen tunniste.",
+                "type": "string",
+                "minLength": 1
+              },
+              "referenceOrganizer": {
+                "description": "Viitatun arvioinnin kohteen opintojakson järjestävän organisaation tilastokeskuskoodi.",
+                "type": "string",
+                "minLength": 1
+              },
+              "referenceType": {
+                "description": "Viitatun opintoelementin tyyppi.",
+                "type": "string",
+                "enum": ["ASSESSMENT_ITEM"]
+              },
+              "referenceAssessmentItemId": {
+                "description": "Arvioinnin kohteen tekninen tunniste.",
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "organisationReferences": {
+      "description": "Toteutukseen miten liittyvät organisaatiot. Jokaisella opintojaksolla tulee olla yksi ja vain yksi organisaatioviittaus roolilla 1(Pääjärjestäjä).",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "../common/organisationReference.json"
+      }
+    },
+    "groupSelections": {
+      "description": "Toteutuksen alaryhmiä koskevat tiedot ja niiden ilmoittautumisvaiheessa tehtäviä valintoja koskevat säännöt opiskelijalle.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "description": "Alaryhmävalintojen otsikko kieleistettynä.",
+                "$ref": "../common/localisedString.json"
+              },
+              "type": {
+                "description": "CHOOSE_ONE: Vain yksi on valittavissa. CHOOSE_MANY: Useampi vaihtoehto on valittavissa.",
+                "enum": [
+                  "CHOOSE_ONE",
+                  "CHOOSE_MANY"
+                ]
+              },
+              "selectionValues": {
+                "description": "Alaryhmävalintamahdollisuudet.",
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "../common/selectionValue.json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "groupQuotas": {
+      "description": "Toteutuksen ryhmäkiintiöt verkostoittain.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "../common/groupQuota.json"
+          }
+        }
+      ]
+    },
+    "teachingLanguage": {
+      "description": "Toteutuksen opetuskieli.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "$ref": "../common/teachingLanguage.json"
+          }
+        }
+      ]
+    },
+    "minEduGuidanceArea" : {
+      "description": "VIRTA: Koulutusala (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Koulutusala,Utbildningsomr%C3%A5de)",
+      "type" : ["null", "integer"],
+      "enum": [null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    "enrollmentClosed": {
+      "description": "Onko ilmoittautuminen suljettu. Ilmoituminen käsitellään olevan kiinni, jos tämä on true riippumatta enrollmentStartDateTime:sta ja enrollmentEndDateTime:sta.",
+      "type": ["null", "boolean"]
+    },
+    "name": {
+      "description": "Toteutuksen nimi kieleistettynä.",
+      "type": "object",
+      "$ref": "../common/localisedString.json"
+    }
+  }
+}

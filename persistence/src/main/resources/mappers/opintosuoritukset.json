@@ -1,0 +1,417 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "id": {
+      "type": "keyword"
+    },
+    "version": {
+      "type": "long"
+    },
+    "sendingOrganisation": {
+      "type": "keyword"
+    },
+    "receivingOrganisation": {
+      "type": "keyword"
+    },
+    "networkIdentifier": {
+      "type": "keyword"
+    },
+    "student": {
+      "properties": {
+        "homeEppn": {
+          "type": "keyword"
+        },
+        "hostEppn": {
+          "type": "keyword"
+        },
+        "sourceNumber": {
+          "type": "keyword"
+        },
+        "firstNames": {
+          "type": "text"
+        },
+        "givenName": {
+          "type": "text"
+        },
+        "surName": {
+          "type": "text"
+        },
+        "oid": {
+          "type": "keyword"
+        },
+        "personId": {
+          "type": "keyword"
+        },
+        "homeStudentNumber": {
+          "type": "keyword"
+        },
+        "hostStudentNumber": {
+          "type": "keyword"
+        },
+        "homeStudyRightIdentifier": {
+          "properties": {
+            "organisationTkCodeReference": {
+              "type": "keyword"
+            },
+            "studyRightId": {
+              "type": "keyword"
+            }
+          }
+        },
+        "hostStudyRightIdentifier": {
+          "properties": {
+            "organisationTkCodeReference": {
+              "type": "keyword"
+            },
+            "studyRightId": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    },
+    "completedCredits": {
+      "type": "nested",
+      "properties": {
+        "educationInstitution": {
+          "type": "keyword"
+        },
+        "completedCreditIdentifier": {
+          "type": "keyword"
+        },
+        "completedCreditTarget": {
+          "properties": {
+            "completedCreditTargetType": {
+              "type": "keyword"
+            },
+            "completedCreditTargetId": {
+              "type": "keyword"
+            },
+            "completedCreditTargetIdentifierCode": {
+              "type": "keyword"
+            }
+          }
+        },
+        "completedCreditAssociations": {
+          "type": "nested",
+          "properties": {
+            "completedCreditAssociationType": {
+              "type": "keyword"
+            },
+            "completedCreditAssociationId": {
+              "type": "keyword"
+            },
+            "completedCreditAssociationIdentifierCode": {
+              "type": "keyword"
+            }
+          }
+        },
+        "assessmentItemRealisationsOfMethodOfCompletion": {
+          "type": "keyword"
+        },
+        "completedCreditName": {
+          "properties": {
+            "values": {
+              "properties": {
+                "fi": {
+                  "type": "text",
+                  "copy_to": "search_fi",
+                  "fields": {
+                    "lowercase": {
+                      "type": "text",
+                      "analyzer": "keyword_lowercase"
+                    }
+                  }
+                },
+                "en": {
+                  "type": "text",
+                  "copy_to": "search_en",
+                  "fields": {
+                    "lowercase": {
+                      "type": "text",
+                      "analyzer": "keyword_lowercase"
+                    }
+                  }
+                },
+                "sv": {
+                  "type": "text",
+                  "copy_to": "search_sv",
+                  "fields": {
+                    "lowercase": {
+                      "type": "text",
+                      "analyzer": "keyword_lowercase"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "completedCreditObjective": {
+          "properties": {
+            "values": {
+              "properties": {
+                "fi": { "type": "text", "copy_to": "search_fi" },
+                "en": { "type": "text", "copy_to": "search_en" },
+                "sv": { "type": "text", "copy_to": "search_sv" }
+              }
+            }
+          }
+        },
+        "completedCreditContent": {
+          "properties": {
+            "values": {
+              "properties": {
+                "fi": { "type": "text", "copy_to": "search_fi" },
+                "en": { "type": "text", "copy_to": "search_en" },
+                "sv": { "type": "text", "copy_to": "search_sv" }
+              }
+            }
+          }
+        },
+        "completedCreditStatus": {
+          "type": "keyword"
+        },
+        "scope": {
+          "type": "float"
+        },
+        "assessment": {
+          "properties": {
+            "gradingScale": {
+              "properties": {
+                "scale": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "grade": {
+              "properties": {
+                "egtCode": {
+                  "type": "keyword"
+                },
+                "code": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "egt": {
+              "type": "keyword"
+            },
+            "description": {
+              "type": "keyword"
+            }
+          }
+        },
+        "completionDate": {
+          "type": "date"
+        },
+        "languagesOfCompletion": {
+          "type": "keyword"
+        },
+        "acceptors": {
+          "type": "nested",
+          "properties": {
+            "homeEppn": {
+              "type": "keyword"
+            },
+            "hostEppn": {
+              "type": "keyword"
+            },
+            "sourceNumber": {
+              "type": "keyword"
+            },
+            "firstNames": {
+              "type": "text"
+            },
+            "givenName": {
+              "type": "text"
+            },
+            "surName": {
+              "type": "text"
+            }
+          }
+        },
+        "organisationResponsibleForCompletion": {
+          "properties": {
+            "organisationIdentifier": {
+              "type": "keyword"
+            },
+            "organisationTkCode": {
+              "type": "keyword"
+            },
+            "organisationName": {
+              "properties": {
+                "values": {
+                  "properties": {
+                    "fi": {
+                      "type": "text",
+                      "copy_to": "search_fi"
+                    },
+                    "en": {
+                      "type": "text",
+                      "copy_to": "search_en"
+                    },
+                    "sv": {
+                      "type": "text",
+                      "copy_to": "search_sv"
+                    }
+                  }
+                }
+              }
+            },
+            "unitName": {
+              "properties": {
+                "values": {
+                  "properties": {
+                    "fi": {
+                      "type": "text",
+                      "copy_to": "search_fi"
+                    },
+                    "en": {
+                      "type": "text",
+                      "copy_to": "search_en"
+                    },
+                    "sv": {
+                      "type": "text",
+                      "copy_to": "search_sv"
+                    }
+                  }
+                }
+              }
+            },
+            "nameDescription": {
+              "properties": {
+                "values": {
+                  "properties": {
+                    "fi": {
+                      "type": "text",
+                      "copy_to": "search_fi"
+                    },
+                    "en": {
+                      "type": "text",
+                      "copy_to": "search_en"
+                    },
+                    "sv": {
+                      "type": "text",
+                      "copy_to": "search_sv"
+                    }
+                  }
+                }
+              }
+            },
+            "postalAddress": {
+              "properties": {
+                "street": { "type": "text" },
+                "postalCode": { "type": "keyword" },
+                "postOffice": { "type": "text" },
+                "country": { "type": "keyword" }
+              }
+            },
+            "streetAddress": {
+              "properties": {
+                "street": { "type": "text" },
+                "postalCode": { "type": "keyword" },
+                "postOffice": { "type": "text" },
+                "country": { "type": "keyword" }
+              }
+            },
+            "phone": {
+              "properties": {
+                "description": {
+                  "type": "text"
+                },
+                "number": {
+                  "type": "text"
+                }
+              }
+            },
+            "municipalityCode": {
+              "type": "keyword"
+            },
+            "url": {
+              "type": "keyword"
+            },
+            "pic": {
+              "type": "keyword"
+            },
+            "erasmusCode": {
+              "type": "keyword"
+            },
+            "hei": {
+              "type": "keyword"
+            },
+            "erasmusCharterCode": {
+              "type": "keyword"
+            },
+            "erasmusOrganisationStatisticsCode": {
+              "type": "keyword"
+            },
+            "erasmusOrganisationName": {
+              "type": "keyword"
+            }
+          }
+        },
+        "transaction": {
+          "type": "keyword"
+        },
+        "type": {
+          "type": "integer"
+        },
+        "minEduGuidanceArea": {
+          "type": "integer"
+        },
+        "assessmentDate": {
+          "type": "date"
+        }
+      }
+    },
+    "sendingTime": {
+      "type": "date",
+      "format": "uuuu-MM-dd'T'HH:mm:ss.SSSXXX"
+    },
+    "routingType": {
+      "type": "keyword"
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "rejectionReason": {
+      "properties": {
+        "values": {
+          "properties": {
+            "fi": {
+              "type": "text",
+              "copy_to": "search_fi"
+            },
+            "en": {
+              "type": "text",
+              "copy_to": "search_en"
+            },
+            "sv": {
+              "type": "text",
+              "copy_to": "search_sv"
+            }
+          }
+        }
+      }
+    },
+    "search_fi": {
+      "type": "text", "analyzer": "finnish"
+    },
+    "search_en": {
+      "type": "text", "analyzer": "english"
+    },
+    "search_sv": {
+      "type": "text", "analyzer": "swedish"
+    }
+  },
+  "dynamic_templates": [{
+    "strings": {
+      "match_mapping_type": "string",
+      "mapping": {
+        "type": "text",
+        "analyzer": "standard"
+      }
+    }
+  }]
+}

@@ -1,0 +1,16 @@
+{
+  "actions" : [
+    {
+      "remove" : {
+        "index" : "tutkinnot_v1.1.0",
+        "alias" : "tutkinnot"
+      }
+    },
+    {
+      "add" : {
+        "index" : "tutkinnot_v2.0.0",
+        "alias" : "tutkinnot"
+      }
+    }
+  ]
+}

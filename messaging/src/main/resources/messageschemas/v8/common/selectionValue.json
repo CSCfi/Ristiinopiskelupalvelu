@@ -1,0 +1,35 @@
+{
+  "id": "classpath:/messageschemas/v8/common/selectionValue.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Toteutuksen alaryhmien valintojen arvot.",
+  "type": "object",
+  "required": [
+    "name",
+    "id"
+  ],
+  "properties": {
+    "minSeats": {
+      "description": "Alaryhmän vähimmäiskoko.",
+      "type": ["null", "number"]
+    },
+    "maxSeats": {
+      "description": "Alaryhmän maksimikoko.",
+      "type": ["null", "number"]
+    },
+    "name": {
+      "description": "Alaryhmävalinnan nimi kieleistettynä.",
+      "$ref": "../common/localisedString.json"
+    },
+    "id": {
+      "description": "Alaryhmävalinnan tekninen tunniste.",
+      "type": "string"
+    },
+    "groupQuotas": {
+      "description": "Verkostokohtaiset osallistujamäärärajoitukset.",
+      "type": ["null", "array"],
+      "items": {
+        "$ref": "../common/groupQuota.json"
+      }
+    }
+  }
+}

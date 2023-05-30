@@ -1,0 +1,356 @@
+{
+  "id": "classpath:/messageschemas/v9/common/studyElement.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Opintoelementin perustiedot. Tämä skeema sisältää opintojaksojen ja opintokokonaisuuksien yhteiset kentät.",
+  "properties": {
+    "studyElementId": {
+      "description": "Opintoelementin tekninen tunniste.",
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "description": "Opintoelementin tila.",
+      "type": ["null", "string"],
+      "enum": [null, "ACTIVE", "CANCELLED", "ARCHIVED"]
+    },
+    "abbreviation": {
+      "description": "Opintoelementin nimen lyhenne",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "teachingLanguage": {
+      "description": "Opetuskieli.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "$ref": "../common/teachingLanguage.json"
+          }
+        }
+      ]
+    },
+    "name": {
+      "description": "Opintoelementin nimi kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "description": {
+      "description": "Opintoelementin kuvaus kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "creditsMin": {
+      "description": "Pienin mahdollinen opintopistemäärä. Mikäli opintojaksolla on vain tietty opintopistemäärä, se tulee asettaa sekä creditsMin että creditsMax -kenttiin.",
+      "type": ["null", "number"]
+    },
+    "creditsMax": {
+      "description": "Suurin mahdollinen opintopistemäärä. Mikäli opintojaksolla on vain tietty opintopistemäärä, se tulee asettaa sekä creditsMin että creditsMax -kenttiin.",
+      "type": ["null", "number"]
+    },
+    "creditsDescription": {
+      "description": "Opintopistelaajuusvaihtoehtojen kuvaukset kieleistettynä. (esim. vaatimukset eri opintopistemäärille tarvittavista suorituksista)",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "cooperationNetworks": {
+      "description": "Verkostoliitokset, eli mille verkostoille tämä opintoelementti halutaan asettaa tarjolle.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "../common/cooperationNetwork.json"
+          }
+        }
+      ]
+    },
+    "organisationReferences": {
+      "description": "Organisaatioviittaus. Sisältää tiedot opetusta järjestävien organisaatioiden vastuujaosta. Jokaisella opintoelementillä tulee olla yksi ja vain yksi organisaatioviittaus roolilla 1(Pääjärjestäjä).",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "../common/organisationReference.json"
+      }
+    },
+    "missing": {
+      "description": "Tarve selvitettävä",
+      "type": ["null", "boolean"]
+    },
+    "sendingTime": {
+      "description": "Lähetysaika sisältäen aikavyöhykkeen, ISO8601 -muodossa, esim (2018-11-13T20:20:39+00:00)",
+      "type": "string",
+      "format": "date-time"
+    },
+    "createdTime": {
+      "description": "Opintoelementin luontiaika sisältäen aikavyöhykkeen, ISO8601 -muodossa, esim (2018-11-13T20:20:39+00:00)",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date-time"
+        }
+      ]
+    },
+    "updatedTime": {
+      "description": "Opintoelementin päivitysaika sisältäen aikavyöhykkeen, ISO8601 -muodossa, esim (2018-11-13T20:20:39+00:00)",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date-time"
+        }
+      ]
+    },
+    "validityStartDate": {
+      "description": "Tarjonnan voimassaolon alkupäivämäärä, ISO8601 -muodossa, esim (2018-11-13)",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date"
+        }
+      ]
+    },
+    "validityEndDate": {
+      "description": "Tarjonnan voimassaolon päättymispäivämäärä, ISO8601 -muodossa, esim (2018-11-13)",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date"
+        }
+      ]
+    },
+    "studyElementPermanentId": {
+      "description": "Opintoelementin pysyväisluontoinen tunniste ihmisluettavassa muodossa.",
+      "type": ["null", "string"]
+    },
+    "studyElementIdentifierCode": {
+      "description": "Opintoelementin tunniste ihmisluettavassa muodossa.",
+      "type": ["null", "string"]
+    },
+    "classificationCodes": {
+      "description": "Luokittelukoodit (ulkoinen korkeakoulujen keskenään sopima koodisto, ei löydy Ristiinopiskelupalvelun koodistoista)",
+      "type": ["null", "array"],
+      "items": {
+        "$ref": "../common/externalCode.json"
+      }
+    },
+    "personReferences": {
+      "description": "Henkilöviittaukset opintoelementin vastuuhenkilöistä. Joko henkilön tiedot ja rooli tai henkilön määrittely on pakollinen tieto.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "person",
+                  "personRole"
+                ],
+                "properties": {
+                  "person": {
+                    "description": "Vastuuhenkilön tiedot",
+                    "type": "object",
+                    "required": [
+                      "surName"
+                    ],
+                    "$ref": "../common/person.json"
+                  },
+                  "personRole": {
+                    "$ref": "../common/code.json"
+                  },
+                  "definition": {
+                    "description": "??? Henkilön määrittely",
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "definition"
+                ],
+                "properties": {
+                  "person": {
+                    "description": "Vastuuhenkilön tiedot",
+                    "type": "object",
+                    "properties": {
+                      "hostEppn": {
+                        "type": [ "null", "string" ]
+                      },
+                      "homeEppn": {
+                        "type": ["null", "string"]
+                      },
+                      "firstNames": {
+                        "type": ["null", "string"]
+                      },
+                      "surName": {
+                        "type": ["null", "string"]
+                      },
+                      "givenName": {
+                        "type": ["null", "string"]
+                      }
+                    }
+                  },
+                  "personRole": {
+                    "oneOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "$ref": "../common/code.json"
+                      }
+                    ]
+                  },
+                  "definition": {
+                    "description": " ??? Henkilön määrittely",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "description": "Opintoelementin avainsanat, esim hakuehtoihin ja luokitteluun.",
+      "type": ["null", "array"],
+      "items": {
+        "$ref": "../common/keyword.json"
+      }
+    },
+    "preconditions": {
+      "description": "Ennakkovaatimukset kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+        "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "languagesOfCompletion": {
+      "description": "Suorituskielet",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "$ref": "../common/teachingLanguage.json"
+          }
+        }
+      ]
+    },
+    "furtherInformation": {
+      "description": "Opintoelementin lisätiedot kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "targetGroups": {
+      "description": "Opintoelementin kohderyhmä study_right_type -koodistosta.",
+      "type": ["null", "array"],
+      "items": {
+        "$ref": "../common/code.json"
+      }
+    },
+    "objective": {
+      "description": "Opintoelementin osaamistavoitteet kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "content": {
+      "description": "Opintoelementin sisältö kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "organisationSpecificDescriptions": {
+      "description": "Organisaatiokohtaiset kuvaukset.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "description": "Käytä kuvauksen key-kentässä organisaation tilastokeskuskoodia.",
+            "type": "object",
+            "$ref": "../common/description.json"
+          }
+        }
+      ]
+    },
+    "minEduGuidanceArea" : {
+      "description": "VIRTA: Koulutusala (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Koulutusala,Utbildningsomr%C3%A5de)",
+      "type" : ["null", "integer"],
+      "enum": [null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  }
+}

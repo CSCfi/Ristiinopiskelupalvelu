@@ -1,0 +1,38 @@
+{
+  "source": {
+    "index": "opiskelijat"
+  },
+  "dest": {
+    "index": "opiskelijat_v2.0.0"
+  },
+  "script": {
+    "source": """
+      // RIPA-283: Removing field studyRightClassification from studyRight
+      def hostStudyRight = ctx._source.hostStudyRight;
+      if(hostStudyRight != null) {
+        hostStudyRight.remove('studyRightClassification');
+      }
+
+      def homeStudyRight = ctx._source.homeStudyRight;
+      if(homeStudyRight != null) {
+        homeStudyRight.remove('studyRightClassification');
+      }
+
+      // RIPA-282
+      def addresses = ctx._source.addresses;
+      if(addresses != null) {
+        for(a in addresses) {
+          if(a.country != null) {
+            a.country = "246";
+          }
+        }
+      }
+
+      def countryOfCitizenship = ctx._source.countryOfCitizenship;
+      if(countryOfCitizenship != null) {
+        countryOfCitizenship = "246";
+      }
+    """,
+    "lang": "painless"
+  }
+}

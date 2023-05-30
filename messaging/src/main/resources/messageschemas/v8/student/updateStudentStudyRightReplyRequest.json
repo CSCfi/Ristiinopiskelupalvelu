@@ -1,0 +1,33 @@
+{
+  "id": "classpath:/messageschemas/v8/student/updateStudentStudyRightReplyRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Vastausviesti opiskelijan opinto-oikeuden päivitysviestiin.",
+  "type": "object",
+  "required": [
+    "studentRequestId",
+    "status"
+  ],
+  "properties": {
+    "studentRequestId": {
+      "description": "Opiskelijan opinto-oikeuden päivitysviestin tekninen tunniste.",
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "description": "Opiskelijan opinto-oikeuden päivitysviestin käsittelyn tila.",
+      "type": "string",
+      "enum": ["UPDATED", "REJECTED"]
+    },
+    "rejectionReason": {
+      "description": "Päivityksen hylkäyksen syy kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    }
+  }
+}

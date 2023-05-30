@@ -1,0 +1,26 @@
+{
+  "id": "classpath:/messageschemas/v9/responses/registrationResponse.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Vastausviesti onnistuneeseen rekisteröintipyyntöön.",
+  "type": "object",
+  "required": [
+    "status",
+    "message",
+    "registrationRequestId"
+  ],
+  "properties": {
+    "status": {
+      "description": "Käsittelyssä olleen viestin käsittelyn tila.",
+      "type": "string",
+      "enum": ["OK"]
+    },
+    "message": {
+      "description": "Tarkempi kuvaus viestin käsittelyn tilasta.",
+      "type": "string"
+    },
+    "registrationRequestId": {
+      "description": "Ristiinopiskelupalvelun luoma rekisteröintipyynnön tekninen tunniste.",
+      "type": "string",
+    }
+  }
+}

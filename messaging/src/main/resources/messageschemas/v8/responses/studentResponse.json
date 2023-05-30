@@ -1,0 +1,26 @@
+{
+  "id": "classpath:/messageschemas/v8/responses/studentResponse.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Vastausviesti onnistuneeseen opiskelijan tietojenpäivitysviestipyyntöön.",
+  "type": "object",
+  "required": [
+    "status",
+    "message",
+    "studentRequestId"
+  ],
+  "properties": {
+    "status": {
+       "description": "Käsittelyssä olleen viestin käsittelyn tila.",
+      "type": "string",
+      "enum": ["OK"]
+    },
+    "message": {
+      "description": "Tarkempi kuvaus viestin käsittelyn tilasta.",
+      "type": "string"
+    },
+    "studentRequestId": {
+      "description": "Ristiinopiskelupalvelun generoima opiskelijan tietomuutoksen tekninen tunniste.",
+      "type": "string"
+    }
+  }
+}

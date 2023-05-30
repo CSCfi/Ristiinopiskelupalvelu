@@ -1,0 +1,13 @@
+{
+  "source": {
+    "index": "opintojaksot"
+  },
+  "dest": {
+    "index": "opintojaksot_v1.0.1"
+  },
+  "script": {
+    "source": """
+    """,
+    "lang": "painless"
+  }
+}

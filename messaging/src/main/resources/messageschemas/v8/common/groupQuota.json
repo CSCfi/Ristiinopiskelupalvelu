@@ -1,0 +1,27 @@
+{
+  "id": "classpath:/messageschemas/v8/common/groupQuota.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Ryhmäkiintiö tarjontakohteessa. Rajaa sitä, minkä verran kustakin tarjonnan verkostosta otetaan opiskelijoita vastaan.",
+  "type": "object",
+  "required": [
+    "networkIdentifiers"
+  ],
+  "properties": {
+    "minSeats": {
+      "description": "Paikkojen minimimäärä.",
+      "type": ["null", "number"]
+    },
+    "maxSeats": {
+      "description": "Paikkojen maksimimäärä.",
+      "type": ["null", "number"]
+    },
+    "networkIdentifiers": {
+      "description": "Mihin verkostoliitokseen kiintiö liittyy.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

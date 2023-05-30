@@ -1,0 +1,42 @@
+spring:
+  artemis:
+    user: ${activemq_username}
+    password: ${activemq_password}
+    broker-url: ${activemq_hosts}
+    embedded:
+      enabled: false
+    pool:
+      enabled: true
+      max-connections: 10
+  jms:
+    template:
+      receive-timeout: 10000ms
+  mail:
+    host: ${smtp_host}
+    port: ${smtp_port}
+
+general:
+  elasticsearch:
+    hosts: ${elasticsearch_hosts}
+    clusterName: ripa-cluster
+    username: ${elasticsearch_username}
+    password: ${elasticsearch_password}
+    caCertificatePath: ${elasticsearch_cacertificatepath}
+  activemq:
+    dlq-queue-pattern: jms:queue:%s.DLQ
+  email:
+    address:
+      administrator: ${administrator_email_address}
+      noreply: ${noreply_address}
+      subject: "WARNING: There has been messages that has ended up into your organisation's Dead Letter Queue"
+      body: |
+        There was messages found from your organisation's dead letter queue. Handling of these messages have failed in your system and have never been handled.
+        Failed messages can be found from attachment files. Please complete actions required to handle all these failed messages.
+
+        Br. Ristiinopiskelu administrator
+  camel:
+    redeliveryDelay: 4500 # in milliseconds
+    redeliveryErrorLoggingDelay: 30000 # in milliseconds
+  emailsender:
+    enabled: true
+    pollingRate: "0 */15 * * * *"

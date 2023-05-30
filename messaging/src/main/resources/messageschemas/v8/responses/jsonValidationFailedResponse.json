@@ -1,0 +1,30 @@
+{
+  "id": "classpath:/messageschemas/v8/responses/jsonValidationFailedResponse.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Vastausviesti tilanteisiin, jossa viestiskeeman validaatio epäonnistuu.",
+  "type": "object",
+  "required": [
+    "status",
+    "message",
+    "errors"
+  ],
+  "properties": {
+    
+    "status": {
+      "description": "Käsittelyssä olleen viestin käsittelyn tila.",
+      "type": "string",
+      "enum": ["FAILED"]
+    },
+    "message": {
+      "description": "Tarkempi kuvaus viestin käsittelyn tilasta.",
+      "type": "string"
+    },
+    "errors": {
+      "description": "Lista validaatiovirheistä.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "actions" : [
+    {
+      "remove": {
+        "index": "toteutukset-history_v2.0.0",
+        "alias": "toteutukset-history"
+      }
+    },
+    {
+      "add": {
+        "index": "toteutukset-history_v3.0.0",
+        "alias": "toteutukset-history"
+      }
+    },
+    {
+      "remove": {
+        "index": "opintojaksot-history_v2.0.0",
+        "alias": "opintojaksot-history"
+      }
+    },
+    {
+      "add" : {
+        "index" : "opintojaksot-history_v3.0.0",
+        "alias" : "opintojaksot-history"
+      }
+    },
+    {
+      "remove": {
+        "index": "opintokokonaisuudet-history_v2.0.0",
+        "alias": "opintokokonaisuudet-history"
+      }
+    },
+    {
+      "add": {
+        "index": "opintokokonaisuudet-history_v3.0.0",
+        "alias": "opintokokonaisuudet-history"
+      }
+    },
+    {
+      "add": {
+        "index": "tutkinnot-history_v3.0.0",
+        "alias": "tutkinnot-history"
+      }
+    }
+  ]
+}

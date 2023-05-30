@@ -1,0 +1,590 @@
+{
+  "opintojakso-history": {
+    "dynamic": false,
+    "properties": {
+      "missing": {
+        "type": "boolean"
+      },
+      "sendingTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "createdTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "updateTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ || yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "validityStartDate": {
+        "type": "date"
+      },
+      "validityEndDate": {
+        "type": "date"
+      },
+      "studyElementPermanentId": {
+        "type": "keyword"
+      },
+      "studyElementId": {
+        "type": "keyword"
+      },
+      "studyElementIdentifierCode": {
+        "type": "keyword"
+      },
+      "classificationCodes": {
+        "type": "nested",
+        "properties": {
+          "key": {
+            "type": "keyword"
+          },
+          "codeSetKey": {
+            "type": "keyword"
+          }
+        }
+      },
+      "abbreviation": {
+        "type": "text",
+        "copy_to": [
+          "search_fi",
+          "search_en",
+          "search_sv"
+        ]
+      },
+      "name": {
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "description": {
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "creditsMin": {
+        "type": "float"
+      },
+      "creditsMax": {
+        "type": "float"
+      },
+      "creditsDescription": {
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "organisationReferences": {
+        "type": "nested",
+        "properties": {
+          "percent": {
+            "type": "integer"
+          },
+          "organisationRole": {
+            "type": "short"
+          },
+          "target": {
+            "properties": {
+              "organisationIdentifier": {
+                "type": "keyword"
+              },
+              "organisationTkCode": {
+                "type": "keyword"
+              },
+              "organisationName": {
+                "properties": {
+                  "fi": { "type": "text", "copy_to": "search_fi" },
+                  "en": { "type": "text", "copy_to": "search_en" },
+                  "sv": { "type": "text", "copy_to": "search_sv" }
+                }
+              },
+              "unitName": {
+                "properties": {
+                  "fi": { "type": "text", "copy_to": "search_fi" },
+                  "en": { "type": "text", "copy_to": "search_en" },
+                  "sv": { "type": "text", "copy_to": "search_sv" }
+                }
+              },
+              "nameDescription": {
+                "properties": {
+                  "fi": { "type": "text", "copy_to": "search_fi" },
+                  "en": { "type": "text", "copy_to": "search_en" },
+                  "sv": { "type": "text", "copy_to": "search_sv" }
+                }
+              },
+              "postalAddress": {
+                "properties": {
+                  "street": { "type": "text" },
+                  "postalCode": { "type": "integer" },
+                  "postOffice": { "type": "text" },
+                  "country": { "type": "keyword" }
+                }
+              },
+              "streetAddress": {
+                "properties": {
+                  "street": { "type": "text" },
+                  "postalCode": { "type": "integer" },
+                  "postOffice": { "type": "text" },
+                  "country": { "type": "keyword" }
+                }
+              },
+              "municipalityCode": {
+                "type": "keyword"
+              },
+              "phone": {
+                "properties": {
+                  "description": {
+                    "type": "text"
+                  },
+                  "number": {
+                    "type": "text"
+                  }
+                }
+              },
+              "url": {
+                "type": "keyword"
+              }
+            }
+          },
+          "description": {
+            "properties": {
+              "fi": { "type": "text", "copy_to": "search_fi" },
+              "en": { "type": "text", "copy_to": "search_en" },
+              "sv": { "type": "text", "copy_to": "search_sv" }
+            }
+          }
+        }
+      },
+      "personReferences": {
+        "type": "nested",
+        "properties": {
+          "personRole": {
+            "properties": {
+              "key": {
+                "type": "keyword"
+              },
+              "codeSetKey": {
+                "type": "keyword"
+              }
+            }
+          },
+          "person": {
+            "properties": {
+              "homeEppn": {
+                "type": "keyword"
+              },
+              "hostEppn": {
+                "type": "keyword"
+              },
+              "sourceNumber": {
+                "type": "keyword"
+              },
+              "firstNames": {
+                "type": "text"
+              },
+              "givenName": {
+                "type": "text"
+              },
+              "surName": {
+                "type": "text"
+              }
+            }
+          },
+          "definition": {
+            "type": "text"
+          }
+        }
+      },
+      "keywords": {
+        "type": "nested",
+        "properties": {
+          "key": {
+            "type": "keyword"
+          },
+          "value": {
+            "type": "keyword"
+          },
+          "keySet": {
+            "type": "keyword"
+          }
+        }
+      },
+      "preconditions": {
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "teachingLanguage": {
+        "type": "keyword"
+      },
+      "languagesOfCompletion": {
+        "type": "keyword"
+      },
+      "furtherInformation": {
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "targetGroups": {
+        "type": "nested",
+        "properties": {
+          "key": {
+            "type": "keyword"
+          },
+          "codeSetKey": {
+            "type": "keyword"
+          }
+        }
+      },
+      "cooperationNetworks": {
+        "type": "nested",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          },
+          "status": {
+            "type": "boolean"
+          },
+          "validityStartDate": {
+            "type": "date"
+          },
+          "validityEndDate": {
+            "type": "date"
+          },
+          "enrollable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "objective": {
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "content": {
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "organisationSpecificDescriptions": {
+        "type": "nested",
+        "properties": {
+          "key": {
+            "type": "keyword"
+          },
+          "name": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          },
+          "value": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "assessmentScale": {
+        "type": "keyword"
+      },
+      "learningMaterials": {
+        "type": "nested",
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "examBookEnquiry": {
+        "type": "boolean"
+      },
+      "groupSize": {
+        "type": "integer"
+      },
+      "completionOptions": {
+        "type": "nested",
+        "properties": {
+          "completionOptionId": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "name": {
+            "properties": {
+              "values": {
+                "properties": {
+                  "fi": {
+                    "type": "text",
+                    "copy_to": "search_fi"
+                  },
+                  "en": {
+                    "type": "text",
+                    "copy_to": "search_en"
+                  },
+                  "sv": {
+                    "type": "text",
+                    "copy_to": "search_sv"
+                  }
+                }
+              }
+            }
+          },
+          "assessmentItems": {
+            "type": "nested",
+            "properties": {
+              "assessmentItemId": {
+                "type": "keyword"
+              },
+              "primaryCourseUnitId": {
+                "type": "keyword"
+              },
+              "name": {
+                "properties": {
+                  "values": {
+                    "properties": {
+                      "fi": {
+                        "type": "text",
+                        "copy_to": "search_fi"
+                      },
+                      "en": {
+                        "type": "text",
+                        "copy_to": "search_en"
+                      },
+                      "sv": {
+                        "type": "text",
+                        "copy_to": "search_sv"
+                      }
+                    }
+                  }
+                }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "creditsMin": {
+                "type": "float"
+              },
+              "creditsMax": {
+                "type": "float"
+              }
+            }
+          }
+        }
+      },
+      "parents": {
+        "type": "nested",
+        "properties": {
+          "referenceIdentifier": {
+            "type": "keyword"
+          },
+          "referenceCode": {
+            "type": "keyword"
+          },
+          "referenceOrganizer": {
+            "type": "keyword"
+          },
+          "referenceType": {
+            "type": "keyword"
+          }
+        }
+      },
+      "organizingOrganisationId": {
+        "type": "keyword"
+      },
+      "search_fi": {
+        "type": "text",
+        "analyzer": "finnish"
+      },
+      "search_en": {
+        "type": "text",
+        "analyzer": "english"
+      },
+      "search_sv": {
+        "type": "text",
+        "analyzer": "swedish"
+      }
+    },
+    "dynamic_templates": [
+      {
+        "strings": {
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "text",
+            "analyzer": "standard"
+          }
+        }
+      }
+    ]
+  }
+}
+

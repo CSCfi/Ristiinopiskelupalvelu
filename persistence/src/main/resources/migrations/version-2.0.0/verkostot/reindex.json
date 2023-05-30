@@ -1,0 +1,20 @@
+{
+  "source": {
+    "index": "verkostot"
+  },
+  "dest": {
+    "index": "verkostot_v2.0.0"
+  },
+  "script": {
+    "source": """,
+      // RIPA-290 Change pricingBasis EURO_PER_ENROLLMENT to OTHER_PRICING_BASIS
+      def expenses = ctx._source.expenses;
+      if(expenses != null && expenses.pricingBasis != null) {
+        if(expenses.pricingBasis.equals('EURO_PER_ENROLLMENT')) {
+          expenses.pricingBasis = 'OTHER_PRICING_BASIS'
+        }
+      }
+    """,
+    "lang": "painless"
+  }
+}

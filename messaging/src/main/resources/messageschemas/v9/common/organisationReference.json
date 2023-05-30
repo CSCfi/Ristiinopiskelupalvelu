@@ -1,0 +1,130 @@
+{
+  "id": "classpath:/messageschemas/v9/common/organisationReference.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Organisaatioviittaus. ??? Paljon samoja kenttiä kuin completedCreditin organisationResponsibleForCompletion. Toisaalta näiden kenttien tarpeellisuus on hieman kyseenalainen tämän ollessa viittaus ",
+  "required": [
+    "organisationRole",
+    "target"
+  ],
+  "properties": {
+    "percent": {
+      "description": "Organisaation vastuuosuus opintoelementin järjestämisestä prosenttiyksiköinä.",
+      "type": ["null", "integer"]
+    },
+    "organisationRole": {
+      "description": "1 = Pääjärjestäjä, 2 = Muu järjestäjä.",
+      "enum": [1, 2]
+    },
+    "description": {
+      "description": "Viittauksen lisätieto kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "target": {
+      "description": "Viittauksen kohde.",
+      "type": "object",
+      "required": [
+        "organisationTkCode"
+      ],
+      "properties": {
+        "organisationTkCode": {
+          "description": "Viittauksen kohteena olevan organisaation tilastokeskuskoodi.",
+          "type": "string",
+          "minLength": 1
+        },
+        "organisationIdentifier": {
+          "description": "Organisaation yksilöivä tunniste.",
+          "type": ["null", "string"]
+        },
+        "organisationName": {
+          "description": "Organisaation nimi kieleistettynä.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "$ref": "../common/localisedString.json"
+            }
+          ]
+        },
+        "unitName": {
+          "description": "Organisaation yksikön nimi kieleistettynä.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "$ref": "../common/localisedString.json"
+            }
+          ]
+        },
+        "nameDescription": {
+          "description": "Organisaation nimen kuvaus kieleistettynä.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "$ref": "../common/localisedString.json"
+            }
+          ]
+        },
+        "postalAddress": {
+          "description": "Organisaation postiosoite.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "$ref": "../common/address.json"
+            }
+          ]
+        },
+        "streetAddress": {
+          "description": "Organisaation käyntiosoite.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "$ref": "../common/address.json"
+            }
+          ]
+        },
+        "municipalityCode": {
+          "description": "Kuntanumero (https://www2.stat.fi/fi/luokitukset/kunta/)",
+          "type": ["null", "string"]
+        },
+        "phone": {
+          "description": "Organisaation puhelinnumero",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "$ref": "../common/phone.json"
+            }
+          ]
+        },
+        "url": {
+          "description": "Verkkosivujen osoite.",
+          "type": ["null", "string"]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "id": "",
+  "name": {
+    "values": {
+      "fi": "",
+      "en": "",
+      "sv": ""
+    }
+  },
+  "published": false,
+  "abbreviation": "",
+  "organisations": [
+    {
+      "organisationTkCode": "",
+      "isCoordinator": false,
+      "validityInNetwork": {
+        "start": "",
+        "end": ""
+      }
+    }
+  ],
+  "validity": {
+    "continuity": "",
+    "start": "",
+    "end": ""
+  },
+  "description": {
+    "values": {
+      "fi": "",
+      "en": "",
+      "sv": ""
+    }
+  },
+  "furtherInformation": {
+    "values": {
+      "fi": "",
+      "en": "",
+      "sv": ""
+    }
+  },
+  "targetGroups": [],
+  "restrictions": [],
+  "expenses": {
+    "pay": false,
+    "pricingBasis": null,
+    "price": null
+  }
+}

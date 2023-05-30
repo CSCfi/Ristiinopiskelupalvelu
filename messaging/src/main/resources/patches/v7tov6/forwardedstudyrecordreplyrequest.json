@@ -1,0 +1,15 @@
+[
+  {
+    "op": "copy",
+    "from": "/student/hostStudyRightIdentifier",
+    "path": "/completedCredits/0/studyRightIdentifier"
+  },
+  {
+    "op": "remove",
+    "path": "/student/hostStudyRightIdentifier"
+  },
+  {
+    "op": "remove",
+    "path": "/student/homeStudyRightIdentifier"
+  }
+]

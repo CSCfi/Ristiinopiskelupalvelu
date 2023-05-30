@@ -1,0 +1,22 @@
+{
+  "id": "classpath:/messageschemas/v9/responses/defaultResponse.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Yleiskäyttöinen vastausviesti.",
+  "type": "object",
+  "required": [
+    "status",
+    "message"
+  ],
+  "properties": {
+    
+    "status": {
+      "description": "Käsittelyssä olleen viestin käsittelyn tila.",
+      "type": "string",
+      "enum": ["OK", "FAILED"]
+    },
+    "message": {
+      "description":"Tarkempi kuvaus viestin käsittelyn tilasta.",
+      "type": "string"
+    }
+  }
+}

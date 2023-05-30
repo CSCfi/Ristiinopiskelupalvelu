@@ -1,0 +1,20 @@
+{
+  "source": {
+    "index": "koulut"
+  },
+  "dest": {
+    "index": "koulut_v2.0.0"
+  },
+  "script": {
+    "source": """
+      // RIPA-282
+      if(ctx._source.postalAddress != null) {
+        ctx._source.postalAddress.country = "246";
+      }
+      if(ctx._source.streetAddress != null) {
+        ctx._source.streetAddress.country = "246";
+      }
+    """,
+    "lang": "painless"
+  }
+}

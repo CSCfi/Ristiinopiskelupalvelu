@@ -1,0 +1,20 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "id": {
+      "type": "keyword"
+    },
+    "version": {
+      "type": "long"
+    },
+    "eppn": {
+      "type": "keyword"
+    },
+    "role": {
+      "type": "keyword"
+    },
+    "organisation": {
+      "type": "keyword"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "id": "classpath:/messageschemas/v8/registration/registrationSelectionItemHier1.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Valintahierkarkia jossa valinta kohdistuu suoraan yhteen opintojaksoon ilman hierarkiaa",
+  "required": [
+    "selectionItemId",
+    "selectionItemType"
+  ],
+  "properties": {
+    "selectionItemId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Valitun opintojakson tekninen tunniste"
+    },
+    "selectionItemType": {
+      "description": "Valitun elementin tyyppi, aina COURSE_UNIT",
+      "type": "string",
+      "enum": ["COURSE_UNIT"]
+    },
+    "selectionItemStatus": {
+      "description": "Valitun opintojakson valinnan status. Sallitut arvot 1 = PENDING, 4 = ABORTED_BY_STUDENT.",
+      "enum": [1, 4]
+    },
+    "selectionItemStatusInfo": {
+      "description": "Valitun opintojakson valinnan statuksen lisätieto",
+      "type": ["null", "string"]
+    },
+    "parent": {
+      "description": "Valitun opintojakson ylemmän tason elementti hierarkiassa, aina tyhjä",
+      "type": "null"
+    },
+    "subGroupSelections": {
+      "description": "Alaryhmävalinnat, esim. harjoitusryhmä (ks. realisation.groupSelections.selectionValue.id)",
+      "type": ["null", "array"],
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

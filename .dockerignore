@@ -1,0 +1,12 @@
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+.project
+.settings
+
+**/node_modules
+**/dist
+**/target

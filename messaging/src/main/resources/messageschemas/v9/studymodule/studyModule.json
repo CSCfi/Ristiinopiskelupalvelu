@@ -1,0 +1,179 @@
+{
+  "id": "classpath:/messageschemas/v9/studymodule/studyModule.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintokokonaisuuden perustiedot",
+  "allOf": [
+    {
+      "$ref": "../common/studyElement.json"
+    },
+    {
+      "description": "Opintokokonaisuuden valinnaisuustiedot",
+      "oneOf": [
+        {
+          "properties": {
+            "amountValueMin": {
+              "description": "Kuinka monta opintoelementtiä opintokokonaisuudesta on vähintään suoritettava",
+              "type": "null"
+            },
+            "amountValueMax": {
+              "description": "Kuinka monta opintoelementtiä opintokokonaisuudesta on enintään suoritettava",
+              "type": "null"
+            },
+            "creditsMin": {
+              "description": "Kuinka monta opintopistettä opintokokonaisuuden opintoelementeistä on vähintään suoritettava",
+              "type": "null"
+            },
+            "creditsMax": {
+              "description": "Kuinka monta opintopistettä opintokokonaisuuden opintoelementeistä on enintään suoritettava",
+              "type": "null"
+            },
+            "optionality": {
+              "description": "Valinnaisuuden tyyppi (ALL = Kaikki opintokokonaisuuden opintoelementit on suoritettava, MIN_MAX_AMOUNT = Suoritettava vähintään amountValueMin ja enintään amountValueMax -arvojen määrittämä määrä opintoelementtejä, MIN_MAX_CREDITS = Suoritettava vähintään creditsMin ja enintään creditsMax -arvojen määrittämä määrä opintopisteitä)",
+              "type": "null"
+            }
+          }
+        },
+        {
+          "required": [
+            "amountValueMin",
+            "amountValueMax",
+            "optionality"
+          ],
+          "properties": {
+            "amountValueMin": {
+              "description": "Kuinka monta opintoelementtiä opintokokonaisuudesta on vähintään suoritettava",
+              "type": "number"
+            },
+            "amountValueMax": {
+              "description": "Kuinka monta opintoelementtiä opintokokonaisuudesta on enintään suoritettava",
+              "type": "number"
+            },
+            "creditsMin": {
+              "description": "Kuinka monta opintopistettä opintokokonaisuuden opintoelementeistä on vähintään suoritettava",
+              "type": [
+                "null"
+              ]
+            },
+            "creditsMax": {
+              "description": "Kuinka monta opintopistettä opintokokonaisuuden opintoelementeistä on enintään suoritettava",
+              "type": [
+                "null"
+              ]
+            },
+            "optionality": {
+              "description": "Valinnaisuuden tyyppi. MIN_MAX_AMOUNT = Suoritettava vähintään amountValueMin ja enintään amountValueMax -arvojen määrittämä määrä opintoelementtejä.",
+              "enum": [
+                "MIN_MAX_AMOUNT"
+              ]
+            }
+          }
+        },
+        {
+          "required": [
+            "creditsMin",
+            "creditsMax",
+            "optionality"
+          ],
+          "properties": {
+            "creditsMin": {
+              "description": "Kuinka monta opintopistettä opintokokonaisuuden opintoelementeistä on vähintään suoritettava",
+              "type": "number"
+            },
+            "creditsMax": {
+              "description": "Kuinka monta opintopistettä opintokokonaisuuden opintoelementeistä on enintään suoritettava",
+              "type": "number"
+            },
+            "amountValueMin": {
+              "description": "Kuinka monta opintoelementtiä opintokokonaisuudesta on vähintään suoritettava",
+              "type": [
+                "null"
+              ]
+            },
+            "amountValueMax": {
+              "description": "Kuinka monta opintoelementtiä opintokokonaisuudesta on enintään suoritettava",
+              "type": [
+                "null"
+              ]
+            },
+            "optionality": {
+              "description": "Valinnaisuuden tyyppi. MIN_MAX_CREDITS = Suoritettava vähintään creditsMin ja enintään creditsMax -arvojen määrittämä määrä opintopisteitä.",
+              "enum": [
+                "MIN_MAX_CREDITS"
+              ]
+            }
+          }
+        },
+        {
+          "required": [
+            "optionality"
+          ],
+          "properties": {
+            "amountValueMin": {
+              "description": "Kuinka monta opintoelementtiä opintokokonaisuudesta on vähintään suoritettava",
+              "type": [
+                "null"
+              ]
+            },
+            "amountValueMax": {
+              "description": "Kuinka monta opintoelementtiä opintokokonaisuudesta on enintään suoritettava",
+              "type": [
+                "null"
+              ]
+            },
+            "creditsMin": {
+              "description": "Kuinka monta opintopistettä opintokokonaisuuden opintoelementeistä on vähintään suoritettava",
+              "type": [
+                "null"
+              ]
+            },
+            "creditsMax": {
+              "description": "Kuinka monta opintopistettä opintokokonaisuuden opintoelementeistä on enintään suoritettava",
+              "type": [
+                "null"
+              ]
+            },
+            "optionality": {
+              "description": "Valinnaisuuden tyyppi. ALL = Kaikki opintokokonaisuuden opintoelementit on suoritettava.",
+              "enum": [
+                "ALL"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "properties": {
+        "type": {
+          "enum": ["STUDY_MODULE"]
+        },
+        "optionalityFurtherInformation": {
+          "$ref": "../common/localisedString.json"
+        },
+        "credits": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "studyModuleType": {
+          "description": "Opintokokonaisuuden tyyppi.",
+          "enum": [
+            "null",
+            "BASIC_STUDIES",
+            "SUBJECT_STUDIES",
+            "ADVANCED_STUDIES",
+            "LANGUAGE_STUDIES",
+            "INTERNSHIP",
+            "POSTGRADUATE_STUDIES",
+            "OTHER"
+          ]
+        }
+      }
+    }
+  ]
+}

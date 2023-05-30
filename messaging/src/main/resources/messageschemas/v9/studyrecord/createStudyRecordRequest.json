@@ -1,0 +1,14 @@
+{
+  "id": "classpath:/messageschemas/v9/studyrecord/createStudyRecordRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintosuorituksen luomispyyntö",
+  "type": "object",
+  "oneOf": [
+    {
+      "$ref": "studyRecordCrossStudy.json"
+    },
+    {
+      "$ref": "studyRecordOther.json"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "classpath:/messageschemas/v8/studyrecord/studyRecord.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintosuorituksen yhteiset tiedot",
+  "type": "object",
+  "required": [
+    "sendingOrganisation",
+    "receivingOrganisation",
+    "completedCredits",
+    "sendingTime"
+  ],
+  "properties": {
+    "sendingOrganisation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Lähettävän organisaation tunniste (tilastokeskuskoodi)"
+    },
+    "receivingOrganisation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Vastaanottavan organisaation tunniste (tilastokeskuskoodi)"
+    },
+    "completedCredits" : {
+      "description": "Lähetettävien opintosuoritusten tiedot",
+      "type" : "array",
+      "minItems": 1,
+      "items" : {
+        "type": "object",
+        "$ref": "../common/completedCredit.json"
+      }
+    },
+    "sendingTime": {
+      "type": "string",
+      "description": "Opintosuorituspyynnön lähetysaika.",
+      "format": "date-time"
+    }
+  }
+}

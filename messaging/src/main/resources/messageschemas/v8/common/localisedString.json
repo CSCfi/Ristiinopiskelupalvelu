@@ -1,0 +1,39 @@
+{
+  "id": "classpath:/messageschemas/v8/common/localisedString.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Kieleistetty teksti jonka kieli voi olla, suomi, ruotsi tai englanti.",
+  "type": "object",
+  "required": [
+    "values"
+  ],
+  "properties": {
+    "values": {
+      "type": "object",
+      "anyOf": [
+        { "required": ["fi"] },
+        { "required": ["en"] },
+        { "required": ["sv"] }
+      ],
+      "properties": {
+        "fi": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "en": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "sv": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      }
+    }
+  }
+}

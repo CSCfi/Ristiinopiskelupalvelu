@@ -1,0 +1,32 @@
+{
+  "type" : "object",
+  "id": "classpath:/messageschemas/v9/common/address.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Katuosoite.",
+  "required": [
+    "street",
+    "postalCode",
+    "postOffice",
+    "country"
+  ],
+  "properties" : {
+    "street" : {
+      "description": "Katuosoite, jossa mukana talo- ja asuntonumero.",
+      "type" : "string"
+    },
+    "postalCode" : {
+      "description": "Postinumero.",
+      "type" : "string"
+    },
+    "postOffice" : {
+      "description": "Postitoimipaikka.",
+      "type" : "string"
+    },
+    "country" : {
+      "description": "Maa.",
+      "type": "string",
+      "$ref": "../common/country.json"
+    }
+
+  }
+}

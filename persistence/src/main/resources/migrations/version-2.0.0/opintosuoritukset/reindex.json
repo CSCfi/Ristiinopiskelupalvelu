@@ -1,0 +1,33 @@
+{
+  "source": {
+    "index": "opintosuoritukset"
+  },
+  "dest": {
+    "index": "opintosuoritukset_v2.0.0"
+  },
+  "script": {
+    "source": """
+      // RIPA-282
+      def completedCredits = ctx._source.completedCredits;
+
+      if(completedCredits != null) {
+        for(c in completedCredits) {
+          if(c.organisationResponsibleForCompletion != null) {
+            if(c.organisationResponsibleForCompletion.postalAddress != null) {
+              ctx._source.completedCredits.organisationResponsibleForCompletion.postalAddress.country = "246";
+            }
+            if(c.organisationResponsibleForCompletion.streetAddress != null) {
+              ctx._source.completedCredits.organisationResponsibleForCompletion.streetAddress.country = "246";
+            }
+          }
+
+          // RIPA-329 change assessmentScale from code object to integer (keyword)
+          if(c.assessment != null && c.assessment.gradingScale != null && c.assessment.gradingScale.scale != null) {
+            c.assessment.gradingScale.scale = 1;
+          }
+        }
+      } 
+    """,
+    "lang": "painless"
+  }
+}

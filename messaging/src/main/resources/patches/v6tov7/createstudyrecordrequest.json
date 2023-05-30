@@ -1,0 +1,19 @@
+[
+  {
+    "op": "copy",
+    "from": "/completedCredits/0/studyRightIdentifier",
+    "path": "/student/hostStudyRightIdentifier"
+  },
+  {
+    "op": "remove",
+    "path": "/completedCredits/0/studyRightIdentifier"
+  },
+  {
+    "op": "add",
+    "path": "/student/homeStudyRightIdentifier",
+    "value": {
+      "organisationTkCodeReference": "UNKNOWN",
+      "studyRightId": "UNKNOWN"
+    }
+  }
+]

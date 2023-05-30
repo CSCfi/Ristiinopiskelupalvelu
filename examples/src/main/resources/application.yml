@@ -1,0 +1,13 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /examples
+    
+spring:
+  artemis:
+    broker-url: ripa-host.here.abcde:61617
+
+general:
+  api-url: https://ripa-host.here.abcde/handler
+  organisation-queue: myorg-queue
+  handler-queue: handler

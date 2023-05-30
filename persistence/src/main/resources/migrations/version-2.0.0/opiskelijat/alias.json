@@ -1,0 +1,16 @@
+{
+  "actions" : [
+    {
+      "remove" : {
+        "index" : "opiskelijat_v1.1.0",
+        "alias" : "opiskelijat"
+      }
+    },
+    {
+      "add" : {
+        "index" : "opiskelijat_v2.0.0",
+        "alias" : "opiskelijat"
+      }
+    }
+  ]
+}

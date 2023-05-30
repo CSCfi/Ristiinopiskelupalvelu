@@ -1,0 +1,178 @@
+{
+  "id": "classpath:/messageschemas/v9/common/extendedStudent.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Laajennettu opiskelija, sisältää enemmän kenttiä kuin person.json. Pakollisuudet puuttuu",
+  "type" : "object",
+  "allOf": [
+    {
+      "properties": {
+        "homeEppn" : {
+          "description": "EPPN kotikorkeakoulussa.",
+          "type": ["null", "string"]
+        },
+        "hostEppn" : {
+          "description": "EPPN kohdekorkeakoulussa.",
+          "type": ["null", "string"]
+        },
+        "firstNames" : {
+          "description": "Etunimet",
+          "type": ["null", "string"]
+        },
+        "surName" : {
+          "description": "Sukunimi",
+          "type": ["null", "string"]
+        },
+        "givenName" : {
+          "description": "Kutsumanimi",
+          "type": ["null", "string"]
+        },
+        "homeStudentNumber" : {
+          "description": "Opiskelijanumero kotikorkeakoulussa",
+          "type": ["null", "string"]
+        },
+        "hostStudentNumber" : {
+          "description": "Opiskelijanumero kohdekorkeakoulussa.",
+          "type": ["null", "string"]
+        },
+        "homeStudyRight" : {
+          "description": "Opinto-oikeus kotikorkeakoulussa.",
+          "type" : "object",
+          "$ref": "../common/studyRight.json"
+        },
+        "hostStudyRight" : {
+          "description": "Opinto-oikeus kohdekorkeakoulussa.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type" : "object",
+              "$ref": "../common/studyRight.json"
+            }
+          ]
+        },
+        "dateOfBirth" : {
+          "description": "Syntymäaika ISO8601 formaatissa (2021-11-16).",
+          "type" : "string",
+          "format" : "date"
+        },
+        "gender" : {
+          "description": "Sukupuoli koodistosta ??? mistä. Voisi muuttaa enumeraatioksi.",
+          "type" : "integer"
+        },
+        "address" : {
+          "description": "Opiskelijan kotiosoitteet ???.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "$ref": "../common/address.json"
+              }
+            }
+          ]
+        },
+        "countryOfCitizenship" : {
+          "description": "Kansallisuus.",
+          "oneOf": [
+            {
+              "type" : "null"
+            },
+            {
+              "type": "string",
+              "$ref": "../common/country.json"
+            }
+          ]
+        },
+        "municipalityOfResidence" : {
+          "description": "Asuinkunta. ???",
+          "type": ["null", "string"]
+        },
+        "motherTongue" : {
+          "description": "Äidinkieli vapaamuotoisena tekstinä.",
+          "type" : "string"
+        },
+        "preferredLanguage" : {
+          "description": "Asiointikieli. Pitäisikö olla suomi, ruotsi, englanti???",
+          "type": ["null", "string"]
+        },
+        "email" : {
+          "description": "Lista sähköpostiosoitteista",
+          "type": ["null", "array"],
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "phone" : {
+          "description": "Lista puhelinnumeroista.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "../common/phone.json" }
+            }
+          ]
+        },
+        "safetyProhibition" : {
+          "description": "Tieto siitä, onko opiskelijalla turvakielto.",
+          "type" : ["null", "boolean"]
+        }
+      }
+    },
+    {
+      "oneOf": [
+        {
+          "description": "Henkilötunnus tai kansallinen oppijanumero on pakollinen tieto. Myös molemmat voi toimittaa.",
+          "required": [
+            "oid"
+          ],
+          "properties": {
+            "oid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "personId": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "required": [
+            "personId"
+          ],
+          "properties": {
+            "oid": {
+              "type": "null"
+            },
+            "personId": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "oid",
+            "personId"
+          ],
+          "properties": {
+            "oid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "personId": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "id": "classpath:/messageschemas/v8/courseunit/updateCourseUnitRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintojakson päivityspyyntö. Tässä viestissä mukana olevat toteutukset jätetään huomiotta.",
+  "type": "object",
+  "required": [
+    "courseUnit"
+  ],
+  "properties": {
+    "courseUnit": {
+      "allOf": [
+        {
+          "$ref": "courseunit.json"
+        },
+        {
+          "required": [
+            "studyElementId"
+          ]
+        },
+        {
+          "properties": {
+            "status": {
+              "description": "Opintojakson uusi tila.",
+              "type": "string",
+              "enum": ["ACTIVE", "CANCELLED", "ARCHIVED"]
+            },
+            "cooperationNetworks": {
+              "description": "Opintojakson uudet verkostoviittaukset. Nämä korvaavat aiemmat. Tyhjä taulukko tai null poistaa viittaukset. Kentän poisjättäminen ei aiheuta muutoksia verkostoviittauksiin.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "minItems": 0,
+                  "items": {
+                    "$ref": "../common/cooperationNetwork.json"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

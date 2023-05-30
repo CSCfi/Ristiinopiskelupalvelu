@@ -1,0 +1,20 @@
+{
+  "id": "classpath:/messageschemas/v8/common/code.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Ristiinopiskelupalvelun sisäinen koodi, joka muodostuu koodiavaimesta ja koodiston avaimesta",
+  "type": "object",
+  "required": [
+    "key",
+    "codeSetKey"
+  ],
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Koodin avain"
+    },
+    "codeSetKey": {
+      "type": "string",
+      "description": "Koodiston avain"
+    }
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "id": {
+      "type": "keyword"
+    },
+    "version": {
+      "type": "long"
+    },
+    "name": {
+      "properties": {
+        "values": {
+          "properties": {
+            "fi": {
+              "type": "text",
+              "copy_to": "search_fi"
+            },
+            "en": {
+              "type": "text",
+              "copy_to": "search_en"
+            },
+            "sv": {
+              "type": "text",
+              "copy_to": "search_sv"
+            }
+          }
+        }
+      }
+    },
+    "abbreviation": {
+      "type": "keyword",
+      "copy_to": [
+        "search_fi",
+        "search_en",
+        "search_sv"
+      ]
+    },
+    "organisations": {
+      "type": "nested",
+      "properties": {
+        "isCoordinator": {
+          "type": "boolean"
+        },
+        "organisationTkCode": {
+          "type": "keyword"
+        },
+        "validityInNetwork": {
+          "properties": {
+            "continuity": {
+              "type": "keyword"
+            },
+            "start": {
+              "type": "date",
+              "format": "uuuu-MM-dd'T'HH:mm:ss.SSSXXX"
+            },
+            "end": {
+              "type": "date",
+              "format": "uuuu-MM-dd'T'HH:mm:ss.SSSXXX"
+            }
+          }
+        }
+      }
+    },
+    "networkType": {
+      "type": "keyword"
+    },
+    "description": {
+      "properties": {
+        "values": {
+          "properties": {
+            "fi": {
+              "type": "text",
+              "copy_to": "search_fi"
+            },
+            "en": {
+              "type": "text",
+              "copy_to": "search_en"
+            },
+            "sv": {
+              "type": "text",
+              "copy_to": "search_sv"
+            }
+          }
+        }
+      }
+    },
+    "furtherInformation": {
+      "properties": {
+        "values": {
+          "properties": {
+            "fi": {
+              "type": "text",
+              "copy_to": "search_fi"
+            },
+            "en": {
+              "type": "text",
+              "copy_to": "search_en"
+            },
+            "sv": {
+              "type": "text",
+              "copy_to": "search_sv"
+            }
+          }
+        }
+      }
+    },
+    "targetGroups": {
+      "type": "nested",
+      "properties": {
+        "key": {
+          "type": "keyword"
+        },
+        "codeSetKey": {
+          "type": "keyword"
+        }
+      }
+    },
+    "restrictions": {
+      "type": "nested",
+      "properties": {
+        "key": {
+          "type": "keyword"
+        },
+        "codeSetKey": {
+          "type": "keyword"
+        }
+      }
+    },
+    "validity": {
+      "properties": {
+        "continuity": {
+          "type": "keyword"
+        },
+        "start": {
+          "type": "date",
+          "format": "uuuu-MM-dd'T'HH:mm:ss.SSSXXX"
+        },
+        "end": {
+          "type": "date",
+          "format": "uuuu-MM-dd'T'HH:mm:ss.SSSXXX"
+        }
+      }
+    },
+    "expenses": {
+      "properties": {
+        "pay": {
+          "type": "boolean"
+        },
+        "pricingBasis": {
+          "type": "keyword"
+        },
+        "price": {
+          "type": "float"
+        }
+      }
+    },
+    "published": {
+      "type": "boolean"
+    },
+    "deleted": {
+      "type": "boolean"
+    },
+    "deletedTimestamp": {
+      "type": "date",
+      "format": "uuuu-MM-dd'T'HH:mm:ss.SSSXXX"
+    },
+    "search_fi": {
+      "type": "text",
+      "analyzer": "finnish"
+    },
+    "search_en": {
+      "type": "text",
+      "analyzer": "english"
+    },
+    "search_sv": {
+      "type": "text",
+      "analyzer": "swedish"
+    }
+  },
+  "dynamic_templates": [
+    {
+      "strings": {
+        "match_mapping_type": "string",
+        "mapping": {
+          "type": "text",
+          "analyzer": "standard"
+        }
+      }
+    }
+  ]
+}

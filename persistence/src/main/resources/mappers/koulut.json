@@ -1,0 +1,136 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "id": {
+      "type": "keyword"
+    },
+    "version": {
+      "type": "long"
+    },
+    "organisationIdentifier": {
+      "type": "keyword"
+    },
+    "organisationName": {
+      "properties": {
+        "values": {
+          "properties": {
+            "fi": {
+              "type": "text",
+              "copy_to": "search_fi"
+            },
+            "en": {
+              "type": "text",
+              "copy_to": "search_en"
+            },
+            "sv": {
+              "type": "text",
+              "copy_to": "search_sv"
+            }
+          }
+        }
+      }
+    },
+    "unitName": {
+      "properties": {
+        "values": {
+          "properties": {
+            "fi": {
+              "type": "text",
+              "copy_to": "search_fi"
+            },
+            "en": {
+              "type": "text",
+              "copy_to": "search_en"
+            },
+            "sv": {
+              "type": "text",
+              "copy_to": "search_sv"
+            }
+          }
+        }
+      }
+    },
+    "nameDescription": {
+      "properties": {
+        "values": {
+          "properties": {
+            "fi": {
+              "type": "text",
+              "copy_to": "search_fi"
+            },
+            "en": {
+              "type": "text",
+              "copy_to": "search_en"
+            },
+            "sv": {
+              "type": "text",
+              "copy_to": "search_sv"
+            }
+          }
+        }
+      }
+    },
+    "municipalityCode": {
+      "type": "keyword"
+    },
+    "url": {
+      "type": "text"
+    },
+    "postalAddress": {
+      "properties": {
+        "street": { "type": "text" },
+        "postalCode": { "type": "keyword" },
+        "postOffice": { "type": "text" },
+        "country": { "type": "keyword" }
+      }
+    },
+    "streetAddress": {
+      "properties": {
+        "street": { "type": "text" },
+        "postalCode": { "type": "keyword" },
+        "postOffice": { "type": "text" },
+        "country": { "type": "keyword" }
+      }
+    },
+    "phone": {
+      "properties": {
+        "description": {
+          "type": "text"
+        },
+        "number": {
+          "type": "text"
+        }
+      }
+    },
+    "queue": {
+      "type": "keyword"
+    },
+    "administratorEmail": {
+      "type": "keyword"
+    },
+    "notificationsEnabled": {
+      "type": "boolean"
+    },
+    "schemaVersion": {
+      "type": "integer"
+    },
+    "search_fi": {
+      "type": "text", "analyzer": "finnish"
+    },
+    "search_en": {
+      "type": "text", "analyzer": "english"
+    },
+    "search_sv": {
+      "type": "text", "analyzer": "swedish"
+    }
+  },
+  "dynamic_templates": [{
+    "strings": {
+      "match_mapping_type": "string",
+      "mapping": {
+        "type": "text",
+        "analyzer": "standard"
+      }
+    }
+  }]
+}

@@ -1,0 +1,122 @@
+{
+  "id": "classpath:/messageschemas/v9/studymodule/updateStudyModuleRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintokokonaisuuden päivityspyyntö",
+  "type": "object",
+  "required": [
+    "studyModule"
+  ],
+  "definitions": {
+    "subElementStudyModule": {
+      "description": "Opintokokonaisuuden alielementti, joka on tyypiltään opintokokonaisuus. Huomaa että opintokokonaisuuden päivitysviestillä ei voi päivittää aliopintokokonaisuuksien varsinaisia tietoja, ainoastaan viittauksia niihin.",
+      "type": "object",
+      "required": [
+        "studyElementId",
+        "organisationReferences",
+        "type"
+      ],
+      "properties": {
+        "studyElementId": {
+          "description": "Opintokokonaisuuden tekninen tunniste",
+          "type": "string",
+          "minLength": 1
+        },
+        "organisationReferences": {
+          "description": "Opintokokonaisuuden organsaatioviittaukset",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "../common/organisationReference.json"
+          }
+        },
+        "type": {
+          "description": "Alielementin tyyppi. Tässä tapauksessa aina STUDY_MODULE.",
+          "enum": [
+            "STUDY_MODULE"
+          ]
+        },
+        "onlyEnrollableWithParent": {
+          "description": "Voiko tähän opintokokonaisuuteen ilmoittautua ainoastaan samaan aikaan vanhemman kanssa?",
+          "type": "null"
+        }
+      }
+    },
+    "subElementCourseUnit":
+    {
+      "description": "Opintokokonaisuuden alielementti, joka on tyypiltään opintojakso. Huomaa että opintokokonaisuuden päivitysviestillä ei voi päivittää aliopintojaksojen varsinaisia tietoja, ainoastaan viittauksia niihin.",
+      "type": "object",
+      "required": [
+        "studyElementId",
+        "organisationReferences",
+        "type"
+      ],
+      "properties": {
+        "studyElementId": {
+          "description": "Opintojakson tekninen tunniste",
+          "type": "string",
+          "minLength": 1
+        },
+        "organisationReferences": {
+          "description": "Opintojakson organsaatioviittaukset",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "../common/organisationReference.json"
+          }
+        },
+        "type": {
+          "description": "Alielementin tyyppi. Tässä tapauksessa aina COURSE_UNIT.",
+          "enum": [
+            "COURSE_UNIT"
+          ]
+        },
+        "onlyEnrollableWithParent": {
+           "description": "Voiko tähän opintojaksoon ilmoittautua ainoastaan samaan aikaan vanhemman kanssa?",
+          "type": [
+            "null", "boolean"
+          ]
+        }
+      }
+    }
+  },
+  "properties": {
+    "studyModule": {
+      "allOf": [
+        {
+          "$ref": "./studyModule.json"
+        },
+        {
+          "required": [
+            "studyElementId"
+          ]
+        },
+        {
+          "properties": {
+            "subElements": {
+              "description": "Opintokokonaisuuden alielementit. Sallittuja elementtejä ovat opintokokonaisuudet (type = STUDY_MODULE) tai opintojaksot (type = COURSE_UNIT)",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/definitions/subElementStudyModule"
+                      },
+                      {
+                        "$ref": "#/definitions/subElementCourseUnit"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,93 @@
+{
+  "id": "classpath:/messageschemas/v9/registration/registrationReplyRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Rekisteröinnin vastauspyyntö",
+  "oneOf": [
+    {
+      "required": [
+        "registrationRequestId",
+        "selections",
+        "status"
+      ],
+      "properties": {
+        "registrationRequestId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Rekisteröintipyynnön Ristiinopiskelupalvelun generoima tekninen avain"
+        },
+        "hostStudyRight": {
+          "type": ["null", "object"],
+          "description": "Opiskelijan opiskeluoikeustiedot kohdekorkeakoulussa",
+          "required": [
+            "identifiers",
+            "studyRightStatus"
+          ],
+          "$ref": "../common/studyRight.json"
+        },
+        "hostStudentEppn": {
+          "type": ["null", "string"],
+          "minLength": 1,
+          "description": "Opiskelijan EPPN kohdekorkeakoulussa"
+        },
+        "hostStudentNumber": {
+          "type": ["null", "string"],
+          "minLength": 1,
+          "description": "Opiskelijan opiskelijanumero kohdekorkeakoulussa"
+        },
+        "selections": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Opinnot joihin opiskelija ilmoittautuu",
+          "items": {
+            "$ref": "../common/registrationReplySelectionItem.json"
+          }
+        },
+        "status": {
+          "description": "Rekisteröintipyynnön tila kohdekorkeakoulussa",
+          "type": "string",
+          "enum": [
+            "REGISTERED",
+            "REGISTRATION_REJECTED"
+          ]
+        },
+        "statusInfo": {
+          "description": "Rekisteröintipyynnön tilan lisätieto",
+          "type": ["null", "string"]
+        },
+        "rejectionReason": {
+          "description": "Rekisteröintipyynnön hylkäyksen syy, jos status-kentän tila = REGISTRATION_REJECTED",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "../common/localisedString.json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "required": [
+        "registrationRequestId",
+        "status"
+      ],
+      "properties": {
+        "registrationRequestId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Rekisteröintipyynnön Ristiinopiskelupalvelun generoima tekninen avain"
+        },
+        "status": {
+          "description": "Rekisteröintipyynnön tila kohdekorkeakoulussa. RECEIVED-tilaa on tarkoitettu käytettäväksi esim. tapauksessa, jossa rekisteröintipyyntöä ei voida automaattisesti hyväksyä tai hylätä vaan päätös vaatii ihmisen reagointia.",
+          "type": "string",
+          "enum": [
+            "RECEIVED"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "koulu": {
+    "dynamic": false,
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "unitName": {
+        "properties": {
+          "values": {
+            "properties": {
+              "fi": {
+                "type": "text",
+                "analyzer": "finnish",
+                "copy_to": "search_fi"
+              },
+              "en": {
+                "type": "text",
+                "analyzer": "english",
+                "copy_to": "search_en"
+              },
+              "sv": {
+                "type": "text",
+                "analyzer": "swedish",
+                "copy_to": "search_sv"
+              }
+            }
+          }
+        }
+      },
+      "postalAddress": {
+        "properties": {
+          "street": { "type": "text" },
+          "postalCode": { "type": "integer" },
+          "postOffice": { "type": "text" },
+          "country": {
+            "properties": {
+              "key": { "type": "keyword" },
+              "codeSetKey": { "type": "keyword" }
+            }
+          }
+        }
+      },
+      "streetAddress": {
+        "properties": {
+          "street": { "type": "text" },
+          "postalCode": { "type": "integer" },
+          "postOffice": { "type": "text" },
+          "country": {
+            "properties": {
+              "key": { "type": "keyword" },
+              "codeSetKey": { "type": "keyword" }
+            }
+          }
+        }
+      },
+      "phone": {
+        "properties": {
+          "description": {
+            "type": "text"
+          },
+          "number": {
+            "type": "text"
+          }
+        }
+      },
+      "queue": {
+        "type": "keyword"
+      },
+      "administratorEmail": {
+        "type": "keyword"
+      },
+      "notificationsEnabled": {
+        "type": "boolean"
+      },
+      "search_fi": {
+        "type": "text", "analyzer": "finnish"
+      },
+      "search_en": {
+        "type": "text", "analyzer": "english"
+      },
+      "search_sv": {
+        "type": "text", "analyzer": "swedish"
+      }
+    },
+    "dynamic_templates": [{
+      "strings": {
+        "match_mapping_type": "string",
+        "mapping": {
+          "type": "text",
+          "analyzer": "standard"
+        }
+      }
+    }]
+  }
+}

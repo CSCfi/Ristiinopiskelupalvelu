@@ -1,0 +1,37 @@
+{
+  "source": {
+    "index": "opintojaksot"
+  },
+  "dest": {
+    "index": "opintojaksot_v3.0.0"
+  },
+  "script": {
+    "source": """
+      def completionOptions = ctx._source.completionOptions;
+      if(completionOptions != null) {
+        for(completionOption in completionOptions) {
+          def assessmentItems = completionOption.assessmentItems;
+          if(assessmentItems != null) {
+            for(assessmentItem in assessmentItems) {
+              assessmentItem.type = null;
+            }
+          }
+        }
+      }
+
+      ctx._source.missing = ctx._source._missing;
+      ctx._source.remove('_missing');
+
+      ctx._source.studyElementPermanentId = ctx._source._groupId;
+      ctx._source.remove('_groupId');
+
+      def organisationReferences = ctx._source.organisationReferences;
+      if(organisationReferences != null) {
+        for(organisationReference in organisationReferences) {
+          organisationReference.description = null;
+        }
+      }
+    """,
+    "lang": "painless"
+  }
+}

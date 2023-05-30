@@ -1,0 +1,19 @@
+{
+  "source": {
+    "index": "rekisteroinnit"
+  },
+  "dest": {
+    "index": "rekisteroinnit_v3.0.0"
+  },
+  "script": {
+    "source": """
+      def selections = ctx._source.selections;
+      if(selections != null) {
+        for(selection in selections) {
+          selection.subGroupSelections = null;
+        }
+      }
+    """,
+    "lang": "painless"
+  }
+}

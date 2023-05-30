@@ -1,0 +1,22 @@
+{
+  "id": "classpath:/messageschemas/v9/courseunit/deleteStudyModuleRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintokokonaisuuden poistoviesti. Poistoviestillä voi poistaa vain oman organisaation luomia opintokokonaisuuksia.",
+  "type": "object",
+  "required": [
+    "studyElementId",
+    "deleteCourseUnits"
+  ],
+  "properties": {
+    "studyElementId": {
+      "description": "Poistettavan opintokokonaisuuden tekninen tunniste",
+      "type": "string",
+      "minLength": 1
+    },
+    "deleteCourseUnits": {
+      "description": "Poistetaanko myös viittaukset poistettavaan opintokokonaisuuteen viittaavilta opintojaksoilta? Jos poistettavaan opintokokonaisuuteen viittaa jokin opintojakso, ei opintokokonaisuuden poisto ole sallittua ellei myös viittauksia poisteta opintojaksoilta (deleteCourseUnits = true)",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

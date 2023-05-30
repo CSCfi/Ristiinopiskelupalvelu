@@ -1,0 +1,64 @@
+{
+  "source": {
+    "index": "opintokokonaisuudet"
+  },
+  "dest": {
+    "index": "opintokokonaisuudet_v2.0.0"
+  },
+  "script": {
+    "source": """
+      // RIPA-288 changing organisationRole field from object to short
+      def orgReferences = ctx._source.organisationReferences;
+      if(orgReferences != null) {
+        for(orgRef in orgReferences) {
+          if(orgRef.organisationRole != null && orgRef.organisationRole.key.equals('mainlyResponsible')) {
+            orgRef.organisationRole = 1;
+          } else {
+            orgRef.organisationRole = 2;
+          }
+
+          // RIPA-282
+          if(orgRef.target != null) {
+            if(orgRef.target.postalAddress != null) {
+              if(orgRef.target.postalAddress.country != null) {
+                orgRef.target.postalAddress.country = "246";
+              }
+            }
+            if(orgRef.target.streetAddress != null) {
+              if(orgRef.target.streetAddress.country != null) {
+                orgRef.target.streetAddress.country = "246";
+              }
+            }
+          }
+        }
+      }
+
+      // RIPA-287 remove field amountValue, set amountValueMin and amountValueMax to amountValue if not null
+      // RIPA-285 remove field credits and change optionality CREDITS -> MIN_MAX_CREDITS and AMOUNT -> MIN_MAX_AMOUNT
+      if(ctx._source.optionality != null) {
+        if(ctx._source.optionality.equals('CREDITS')) {
+          if(ctx._source.creditsMin == null) {
+            ctx._source.creditsMin = ctx._source.credits != null ? ctx._source.credits : 5;
+          }
+          if(ctx._source.creditsMax == null) {
+            ctx._source.creditsMax = ctx._source.credits != null ? ctx._source.credits : 5;
+          }
+          ctx._source.optionality = 'MIN_MAX_CREDITS';
+          }
+
+          if(ctx._source.optionality.equals('AMOUNT')) {
+            if(ctx._source.amountValueMin == null) {
+              ctx._source.amountValueMin = ctx._source.amountValue != null ? ctx._source.amountValue : 3;
+            }
+            if(ctx._source.amountValueMax == null) {
+              ctx._source.amountValueMax = ctx._source.amountValue != null ? ctx._source.amountValue : 3;
+            }
+          ctx._source.optionality = 'MIN_MAX_AMOUNT';
+        }
+      }
+      ctx._source.remove('amountValue');
+      ctx._source.remove('credits');
+    """,
+    "lang": "painless"
+  }
+}

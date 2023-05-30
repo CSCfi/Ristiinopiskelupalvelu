@@ -1,0 +1,17 @@
+{
+  "source": {
+    "index": "opintokokonaisuudet"
+  },
+  "dest": {
+    "index": "opintokokonaisuudet_v1.0.0"
+  },
+  "script": {
+    "source": """
+
+    // RIPA-256, adds status = ACTIVE for all studymodules
+    ctx._source.status = "ACTIVE";
+
+    """,
+    "lang": "painless"
+  }
+}

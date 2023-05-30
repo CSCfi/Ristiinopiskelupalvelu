@@ -1,0 +1,249 @@
+{
+  "id": "classpath:/messageschemas/v9/network/network.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Ristiinopiskeluverkosto.",
+  "type": "object",
+  "definitions": {
+    "networkOrganisation": {
+      "type": "object",
+      "required": [
+        "organisationTkCode",
+        "isCoordinator",
+        "validityInNetwork"
+      ],
+      "properties": {
+        "organisationTkCode": {
+          "description": "Organisaation tilastokeskuskoodi.",
+          "type": "string",
+          "minLength": 1
+        },
+        "isCoordinator": {
+          "description": "Onko organisaatio verkoston koordinaattori ??? Mitä tarkoittaa olla koordinaattori.",
+          "type": "boolean"
+        },
+        "validityInNetwork": {
+          "description": "Organisaation verkostoon kuulumisen voimassaolo.",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/validityFixed"
+            },
+            {
+              "$ref": "#/definitions/validityIndefinitely"
+            }
+          ]
+        }
+      }
+    },
+    "validityIndefinitely": {
+      "description": "Jatkuva voimassaolo alkaen tietystä päivämäärästä",
+      "type": "object",
+      "required": [
+        "continuity",
+        "start"
+      ],
+      "properties": {
+        "continuity": {
+          "description": "Voimassaolon tyyppi.",
+          "type": "string",
+          "enum": [
+            "INDEFINITELY"
+          ]
+        },
+        "start": {
+          "description": "Voimassaolon alkupäivämäärä.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "description": "??? Redundantti kenttä, voisi poistaa turhana",
+          "type": "null"
+        }
+      }
+    },
+    "validityFixed": {
+      "description": "Määräaikainen voimassaolo tietyllä aikavälillä.",
+      "type": "object",
+      "required": [
+        "continuity",
+        "start",
+        "end"
+      ],
+      "properties": {
+        "continuity": {
+          "description": "Voimassaolon tyyppi.",
+          "type": "string",
+          "enum": [
+            "FIXED"
+          ]
+        },
+        "start": {
+          "description": "Voimassaolon alkupäivämäärä.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "description": "Voimassaolon päättymispäivämäärä.",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "expensePaid": {
+      "type": "object",
+      "required": [
+        "pay",
+        "pricingBasis",
+        "price"
+      ],
+      "properties": {
+        "pay": {
+          "description": "??? Redundantti kenttä, voisi poistaa",
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "pricingBasis": {
+          "description": "Verkostoon kuulumisen hinnoitteluperiaate.",
+          "type": "string",
+          "enum": [
+            "EURO_PER_CREDIT",
+            "OTHER_PRICING_BASIS"
+          ]
+        },
+        "price": {
+          "description": "Verkostoon kuulumisen hinta.",
+          "type": "number"
+        }
+      }
+    },
+    "expenseFree": {
+      "description": "Onko verkosto ilmainen. Tämän rakenteen voisi refaktoroida järkevämmäksi.",
+      "type": "object",
+      "required": [
+        "pay"
+      ],
+      "properties": {
+        "pay": {
+          "type": "boolean",
+          "enum": [
+            false
+          ]
+        },
+        "pricingBasis": {
+          "description": "??? Redundantti kenttä, voisi poistaa",
+          "type": "null"
+        },
+        "price": {
+          "description": "??? Redundantti kenttä, voisi poistaa",
+          "type": "null"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Verkoston (?tekninen tunniste).",
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "description": "Verkoston nimi kieleistettynä.",
+      "$ref": "../common/localisedString.json"
+    },
+    "abbreviation": {
+      "description": "Verkoston nimen lyhenne ??? Nimi on kieleistetty, mutta nimen lyhenne ei.",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "networkType": {
+      "description": "Verkoston tyyppi ??? tähän kuvaukset",
+      "enum": [
+        "CURRICULUM_LEVEL",
+        "FREEDOM_OF_CHOICE"
+      ]
+    },
+    "description": {
+      "description": "Verkoston kuvaus kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "targetGroups": {
+      "description": "Verkoston kohderyhmät ???",
+      "type": [
+        "null",
+        "array"
+      ],
+      "items": {
+        "$ref": "../common/code.json"
+      }
+    },
+    "organisations": {
+      "description": "Verkoston jäsenorganisaatiot",
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/networkOrganisation"
+      }
+    },
+    "furtherInformation": {
+      "description": "Verkoston lisätiedot kieleistettynä.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "../common/localisedString.json"
+        }
+      ]
+    },
+    "restrictions": {
+      "type": [
+        "null",
+        "array"
+      ],
+      "items": {
+        "$ref": "../common/code.json"
+      }
+    },
+    "validity": {
+      "description": "Verkoston voimassaolo.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/validityFixed"
+        },
+        {
+          "$ref": "#/definitions/validityIndefinitely"
+        }
+      ]
+    },
+    "expenses": {
+      "description": "??? Turha välikerros, voisi poistaa",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/definitions/expenseFree"
+        },
+        {
+          "$ref": "#/definitions/expensePaid"
+        }
+      ]
+    },
+    "published": {
+      "description": "Onko verkosto(n tarjonta???) julkaistu",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

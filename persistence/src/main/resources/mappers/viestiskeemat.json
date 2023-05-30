@@ -1,0 +1,14 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "id": {
+      "type": "keyword"
+    },
+    "version": {
+      "type": "long"
+    },
+    "schemaVersion": {
+      "type": "integer"
+    }
+  }
+}

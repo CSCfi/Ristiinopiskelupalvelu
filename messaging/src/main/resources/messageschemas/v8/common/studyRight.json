@@ -1,0 +1,83 @@
+{
+  "id": "classpath:/messageschemas/v8/common/studyright.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opinto-oikeus.",
+  "type" : "object",
+  "required": [
+    "identifiers",
+    "studyRightStatus"
+  ],
+  "properties" : {
+    "identifiers" : {
+      "description": "Opinto-oikeuden yksilöivät tunnisteet.",
+      "type" : "object",
+      "required": [
+        "organisationTkCodeReference",
+        "studyRightId"
+      ],
+      "properties" : {
+        "organisationTkCodeReference" : {
+          "description": "Opinto-oikeuden myöntäneen organisaation tilastokeskuskoodi.",
+          "type" : "string",
+          "minLength": 1
+        },
+        "studyRightId" : {
+          "description": "Opinto-oikeuden tekninen tunniste.",
+          "type" : "string",
+          "minLength": 1
+        }
+      }
+    },
+    "studyRightStatus" : {
+      "description": "Opinto-oikeuden tilan tiedot.",
+      "type" : "object",
+      "required": [
+        "studyRightStatusValue",
+        "startDate",
+        "endDate"
+      ],
+      "properties" : {
+        "studyRightStatusValue" : {
+          "description": "VIRTA: Opiskeluoikeuden tila (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Opiskeluoikeudentila,Studier%C3%A4ttersstatus)",
+          "type" : "integer",
+          "enum" : [ 1, 2, 3, 4, 5 ]
+        },
+        "startDate" : {
+          "description": "Opinto-oikeuden alkamispäivämäärä.",
+          "type" : "string",
+          "format" : "date"
+        },
+        "endDate" : {
+          "description": "Opinto-oikeuden päättymispäivämäärä.",
+          "type" : "string",
+          "format" : "date"
+        }
+      }
+    },
+    "studyRightType" : {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "description": "VIRTA+KOSKI: Opiskeluoikeuden tyyppi (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Opiskeluoikeudentyyppi,Studier%C3%A4ttenstyp)",
+          "type": "string",
+          "enum" : [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "12", "13", "14", "15", "16", "17", "18", "19", "aikuistenperusopetus", "ammatillinenkoulutus", "diatutkinto",
+            "esiopetus", "ibtutkinto", "internationalschool", "korkeakoulutus", "lukiokoulutus", "luva", "perusopetukseenvalmistavaopetus", "perusopetuksenlisaopetus", "perusopetus",
+            "ylioppilastutkinto" ]
+        }
+      ]
+    },
+    "keywords": {
+      "description": "Opinto-oikeuden avainsanat. Käyttötarkoitus määrittelemättä.",
+      "type": ["null", "array"],
+      "items": {
+        "$ref": "../common/keyword.json"
+      }
+    },
+    "eligibleForNetworkStudies": {
+      "description": "Onko opiskelija oikeutettu ristiinopiskeluun. Mikäli tämä arvo puuttuu kokonaan tai on null, voidaan opiskelijan tulkita olevan oikeutettu ristiinopiskeluun.",
+      "type": ["null", "boolean"]
+    }
+  }
+}

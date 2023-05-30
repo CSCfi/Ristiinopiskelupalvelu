@@ -1,0 +1,70 @@
+{
+  "type": "object",
+  "id": "classpath:/messageschemas/v9/registration/registrationSelectionItemHier2.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "2-tasoinen valintahierkarkia, jossa valinta kohdistuu tietyn opintojakson tiettyn toteutukseen",
+  "required": [
+    "selectionItemId",
+    "selectionItemType",
+    "parent"
+  ],
+  "properties": {
+    "selectionItemId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Valitun toteutuksen tekninen tunniste"
+    },
+    "selectionItemStatus": {
+      "description": "Valitun toteutuksen valinnan status. Sallitut arvot 1 = PENDING, 4 = ABORTED_BY_STUDENT.",
+      "enum": [1, 4]
+    },
+    "selectionItemType": {
+      "description": "Valitun elementin tyyppi, aina REALISATION",
+      "type": "string",
+      "enum": ["REALISATION"]
+    },
+    "selectionItemStatusInfo": {
+      "description": "Valitun toteutuksen valinnan statuksen lisätieto",
+      "type": ["null", "string"]
+    },
+    "subGroupSelections": {
+      "description": "Alaryhmävalinnat, esim. harjoitusryhmä (ks. realisation.groupSelections.selectionValue.id)",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "parent": {
+      "description": "Valitun toteutuksen ylemmän tason opintojakson tiedot hierarkiassa",
+      "type": "object",
+      "required": [
+        "selectionItemId",
+        "selectionItemType"
+      ],
+      "properties": {
+        "selectionItemId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Valitun opintojakson tekninen tunniste"
+        },
+        "selectionItemType": {
+          "description": "Valitun elementin tyyppi, aina COURSE_UNIT",
+          "type": "string",
+          "enum": ["COURSE_UNIT"]
+        },
+        "parent": {
+          "description": "Valitun opintojakson ylemmän tason elementti hierarkiassa, aina tyhjä",
+          "type": "null"
+        }
+      }
+    }
+  }
+}

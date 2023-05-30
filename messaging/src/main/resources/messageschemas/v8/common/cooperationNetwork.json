@@ -1,0 +1,30 @@
+{
+  "id": "classpath:/messageschemas/v8/common/cooperationNetwork.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Ristiinopiskeluverkostoviittaus.",
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "description": "Verkoston tekninen tunniste",
+      "type": "string",
+      "minLength": 1
+    },
+    "validityStartDate": {
+      "description": "Voimassaolon alkamispäivämäärä. Jos molemmat tyhjiä, niin onko verkosto voimassa ikuisesti?",
+      "type": ["null", "string"],
+      "format": "date"
+    },
+    "validityEndDate": {
+      "description": "Voimassaolon päättymispäivämäärä. Jos molemmat tyhjiä, niin onko verkosto voimassa ikuisesti?",
+      "type": ["null", "string"],
+      "format": "date"
+    },
+    "enrollable": {
+      "description": "Voiko verkoston opintoihin ilmoittautua?",
+      "type": ["null", "boolean"]
+    }
+  }
+}

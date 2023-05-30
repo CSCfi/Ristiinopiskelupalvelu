@@ -1,0 +1,17 @@
+{
+  "source": {
+    "index": "toteutukset"
+  },
+  "dest": {
+    "index": "toteutukset_v1.0.0"
+  },
+  "script": {
+    "source": """
+
+    // RIPA-256, adds status = ACTIVE for all realisations
+    ctx._source.status = "ACTIVE";
+
+    """,
+    "lang": "painless"
+  }
+}

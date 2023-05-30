@@ -1,0 +1,16 @@
+{
+  "actions" : [
+    {
+      "remove" : {
+        "index" : "verkostot_v1.1.0",
+        "alias" : "verkostot"
+      }
+    },
+    {
+      "add" : {
+        "index" : "verkostot_v2.0.0",
+        "alias" : "verkostot"
+      }
+    }
+  ]
+}

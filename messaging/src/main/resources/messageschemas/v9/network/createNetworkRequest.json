@@ -1,0 +1,29 @@
+{
+  "id": "classpath:/messageschemas/v9/network/createNetworkRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Ristiinopiskeluverkoston luontiviestipyyntö. Voi lähettää vain ylläpitokäyttöliittymästä.",
+  "type": "object",
+  "required": [
+    "network"
+  ],
+  "properties": {
+    "network": {
+      "allOf": [
+        {
+          "$ref": "network.json"
+        },
+        {
+          "required": [
+            "id",
+            "name",
+            "networkType",
+            "organisations",
+            "published",
+            "validity"
+          ]
+        }
+      ]
+    },
+    "additionalProperties": false
+  }
+}

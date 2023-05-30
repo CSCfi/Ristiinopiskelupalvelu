@@ -1,0 +1,94 @@
+{
+  "id": "classpath:/messageschemas/v9/registration/createRegistrationRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Rekisteröinnin luomispyyntö",
+  "type": "object",
+  "required": [
+    "sendingOrganisationTkCode",
+    "receivingOrganisationTkCode",
+    "student",
+    "networkIdentifier",
+    "selections",
+    "enrolmentDateTime"
+  ],
+  "properties": {
+    "sendingOrganisationTkCode": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Lähettävän organisaation tilastokeskuskoodi"
+    },
+    "receivingOrganisationTkCode": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Vastaanottavan organisaation tilastokeskuskoodi"
+    },
+    "enrolmentDateTime": {
+      "type": "string",
+      "description": "Ilmoittautumisen aikaleima lähettävässä organisaatiossa",
+      "format": "date-time"
+    },
+    "student": {
+      "type": "object",
+      "required": [
+        "homeStudyRight",
+        "dateOfBirth",
+        "gender",
+        "countryOfCitizenship",
+        "motherTongue"
+      ],
+      "$ref": "../common/extendedStudent.json",
+      "description": "Opiskelijan laajennetut tiedot"
+    },
+    "networkIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Verkoston tunniste jonka kautta opiskelija ilmoittautuu"
+    },
+    "networkDescription": {
+      "type": ["null", "string"],
+      "description": "Verkoston kuvaus, jonka kautta opiskelija ilmoittautuu"
+    },
+    "selections": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Opinnot joihin opiskelija ilmoittautuu",
+      "items": {
+        "oneOf": [
+          { "$ref": "registrationSelectionItemHier1.json" },
+          { "$ref": "registrationSelectionItemHier2.json" },
+          { "$ref": "registrationSelectionItemHier4.json" }
+        ]
+      }
+    },
+    "warnings": {
+      "description": "Opiskelijavaroitukset",
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "../common/studentWarning.json"
+          }
+        }
+      ]
+    },
+    "descriptions": {
+      "description": "Rekisteröintipyynnön kuvaukset",
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "../common/description.json"
+          }
+        }
+      ]
+    }
+  }
+}

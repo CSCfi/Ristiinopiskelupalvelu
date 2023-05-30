@@ -1,0 +1,16 @@
+{
+  "actions" : [
+    {
+      "remove" : {
+        "index" : "opintojaksot_v0.99",
+        "alias" : "opintojaksot"
+      }
+    },
+    {
+      "add" : {
+        "index" : "opintojaksot_v1.0.0",
+        "alias" : "opintojaksot"
+      }
+    }
+  ]
+}

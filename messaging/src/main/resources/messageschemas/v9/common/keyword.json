@@ -1,0 +1,42 @@
+{
+  "id": "classpath:/messageschemas/v9/common/keyword.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Yleiskäyttöinen avainsana kieleistettynä. ??? Lienee syytä refaktoroida.",
+  "type": "object",
+  "required": [
+    "key",
+    "keySet"
+  ],
+  "properties": {
+    "key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "value": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "$ref": "localisedString.json"
+        }
+      ]
+    },
+    "keySet": {
+      "type": "string",
+      "minLength": 1
+    },
+    "keySetValue": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "$ref": "localisedString.json"
+        }
+      ]
+    }
+  }
+}

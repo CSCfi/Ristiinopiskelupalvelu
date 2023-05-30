@@ -1,0 +1,67 @@
+spring:
+  artemis:
+    admin-ui-user: admin-ui
+    user: admin
+    password: admin
+    broker-url: vm://0
+    embedded:
+      enabled: false
+    pool:
+      enabled: true
+      max-connections: 10
+camel:
+  springboot:
+    main-run-controller: true
+    stream-caching-enabled: true
+general:
+  messageSchema:
+      version: 9
+  camel:
+    route:
+      base:
+        max-threads: 10
+      acknowledgement:
+        max-threads: 10
+        send: direct:sendAcknowledgement
+      network:
+        max-threads: 10
+        create: direct:createNetwork
+        delete: direct:deleteNetwork
+        update: direct:updateNetwork
+      courseunit:
+        max-threads: 10
+        create: direct:createCourseUnit
+        delete: direct:deleteCourseUnit
+        update: direct:updateCourseUnit
+      studymodule:
+        max-threads: 10
+        create: direct:createStudyModule
+        delete: direct:deleteStudyModule
+        update: direct:updateStudyModule
+      registration:
+        max-threads: 10
+        request: direct:registrationRequest
+        reply: direct:registrationReply
+      realisation:
+        max-threads: 10
+        create: direct:createRealisation
+        delete: direct:deleteRealisation
+        update: direct:updateRealisation
+      studyrecord:
+        max-threads: 10
+        create: direct:createStudyRecord
+        reply: direct:studyRecordReply
+      student:
+        max-threads: 10
+        update: direct:updateStudent
+        update_reply: direct:updateStudentReply
+        update_studyright: direct:updateStudentStudyRight
+        update_studyright_reply: direct:updateStudentStudyRightReply
+  activemq:
+    queue: jms:queue:handler
+  elasticsearch:
+    hosts: localhost:9300
+    clusterName: ripa-cluster
+    username:
+    password:
+    caCertificatePath:

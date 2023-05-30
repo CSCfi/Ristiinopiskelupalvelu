@@ -1,0 +1,188 @@
+{
+  "id": "classpath:/messageschemas/v9/studymodule/createStudyModuleRequest.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Opintokokonaisuuden luomispyyntö",
+  "type": "object",
+  "required": [
+    "studyModules"
+  ],
+  "definitions": {
+    "subElementStudyModule": {
+      "description": "Opintokokonaisuuden alielementti, joka on tyypiltään opintokokonaisuus",
+      "allOf": [
+        {
+          "required": [
+            "studyElementId",
+            "name",
+            "type",
+            "organisationReferences",
+            "cooperationNetworks",
+            "sendingTime"
+          ]
+        },
+        {
+          "$ref": "./studyModule.json"
+        },
+        {
+          "properties": {
+            "description": "Opintokokonaisuuden alielementit.",
+            "subElements": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/definitions/subElementStudyModule"
+                      },
+                      {
+                        "$ref": "#/definitions/subElementCourseUnit"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "cooperationNetworks": {
+              "description": "Opintokokonaisuuden verkostoliitokset, eli mille verkostoille kokonaisuus on tarjolla.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "../common/cooperationNetwork.json"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "subElementCourseUnit": {
+      "description": "Opintokokonaisuuden alielementti, joka on tyypiltään opintojakso",
+      "allOf": [
+        {
+          "required": [
+            "studyElementId",
+            "name",
+            "type",
+            "organisationReferences",
+            "cooperationNetworks",
+            "sendingTime"
+          ]
+        },
+        {
+          "$ref": "../courseunit/courseunit.json"
+        },
+        {
+          "properties": {
+            "realisations": {
+              "description": "Opintojakson toteutukset",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "minItems": 0,
+                  "items": {
+                    "allOf": [
+                      {
+                        "$ref": "../realisation/realisation.json"
+                      },
+                      {
+                        "required": [
+                          "realisationId",
+                          "name",
+                          "organisationReferences",
+                          "cooperationNetworks"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "cooperationNetworks": {
+                            "description": "Toteutuksen verkostoviittaukset, eli mille verkostoille toteutus on tarjolla.",
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                              "$ref": "../common/cooperationNetwork.json"
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "cooperationNetworks": {
+              "description": "Opintojakson verkostoviittaukset, eli mille verkostoille opintojakso on tarjolla.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "../common/cooperationNetwork.json"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "properties": {
+    "studyModules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "./studyModule.json"
+          },
+          {
+            "required": [
+              "studyElementId",
+              "name",
+              "type",
+              "organisationReferences",
+              "cooperationNetworks",
+              "sendingTime"
+            ]
+          },
+          {
+            "properties": {
+              "subElements": {
+                "description": "Opintokokonaisuuden alielementit. Sallittuja elementtejä ovat opintokokonaisuudet (type = STUDY_MODULE) tai opintojaksot (type = COURSE_UNIT)",
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/definitions/subElementStudyModule"
+                        },
+                        {
+                          "$ref": "#/definitions/subElementCourseUnit"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "cooperationNetworks": {
+                "description": "Opintokokonaisuuden verkostoviittaukset, eli mille verkostoille opintokokonaisuus on tarjolla",
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "../common/cooperationNetwork.json"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

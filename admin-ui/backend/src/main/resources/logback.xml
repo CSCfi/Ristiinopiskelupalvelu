@@ -1,0 +1,28 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <Pattern>
+                %d [%t] %-5level %logger{36} - %msg%n
+            </Pattern>
+        </layout>
+    </appender>
+
+    <appender name="STASH" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
+        <ringBufferSize>50000</ringBufferSize>
+        <appender class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+            <destination>${logstash_host}:${logstash_port}</destination>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"applicationId":"admin-ui"}</customFields>
+            </encoder>
+        </appender>
+    </appender>
+
+    <logger name="fi.csc.ristiinopiskelu.admin.controller.interceptor.AuditLoggingInterceptor" additivity="false" level="INFO">
+        <appender-ref ref="STASH"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="STASH"/>
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

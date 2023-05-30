@@ -1,0 +1,26 @@
+{
+  "id": "classpath:/messageschemas/v8/responses/studyRecordResponse.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Vastausviesti onnistuneeseen opinosuorituspyynnön.",
+  "type": "object",
+  "required": [
+    "status",
+    "message",
+    "studyRecordRequestId"
+  ],
+  "properties": {
+    "status": {
+      "description": "Käsittelyssä olleen viestin käsittelyn tila.",
+      "type": "string",
+      "enum": ["OK"]
+    },
+    "message": {
+      "description": "Tarkempi kuvaus viestin käsittelyn tilasta.",
+      "type": "string"
+    },
+    "studyRecordRequestId": {
+      "description": "Ristiinopiskelupalvelun luoma opinosuorituspyynnön tekninen tunniste.",
+      "type": "string"
+    }
+  }
+}

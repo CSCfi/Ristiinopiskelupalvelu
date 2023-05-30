@@ -1,0 +1,16 @@
+{
+  "actions" : [
+    {
+      "remove" : {
+        "index" : "toteutukset_v0.99",
+        "alias" : "toteutukset"
+      }
+    },
+    {
+      "add" : {
+        "index" : "toteutukset_v1.1.0",
+        "alias" : "toteutukset"
+      }
+    }
+  ]
+}

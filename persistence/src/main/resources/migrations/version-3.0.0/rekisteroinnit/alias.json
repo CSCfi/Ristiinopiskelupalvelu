@@ -1,0 +1,16 @@
+{
+  "actions" : [
+    {
+      "remove" : {
+        "index" : "rekisteroinnit_v2.0.0",
+        "alias" : "rekisteroinnit"
+      }
+    },
+    {
+      "add" : {
+        "index" : "rekisteroinnit_v3.0.0",
+        "alias" : "rekisteroinnit"
+      }
+    }
+  ]
+}

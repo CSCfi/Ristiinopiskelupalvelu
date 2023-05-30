@@ -1,0 +1,55 @@
+#!/bin/bash
+COMMAND=$1
+vhosts='handler-1 handler-2 elastic-1 elastic-2 elastic-3 activemq-1 activemq-2 demo-ui log'
+pool_path="<your_pool_path_here>"
+username="<your_remote_username_here>"
+user_ssh_pub_key="<your_publickey_path_here>"
+export LIBVIRT_DEFAULT_URI="qemu:///system"
+if [[ $COMMAND == "create" ]];
+then
+  for host in $vhosts 
+  do
+    echo "Creating" $host
+    virt-clone -o ripa-base -n $host.ripa -f $pool_path$host.qcow2 --auto-clone
+    sudo virt-sysprep -d $host.ripa --hostname $host.ripa --ssh-inject $username:file:$user_ssh_pub_key --keep-user-accounts $username --enable user-account,customize
+    if [[ $host == *"elastic"* || $host == *"handler"* || $host == *"log"*  ]]; then
+      echo "Adding memory for $host"
+      virsh setmaxmem $host.ripa 4G --config
+      virsh setmem $host.ripa 4G --config
+    fi
+
+  done
+elif [[ $COMMAND == "start" ]]; then
+  for host in $vhosts 
+  do
+    echo "Starting" $host
+    virsh start $host.ripa
+  done
+elif [[ $COMMAND == "shutdown" ]]; then
+  for host in $vhosts 
+  do
+    echo "Shutting down" $host
+    virsh shutdown $host.ripa
+  done
+elif [[ $COMMAND == "destroy" ]]; then
+  for host in $vhosts 
+  do
+    echo "Destoying" $host
+    virsh destroy $host.ripa
+  done
+elif [[ $COMMAND == "remove" ]]; then
+  for host in $vhosts 
+  do
+    echo "Removing" $host
+    virsh undefine $host.ripa
+    rm -f $pool_path$host.qcow2
+  done
+elif [[ $COMMAND == "reboot" ]]; then
+  for host in $vhosts
+  do
+    echo "Rebooting" $host
+    virsh reboot $host.ripa
+  done
+else 
+  echo "Please specify a command(create|start|reboot|shutdown|destroy|remove)."
+fi

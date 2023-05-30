@@ -1,0 +1,29 @@
+{
+  "description": "Henkiön tiedot",
+  "type" : "object",
+  "id": "classpath:/messageschemas/v8/common/person.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "properties" : {
+    "homeEppn" : {
+      "description": "EPPN kotikorkeakoulussa",
+      "type" : ["null", "string"]
+    },
+    "hostEppn" : {
+      "description": "EPPN kohdekorkeakoulussa",
+      "type" : ["null", "string"]
+    },
+    "firstNames" : {
+      "description": "Etunimet",
+      "type" : ["null", "string"]
+    },
+    "surName" : {
+      "description": "Sukunimet",
+      "type" : "string",
+      "minLength": 1
+    },
+    "givenName" : {
+      "description": "Kutsumanimi",
+      "type" : ["null", "string"]
+    }
+  }
+}

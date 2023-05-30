@@ -1,0 +1,27 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "id": {
+      "type": "keyword"
+    },
+    "version": {
+      "type": "long"
+    },
+    "message": {
+      "type": "text"
+    },
+    "organisationId": {
+      "type": "keyword"
+    },
+    "messageType": {
+      "type": "keyword"
+    },
+    "emailSent": {
+      "type": "boolean"
+    },
+    "consumedTimestamp": {
+      "type": "date",
+      "format": "uuuu-MM-dd'T'HH:mm:ss.SSSXXX"
+    }
+  }
+}

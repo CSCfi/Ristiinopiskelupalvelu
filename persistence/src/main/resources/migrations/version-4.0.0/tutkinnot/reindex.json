@@ -1,0 +1,14 @@
+{
+  "source": {
+    "index": "tutkinnot"
+  },
+  "dest": {
+    "index": "tutkinnot_v4.0.0"
+  },
+  "script": {
+    "source": """
+        // this index is currently unused and should be empty, so no actions necessary
+    """,
+    "lang": "painless"
+  }
+}

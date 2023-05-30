@@ -1,0 +1,39 @@
+{
+  "source": {
+    "index": "toteutukset"
+  },
+  "dest": {
+    "index": "toteutukset_v3.0.0"
+  },
+  "script": {
+    "source": """
+      ctx._source.startDate = ctx._source.validityStartDate;
+      ctx._source.endDate = ctx._source.validityEndDate;
+      ctx._source.remove('validityStartDate');
+      ctx._source.remove('validityEndDate');
+
+      def selections = ctx._source.selections;
+      def groupSelections = ctx._source.groupSelections;
+
+      if(selections != null) {
+        for(selection in selections) {
+          selection.selectionValues = null;
+        }
+      }
+
+      if(groupSelections != null) {
+        for(groupSelection in groupSelections) {
+          groupSelection.selectionValues = null;
+        }
+      }
+
+      def organisationReferences = ctx._source.organisationReferences;
+      if(organisationReferences != null) {
+        for(organisationReference in organisationReferences) {
+          organisationReference.description = null;
+        }
+      }
+    """,
+    "lang": "painless"
+  }
+}

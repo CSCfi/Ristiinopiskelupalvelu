@@ -1,0 +1,16 @@
+{
+  "actions" : [
+    {
+      "remove" : {
+        "index" : "koodisto_v1.1.0",
+        "alias" : "koodisto"
+      }
+    },
+    {
+      "add" : {
+        "index" : "koodisto_v2.0.0",
+        "alias" : "koodisto"
+      }
+    }
+  ]
+}
