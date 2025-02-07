@@ -1,6 +1,8 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current.courseunit;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
@@ -10,14 +12,18 @@ import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.HistoryHelper;
 import fi.uta.ristiinopiskelu.handler.helper.JmsHelper;
 import fi.uta.ristiinopiskelu.handler.integration.route.current.AbstractRouteIntegrationTest;
-import fi.uta.ristiinopiskelu.handler.service.*;
+import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
+import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
+import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,12 +34,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -46,8 +50,10 @@ import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class UpdateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrationTest {
@@ -72,15 +78,18 @@ public class UpdateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
     private RealisationRepository realisationRepository;
 
     @Autowired
+    private NetworkRepository networkRepository;
+
+    @Autowired
     private ModelMapper modelMapper;
 
     @Autowired
     private OrganisationService organisationService;
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchTemplate;
+    private ElasticsearchTemplate elasticsearchTemplate;
 
-    @Value("${general.messageSchema.version}")
+    @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
     @BeforeEach
@@ -170,6 +179,79 @@ public class UpdateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
                 "}";
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
+        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+
+        assertTrue(resp.getStatus() == Status.OK);
+
+        List<CourseUnitEntity> savedCourseUnits = StreamSupport.stream(courseUnitRepository.findAll(Pageable.unpaged()).spliterator(), false).collect(Collectors.toList());
+        assertTrue(savedCourseUnits != null);
+        assertEquals(1, savedCourseUnits.size());
+
+        CourseUnitEntity result = savedCourseUnits.get(0);
+        assertEquals(courseUnit.getStudyElementId(), result.getStudyElementId());
+        assertEquals(courseUnit.getStudyElementIdentifierCode(), result.getStudyElementIdentifierCode());
+        //assertEquals(courseUnit.getShortName(), result.getShortName());
+        assertEquals("jaksonnimi2 fi", result.getName().getValue("fi"));
+        assertEquals("jaksonnimi2 en", result.getName().getValue("en"));
+        assertEquals("jaksonnimi2 sv", result.getName().getValue("sv"));
+        assertNotNull(result.getCreatedTime());
+        assertNotNull(result.getUpdateTime());
+        assertEquals(CompositeIdentifiedEntityType.COURSE_UNIT, result.getType());
+        assertEquals(StudyStatus.ACTIVE, result.getStatus());
+        assertTrue(result.getCooperationNetworks().stream()
+            .allMatch(resultCn -> courseUnit.getCooperationNetworks().stream()
+                .anyMatch(cn -> cn.getId().equals(resultCn.getId())
+                    && cn.getName().getValue("fi").equals(resultCn.getName().getValue("fi"))
+                    && cn.getName().getValue("en").equals(resultCn.getName().getValue("en"))
+                    && cn.getName().getValue("sv").equals(resultCn.getName().getValue("sv"))
+                )));
+    }
+
+    @Test
+    public void testSendingUpdateCourseUnitMessage_withExpiredCooperationNetwork_shouldSucceed() throws JMSException {
+        String organizingOrganisationId = "TUNI";
+
+        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().minusDays(2));
+        LocalisedString originalName = new LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
+            "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
+        courseUnit.setStatus(StudyStatus.ACTIVE);
+        courseUnitRepository.create(courseUnit);
+
+        Validity validity = new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusDays(2));
+        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(network.getId(), network.getName(), Collections.singletonList(new NetworkOrganisation(organizingOrganisationId, true, validity)),
+            validity, true);
+        networkRepository.create(networkEntity);
+
+        String updateCourseUnitJson = """
+            {
+                "courseUnit": {
+                    "studyElementId": "ID1",
+                    "name": {
+                        "values": {
+                            "fi": "jaksonnimi2 fi",
+                            "en": "jaksonnimi2 en",
+                            "sv": "jaksonnimi2 sv"
+                        }
+                    },
+                    "cooperationNetworks": [
+                        {
+                            "id": "%s",
+                            "name": {
+                                "values": {
+                                    "fi": "Verkosto",
+                                    "en": null,
+                                    "sv": null
+                                }
+                            },
+                            "enrollable": true
+                        }
+                    ]
+                }
+            }""".formatted(networkEntity.getId());
+
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateCourseUnitJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
 
         assertTrue(resp.getStatus() == Status.OK);

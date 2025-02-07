@@ -1,9 +1,8 @@
 package fi.uta.ristiinopiskelu.persistence.repository;
 
-import org.elasticsearch.index.query.QueryBuilder;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.core.query.IndexQuery;
-import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.data.repository.NoRepositoryBean;
 
@@ -20,7 +19,7 @@ public interface ExtendedRepository<T, ID extends Serializable>
 
     T create(T instance, IndexQuery.OpType opType);
 
-    List<T> search(QueryBuilder query, Pageable pageable);
+    List<T> search(Query query, Pageable pageable);
 
     List<T> search(Query query);
 }

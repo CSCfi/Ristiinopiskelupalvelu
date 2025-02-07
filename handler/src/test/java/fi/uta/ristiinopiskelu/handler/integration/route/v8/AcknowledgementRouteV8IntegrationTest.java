@@ -38,8 +38,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -47,8 +47,10 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class AcknowledgementRouteV8IntegrationTest {
@@ -261,8 +263,8 @@ public class AcknowledgementRouteV8IntegrationTest {
         fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyRight hostStudyRight = DtoInitializerV8.getStudyRight(receivingOrganisation.getId());
 
         fi.uta.ristiinopiskelu.datamodel.dto.v8.ExtendedStudent registrationStudentV8 = new fi.uta.ristiinopiskelu.datamodel.dto.v8.ExtendedStudent();
-        registrationStudentV8.setOid("123.456789.12341234");
-        registrationStudentV8.setPersonId("010101-0101");
+        registrationStudentV8.setOid(registration.getStudent().getOid());
+        registrationStudentV8.setPersonId(registration.getStudent().getPersonId());
         registrationStudentV8.setHomeEppn("mactestington@eppn.fi");
         registrationStudentV8.setHomeStudentNumber("1234567");
         registrationStudentV8.setFirstNames("Testi");
@@ -270,8 +272,6 @@ public class AcknowledgementRouteV8IntegrationTest {
         registrationStudentV8.setGivenName("Testo");
         registrationStudentV8.setHostStudentNumber("1234566");
         registrationStudentV8.setHostEppn("testst@testi2.fi");
-        registrationStudentV8.setOid(registrationStudentV8.getOid());
-        registrationStudentV8.setPersonId(registrationStudentV8.getPersonId());
         registrationStudentV8.setHomeStudyRight(homeStudyRight);
         registrationStudentV8.setHostStudyRight(hostStudyRight);
 

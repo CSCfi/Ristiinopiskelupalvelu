@@ -10,7 +10,7 @@ import fi.uta.ristiinopiskelu.handler.utils.KeyHelper;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import javax.validation.Validator;
+import jakarta.validation.Validator;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;

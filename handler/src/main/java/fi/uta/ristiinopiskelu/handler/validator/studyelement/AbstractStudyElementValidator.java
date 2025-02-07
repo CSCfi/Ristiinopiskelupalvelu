@@ -2,7 +2,6 @@ package fi.uta.ristiinopiskelu.handler.validator.studyelement;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyElement;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
@@ -11,10 +10,9 @@ import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.impl.AbstractStudyElementService;
 import fi.uta.ristiinopiskelu.handler.utils.KeyHelper;
 import fi.uta.ristiinopiskelu.handler.validator.AbstractObjectValidator;
+import jakarta.validation.Validator;
 import org.springframework.util.CollectionUtils;
 
-import javax.validation.Validator;
-import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -92,15 +90,12 @@ public abstract class AbstractStudyElementValidator<T extends AbstractStudyEleme
         }
 
         for(CooperationNetwork cooperationNetwork : studyElement.getCooperationNetworks())  {
-            NetworkEntity networkEntity = networkService.findValidNetworkById(cooperationNetwork.getId()).orElseThrow(() ->
+            NetworkEntity networkEntity = networkService.findNetworkById(cooperationNetwork.getId()).orElseThrow(() ->
                 new UnknownCooperationNetworkValidationException("Study element type " + studyElementType + " with [studyElementId: " + studyElement.getStudyElementId()
                         + "] contains unknown cooperation network (" + cooperationNetwork.getId() + ")"));
 
             Predicate<NetworkOrganisation> isOrganisationInNetwork = networkOrg ->
-                    networkOrg.getOrganisationTkCode().equals(organisationId)
-                            && networkOrg.getValidityInNetwork().getStart().isBefore(OffsetDateTime.now())
-                            && ((networkOrg.getValidityInNetwork().getContinuity() == Validity.ContinuityEnum.INDEFINITELY)
-                            || (networkOrg.getValidityInNetwork().getEnd() != null && networkOrg.getValidityInNetwork().getEnd().isAfter(OffsetDateTime.now())));
+                    networkOrg.getOrganisationTkCode().equals(organisationId);
 
             if(networkEntity.getOrganisations().stream().noneMatch(isOrganisationInNetwork)) {
                 throw new NotMemberOfCooperationNetworkValidationException("Sending organisation does not belong to given cooperation network (" + cooperationNetwork.getId() + ")."

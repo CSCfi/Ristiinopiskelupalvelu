@@ -7,6 +7,14 @@ public class StudyRecordGroupingDates {
     private LocalDate start;
     private LocalDate end;
 
+    public StudyRecordGroupingDates() {
+    }
+
+    public StudyRecordGroupingDates(LocalDate start, LocalDate end) {
+        this.start = start;
+        this.end = end;
+    }
+
     public LocalDate getStart() {
         return start;
     }

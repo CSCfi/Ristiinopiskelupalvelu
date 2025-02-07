@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
@@ -13,7 +14,11 @@ public class RegistrationSelection {
     private RegistrationSelectionItemStatus selectionItemStatus;
     
     private String selectionItemStatusInfo;
+
+    // hidden for now, otherwise it will cause a stackoverflow due to an endless loop in springwolf
+    @Schema(hidden = true)
     private RegistrationSelection parent;
+
     private List<String> subGroupSelections;
     private Rank rank;
 

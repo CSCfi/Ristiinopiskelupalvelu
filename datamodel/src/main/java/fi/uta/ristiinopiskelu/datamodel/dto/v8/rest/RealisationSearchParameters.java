@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.rest;
 
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.CourseUnitReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Realisation;
@@ -46,6 +47,9 @@ public class RealisationSearchParameters extends PageableSearchParameters<Realis
 
     @Schema(description = "Rajaa toteutuksia niiden tilojen mukaan. Oletuksena palautetaan vain aktiiviset.")
     private List<StudyStatus> statuses = Arrays.asList(StudyStatus.ACTIVE);
+
+    @Schema(description = "Rajaa toteutuksia koulutusalojen mukaan. Oletuksena palautetaan kaikki.")
+    private List<MinEduGuidanceArea> minEduGuidanceAreas;
 
     public RealisationSearchParameters() {
         
@@ -151,5 +155,13 @@ public class RealisationSearchParameters extends PageableSearchParameters<Realis
 
     public void setStatuses(List<StudyStatus> statuses) {
         this.statuses = statuses;
+    }
+
+    public List<MinEduGuidanceArea> getMinEduGuidanceAreas() {
+        return minEduGuidanceAreas;
+    }
+
+    public void setMinEduGuidanceAreas(List<MinEduGuidanceArea> minEduGuidanceAreas) {
+        this.minEduGuidanceAreas = minEduGuidanceAreas;
     }
 }

@@ -1,12 +1,22 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.ListSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.SearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.SearchResults;
 import fi.uta.ristiinopiskelu.datamodel.entity.GenericEntity;
-import fi.uta.ristiinopiskelu.handler.exception.*;
+import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
+import fi.uta.ristiinopiskelu.handler.exception.DeleteFailedException;
+import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
+import fi.uta.ristiinopiskelu.handler.exception.InvalidSearchParametersException;
+import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.service.Service;
+import fi.uta.ristiinopiskelu.handler.service.result.AbstractEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.EntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.handler.utils.ExtendedBeanUtils;
 import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
 import org.modelmapper.ModelMapper;
@@ -43,6 +53,8 @@ public abstract class AbstractService<D, T extends GenericEntity, R> implements 
 
     protected abstract ExtendedRepository<T, String> getRepository();
 
+    protected abstract ObjectMapper getObjectMapper();
+
     protected abstract ModelMapper getModelMapper();
 
     protected boolean isValidateId() {
@@ -66,34 +78,34 @@ public abstract class AbstractService<D, T extends GenericEntity, R> implements 
     }
 
     @Override
-    public T create(T entity) throws CreateFailedException {
+    public List<? extends EntityModificationResult<?>> create(T entity) throws CreateFailedException {
         Assert.notNull(entity, "Entity cannot be null");
         if(isValidateId()) {
             Assert.isNull(entity.getId(), "Id should be null, but was " + entity.getId());
         }
         try {
-            return this.getRepository().create(entity);
+            return List.of(new GenericEntityModificationResult(ModificationOperationType.CREATE, null, this.getRepository().create(entity)));
         } catch (Exception e) {
             throw new CreateFailedException(getEntityClass(), e);
         }
     }
 
     @Override
-    public List<T> createAll(List<T> entities) throws CreateFailedException {
+    public List<? extends EntityModificationResult<?>> createAll(List<T> entities) throws CreateFailedException {
         Assert.notEmpty(entities, "Entities cannot be null or empty");
 
-        List<T> createdEntities = new ArrayList<>();
+        List<GenericEntityModificationResult> modificationResults = new ArrayList<>();
 
         for (T entity : entities) {
             if(isValidateId()) {
                 Assert.isNull(entity.getId(), "Id should be null, but was " + entity.getId());
             }
             try {
-                createdEntities.add(this.getRepository().create(entity));
+                modificationResults.add(new GenericEntityModificationResult(ModificationOperationType.CREATE, null, this.getRepository().create(entity)));
             } catch (Exception e) {
-                logger.error("Error while persisting entity {}, attempting to delete {} already persisted from index", entity, createdEntities.size(), e);
+                logger.error("Error while persisting entity {}, attempting to delete {} already persisted from index", entity, modificationResults.size(), e);
 
-                for (T created : createdEntities) {
+                for (GenericEntity created : modificationResults.stream().map(AbstractEntityModificationResult::getCurrent).toList()) {
                     try {
                         getRepository().deleteById(created.getId());
                         logger.info("Successfully deleted entity with id {}", created.getId());
@@ -106,26 +118,29 @@ public abstract class AbstractService<D, T extends GenericEntity, R> implements 
             }
         }
 
-        return createdEntities;
+        return modificationResults;
     }
 
     @Override
-    public T update(T entity) throws UpdateFailedException {
+    public List<? extends EntityModificationResult<?>> update(T entity) throws UpdateFailedException {
         Assert.notNull(entity, "Entity cannot be null");
         try {
-            return this.getRepository().update(entity);
+            T original = copy(entity, entityClass);
+            entity = this.getRepository().update(entity);
+            return List.of(new GenericEntityModificationResult(ModificationOperationType.UPDATE, original, entity));
         } catch (Exception e) {
             throw new UpdateFailedException(getEntityClass(), entity.getId(), e);
         }
     }
 
     @Override
-    public T deleteById(String id) throws DeleteFailedException {
+    public List<? extends EntityModificationResult<?>> deleteById(String id) throws DeleteFailedException {
         Assert.hasText(id, "Entity id cannot be empty");
         try {
-            T original = this.getRepository().findById(id).orElseThrow(() -> new EntityNotFoundException(this.entityClass, id));
-            this.getRepository().delete(original);
-            return original;
+            T original = this.getRepository().findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(this.entityClass, id));
+            this.getRepository().deleteById(id);
+            return List.of(new GenericEntityModificationResult(ModificationOperationType.DELETE, original, null));
         } catch (Exception e) {
             throw new DeleteFailedException(getEntityClass(), id, e);
         }
@@ -169,6 +184,15 @@ public abstract class AbstractService<D, T extends GenericEntity, R> implements 
                 .collect(Collectors.toList()));
         } catch (Exception e) {
             throw new FindFailedException(getEntityClass(), e);
+        }
+    }
+
+    @Override
+    public <A> A copy(A original, Class<? extends A> type) {
+        try {
+            return getObjectMapper().readValue(getObjectMapper().writeValueAsString(original), type);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Entity serialisation failed", e);
         }
     }
 

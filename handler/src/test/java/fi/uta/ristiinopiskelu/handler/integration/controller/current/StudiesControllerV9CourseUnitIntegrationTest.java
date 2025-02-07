@@ -44,8 +44,10 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-@ExtendWith(EmbeddedActiveMQInitializer .class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("integration")

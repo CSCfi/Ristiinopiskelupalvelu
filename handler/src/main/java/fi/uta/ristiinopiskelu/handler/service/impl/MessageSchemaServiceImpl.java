@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.messageschema.MessageSchemaReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.messageschema.MessageSchemaWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.MessageSchemaEntity;
@@ -22,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -43,13 +43,21 @@ public class MessageSchemaServiceImpl extends AbstractService<MessageSchemaWrite
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private ObjectMapper objectMapper;
     
-    @Value("${general.messageSchema.version}")
-    private int messageSchemaVersion;
+    @Value("${general.message-schema.version.current}")
+    private int currentMessageSchemaVersion;
 
     @Override
     protected MessageSchemaRepository getRepository() {
         return schemaVersionRepository;
+    }
+
+    @Override
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
     }
 
     @Override
@@ -60,7 +68,22 @@ public class MessageSchemaServiceImpl extends AbstractService<MessageSchemaWrite
 
     @Override
     public int getCurrentSchemaVersion() {
-        return this.messageSchemaVersion;
+        return this.currentMessageSchemaVersion;
+    }
+
+    @Override
+    public List<Integer> getSupportedSchemaVersions() {
+        return messageTypeProvider.getAvailableVersions();
+    }
+
+    @Override
+    public boolean isSchemaVersionSupported(int version) {
+        return messageTypeProvider.hasMessageTypeForVersion(version);
+    }
+
+    @Override
+    public String getSchemaVersionPath(MessageGroup messageGroup, String schemaFile, String versionPattern) {
+        return this.formatSchemaVersionPath(messageGroup, schemaFile, versionPattern);
     }
 
     @Override
@@ -71,11 +94,6 @@ public class MessageSchemaServiceImpl extends AbstractService<MessageSchemaWrite
     @Override
     public int getPreviousSchemaVersion() {
         return this.getCurrentSchemaVersion() - 1;
-    }
-
-    @Override
-    public String getPreviousSchemaVersionPath(MessageGroup messageGroup, String schemaFile) {
-        return this.formatSchemaVersionPath(messageGroup, schemaFile, this.getPreviousSchemaVersion());
     }
 
     @Override
@@ -91,26 +109,21 @@ public class MessageSchemaServiceImpl extends AbstractService<MessageSchemaWrite
     }
 
     @Override
-    public <S, T> List<T> convertObjects(List<S> objects, Class<S> sourceType, Class<T> targetType) {
-        Assert.notEmpty(objects, "Objects cannot be empty");
-        List<T> converted = new ArrayList<>();
-        for(Object object : objects) {             
-            converted.add(messageSchemaConverterProvider.getConverter(sourceType, targetType).convertObject(object));
-        }
-        return converted;
-    }
-
-    @Override
     public <S, T> JsonNode convertJson(JsonNode jsonNode, Class<S> sourceType, Class<T> targetType) {
         logger.debug("Converting JSON from sourceType {} to targetType {}", sourceType, targetType);
         return messageSchemaConverterProvider.getConverter(sourceType, targetType).convertJson(jsonNode);
     }
 
-    protected String formatSchemaVersionPath(MessageGroup messageGroup, String schemaFile, int schemaVersion) {
+    protected String formatSchemaVersionPath(MessageGroup messageGroup, String schemaFile, String schemaVersionPattern) {
         Assert.notNull(messageGroup, "MessageGroup cannot be null");
         Assert.hasText(schemaFile, "Schema file cannot be empty");
+        Assert.hasText(schemaVersionPattern, "Schema version pattern cannot be empty");
 
-        String path = String.format(MESSAGE_SCHEMA_FILE_PATTERN, schemaVersion, messageGroup.name().toLowerCase(), schemaFile);
+        return String.format(MESSAGE_SCHEMA_FILE_PATTERN, schemaVersionPattern, messageGroup.name().toLowerCase(), schemaFile);
+    }
+
+    protected String formatSchemaVersionPath(MessageGroup messageGroup, String schemaFile, int schemaVersion) {
+       String path = formatSchemaVersionPath(messageGroup, schemaFile, String.valueOf(schemaVersion));
 
         try(InputStream schemaFileInputStream = this.getClass().getResourceAsStream(path)) {
             if(schemaFileInputStream == null || schemaFileInputStream.available() == 0) {
@@ -124,7 +137,7 @@ public class MessageSchemaServiceImpl extends AbstractService<MessageSchemaWrite
     }
 
     @Override
-    public void afterPropertiesSet() throws Exception {
-        logger.info("Using JMS message schema version {}", this.messageSchemaVersion);
+    public void afterPropertiesSet() {
+        logger.info("Using JMS message schema version {}", this.currentMessageSchemaVersion);
     }
 }

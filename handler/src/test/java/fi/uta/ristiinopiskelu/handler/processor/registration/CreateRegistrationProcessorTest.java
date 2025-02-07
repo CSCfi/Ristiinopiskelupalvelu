@@ -18,6 +18,8 @@ import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.handler.service.RegistrationService;
 import fi.uta.ristiinopiskelu.handler.service.StudentService;
+import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.handler.validator.registration.CreateRegistrationValidator;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
@@ -41,11 +43,13 @@ import java.text.SimpleDateFormat;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(SpringExtension.class)
@@ -131,8 +135,9 @@ public class CreateRegistrationProcessorTest {
 
         doNothing().when(validator).validateRequest(any(), any());
         when(organisationService.findById(any())).thenReturn(Optional.of(sendingOrganisationEntity));
-        when(registrationService.create(any())).thenReturn(regEntity);
-
+        when(registrationService.create(any())).thenReturn(List.of(new GenericEntityModificationResult(ModificationOperationType.CREATE, null, regEntity)));
+        when(studentService.findByOidOrPersonId(eq(registrationRequest.getPersonOid()), eq(registrationRequest.getPersonId()), any())).thenReturn(Collections.emptyList());
+        
         processor.process(exchange);
 
         verify(registrationService, times(1)).create(any());

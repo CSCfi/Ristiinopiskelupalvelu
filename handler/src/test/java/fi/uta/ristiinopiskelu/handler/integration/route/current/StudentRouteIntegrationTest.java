@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.mpolla.HetuUtil;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
@@ -21,8 +22,11 @@ import fi.uta.ristiinopiskelu.messaging.message.current.registration.ForwardedCr
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.RegistrationReplyRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.RegistrationResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.*;
+import fi.uta.ristiinopiskelu.messaging.util.Oid;
 import fi.uta.ristiinopiskelu.persistence.repository.*;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,12 +37,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.util.CollectionUtils;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -50,8 +53,10 @@ import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class StudentRouteIntegrationTest {
@@ -86,7 +91,7 @@ public class StudentRouteIntegrationTest {
     @Autowired
     private ModelMapper modelMapper;
 
-    @Value("${general.messageSchema.version}")
+    @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
     @BeforeEach
@@ -249,9 +254,6 @@ public class StudentRouteIntegrationTest {
 
         studentEntities = StreamSupport.stream(studentRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studentEntities.size());
-        assertEquals(1, studentEntities.get(0).getStatuses().size());
-        assertEquals(receivingOrganisation.getId(), studentEntities.get(0).getStatuses().get(0).getOrganisationId());
-        assertEquals(StudentStatus.UPDATED, studentEntities.get(0).getStatuses().get(0).getStatus());
 
         Message forwardedUpdateStatusMessage = jmsTemplate.receive(sendingOrganisation.getQueue());
         ForwardedUpdateStudentReplyRequest receivedForwardedUpdateStatusMessage = (ForwardedUpdateStudentReplyRequest) jmsTemplate.getMessageConverter().fromMessage(forwardedUpdateStatusMessage);
@@ -758,9 +760,6 @@ public class StudentRouteIntegrationTest {
 
         studentEntities = StreamSupport.stream(studentRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studentEntities.size());
-        assertEquals(1, studentEntities.get(0).getStatuses().size());
-        assertEquals(receivingOrganisation.getId(), studentEntities.get(0).getStatuses().get(0).getOrganisationId());
-        assertEquals(StudentStatus.UPDATED, studentEntities.get(0).getStatuses().get(0).getStatus());
 
         Message forwardedCancelStatusMessage = jmsTemplate.receive(sendingOrganisation.getQueue());
         ForwardedUpdateStudentStudyRightReplyRequest receivedForwardedCancelStatusMessage =
@@ -853,8 +852,8 @@ public class StudentRouteIntegrationTest {
 
         // now send update study right message
         UpdateStudentStudyRightRequest updateStudentStudyRightRequest = new UpdateStudentStudyRightRequest();
-        updateStudentStudyRightRequest.setPersonId("12345678-1234");
-        updateStudentStudyRightRequest.setOid("123123.4324.12333");
+        updateStudentStudyRightRequest.setPersonId(HetuUtil.generateRandom());
+        updateStudentStudyRightRequest.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
 
         StudyRightStatus studyRightStatus = new StudyRightStatus();
         studyRightStatus.setStudyRightStatusValue(StudyRightStatusValue.ENDED);
@@ -873,13 +872,8 @@ public class StudentRouteIntegrationTest {
         StudentResponse cancelResp = (StudentResponse) jmsTemplate.getMessageConverter().fromMessage(cancelResponseMessage);
         assertTrue(cancelResp.getStatus() == Status.OK);
 
-        // Verify student entity statuses marked correctly
         List<StudentEntity> studentEntities = StreamSupport.stream(studentRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studentEntities.size());
-        assertTrue(studentEntities.get(0).getStatuses().stream().anyMatch(
-            s -> s.getOrganisationId().equals(receivingOrganisation.getId()) && s.getStatus() == StudentStatus.PENDING));
-        assertTrue(studentEntities.get(0).getStatuses().stream().anyMatch(
-            s -> s.getOrganisationId().equals(receivingOrganisation2.getId()) && s.getStatus() == StudentStatus.PENDING));
 
         // check if the organisation as a receiver in registration request actually got the update message
         Message updateMessageReceivedInOrganisation = jmsTemplate.receive(receivingOrganisation.getQueue());
@@ -939,8 +933,8 @@ public class StudentRouteIntegrationTest {
         ExtendedStudent student = new ExtendedStudent();
         student.setHomeStudyRight(homeStudyRight);
         student.setHostStudyRight(hostStudyRight);
-        student.setOid("1231.124124.44");
-        student.setPersonId("123464-1111");
+        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        student.setPersonId(HetuUtil.generateRandom());
 
         RegistrationEntity registrationEntity = EntityInitializer.getRegistrationEntity(sendingOrganisation.getId(), receivingOrganisation.getId(),
             null, RegistrationStatus.REGISTERED, null);
@@ -988,22 +982,25 @@ public class StudentRouteIntegrationTest {
         StudentResponse cancelResp = (StudentResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(cancelResp.getStatus() == Status.OK);
 
-        // Verify student entity statuses marked correctly only in the first receiving organisation, not second
+        // Status at this point:
+        // Student has two home organizations, ORG1 (OIK1) and ORG2 (OIK2)
+        // She has registered to two other schools, ORG3 (OIK2) from ORG1, and ORG4 (OIK3) from ORG2
+        // Student info has been updated at ORG1. This update should be delivered (only) to ORG3.
+
+        // Verify that we have one student entity (due to one update)
         List<StudentEntity> studentEntities = StreamSupport.stream(studentRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studentEntities.size());
-        assertEquals(1, studentEntities.get(0).getStatuses().size());
 
-        UpdateStatus updateStatus = studentEntities.get(0).getStatuses().get(0);
-        assertTrue(updateStatus.getOrganisationId().equals(receivingOrganisation.getId()) && updateStatus.getStatus() == StudentStatus.PENDING);
-
-        // check if the organisation as a receiver in registration request actually got the update message
+        // Check if the organisation as a receiver in registration request actually got the update message
         Message updateMessageReceivedInOrganisation = jmsTemplate.receive(receivingOrganisation.getQueue());
         ForwardedUpdateStudentRequest receivedUpdateRequest =
             (ForwardedUpdateStudentRequest) jmsTemplate.getMessageConverter().fromMessage(updateMessageReceivedInOrganisation);
 
-        // Test host study right set
+        // Test host study right set, and some other fields
         assertEquals(1, receivedUpdateRequest.getHostStudyRightIdentifiers().size());
         assertTrue(receivedUpdateRequest.getHostStudyRightIdentifiers().stream().anyMatch(i -> i.equals(hostStudyRightIdentifiers)));
+        assertEquals(updateStudentRequest.getFirstNames(), receivedUpdateRequest.getFirstNames());
+        assertEquals(updateStudentRequest.getSurName(), receivedUpdateRequest.getSurName());
 
         // make sure that the second receivingOrganisation did not get any updates
         jmsTemplate.setReceiveTimeout(1000);
@@ -1048,8 +1045,8 @@ public class StudentRouteIntegrationTest {
         ExtendedStudent student = new ExtendedStudent();
         student.setHomeStudyRight(studyRightToUpdate);
         student.setHostStudyRight(hostStudyRight);
-        student.setOid("1231.124124.44");
-        student.setPersonId("123464-1111");
+        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        student.setPersonId(HetuUtil.generateRandom());
 
         registrationEntity.setStudent(student);
         registrationRepository.create(registrationEntity);
@@ -1115,7 +1112,7 @@ public class StudentRouteIntegrationTest {
         student4.setHomeStudyRight(studyRightToUpdate);
         student4.setHostStudyRight(hostStudyRight4);
         student4.setOid(null);
-        student4.setPersonId("OTHER-PERSONID");
+        student4.setPersonId(HetuUtil.generateRandom());
 
         registrationEntityForOtherOrgWithOtherPersonId.setStudent(student4);
         registrationRepository.create(registrationEntityForOtherOrgWithOtherPersonId);
@@ -1132,13 +1129,20 @@ public class StudentRouteIntegrationTest {
         StudentResponse cancelResp = (StudentResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(cancelResp.getStatus() == Status.OK);
 
-        // Verify student entity statuses marked correctly
+        // Status at this point
+        // Student of ORG1 with Oid1 and PersonId1, having home study right OIK1, has the following registrations:
+        // - 2x to ORG2 using host study right OIK2
+        // - To ORG2 using host study right OIK3
+        // - To ORG3 using host study right OIK4
+        // The same student (ORG1, OIK1) has also the following registration, but with different PersonId2 and no Oid:
+        // - To ORG3 using host study right OIK5
+        // Then ORG1 sends update with Oid1 and PersonId2.
+
+        // The update concerns all registrations (first four due to Oid1 match and the fifth one due to PersonId2 match).
+
+        // Check that the entity regarding the update message was created
         List<StudentEntity> studentEntities = StreamSupport.stream(studentRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studentEntities.size());
-        assertTrue(studentEntities.get(0).getStatuses().stream().anyMatch(
-            s -> s.getOrganisationId().equals(receivingOrganisation.getId()) && s.getStatus() == StudentStatus.PENDING));
-        assertTrue(studentEntities.get(0).getStatuses().stream().anyMatch(
-            s -> s.getOrganisationId().equals(receivingOrganisation2.getId()) && s.getStatus() == StudentStatus.PENDING));
 
         // check if the organisation as a receiver in registration request actually got the update message
         Message updateMessageReceivedInOrganisation = jmsTemplate.receive(receivingOrganisation.getQueue());
@@ -1147,8 +1151,8 @@ public class StudentRouteIntegrationTest {
 
         // Test host study right set
         assertEquals(2, receivedUpdateRequest.getHostStudyRightIdentifiers().size());
-        assertTrue(receivedUpdateRequest.getHostStudyRightIdentifiers().stream().anyMatch(i -> i.equals(hostStudyRightIdentifiers)));
-        assertTrue(receivedUpdateRequest.getHostStudyRightIdentifiers().stream().anyMatch(i -> i.equals(hostStudyRightIdentifiers2)));
+        assertTrue(receivedUpdateRequest.getHostStudyRightIdentifiers().stream().anyMatch(i -> i.equals(hostStudyRightIdentifiers))); // OIK2
+        assertTrue(receivedUpdateRequest.getHostStudyRightIdentifiers().stream().anyMatch(i -> i.equals(hostStudyRightIdentifiers2))); // OIK3
 
         // check if the organisation 2 as a receiver in registration request actually got the update message
         Message updateMessageReceivedInOrganisation2 = jmsTemplate.receive(receivingOrganisation2.getQueue());
@@ -1156,8 +1160,8 @@ public class StudentRouteIntegrationTest {
 
         // Test host study right set
         assertEquals(2, receivedUpdateRequest.getHostStudyRightIdentifiers().size());
-        assertTrue(receivedUpdateRequest.getHostStudyRightIdentifiers().stream().anyMatch(i -> i.equals(hostStudyRightIdentifiers3)));
-        assertTrue(receivedUpdateRequest.getHostStudyRightIdentifiers().stream().anyMatch(i -> i.equals(hostStudyRightIdentifiers4)));
+        assertTrue(receivedUpdateRequest.getHostStudyRightIdentifiers().stream().anyMatch(i -> i.equals(hostStudyRightIdentifiers3))); // OIK4
+        assertTrue(receivedUpdateRequest.getHostStudyRightIdentifiers().stream().anyMatch(i -> i.equals(hostStudyRightIdentifiers4))); // OIK5
     }
 
     @Test
@@ -1168,8 +1172,8 @@ public class StudentRouteIntegrationTest {
         organisationRepository.create(sendingOrganisation);
 
         UpdateStudentRequest updateStudentRequest = new UpdateStudentRequest();
-        updateStudentRequest.setOid("1234.123.12345678");
-        updateStudentRequest.setPersonId("021211-HETU");
+        updateStudentRequest.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        updateStudentRequest.setPersonId(HetuUtil.generateRandom());
         updateStudentRequest.setCountryOfCitizenship(Collections.singletonList(Country.AI));
         updateStudentRequest.setFirstNames("Jaska");
         updateStudentRequest.setSurName("Jokunen");
@@ -1179,7 +1183,8 @@ public class StudentRouteIntegrationTest {
         assertTrue(updateResp.getStatus() == Status.FAILED);
         assertTrue(updateResp.getMessage().contains("Stopped handling update student -message"));
 
-        List<StudentEntity> studentEntities = studentRepository.findByOidOrPersonIdOrderByTimestampDesc(updateStudentRequest.getOid(), updateStudentRequest.getPersonId());
+        List<StudentEntity> studentEntities = studentRepository.findByOidOrPersonId(updateStudentRequest.getOid(),
+                updateStudentRequest.getPersonId(), Pageable.unpaged());
         assertTrue(CollectionUtils.isEmpty(studentEntities));
     }
 
@@ -1192,8 +1197,8 @@ public class StudentRouteIntegrationTest {
 
         // now send update study right message
         UpdateStudentStudyRightRequest updateStudentStudyRightRequest = new UpdateStudentStudyRightRequest();
-        updateStudentStudyRightRequest.setPersonId("12345678-1234");
-        updateStudentStudyRightRequest.setOid("123123.4324.12333");
+        updateStudentStudyRightRequest.setPersonId(HetuUtil.generateRandom());
+        updateStudentStudyRightRequest.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
 
         StudyRightIdentifier studyRightIdentifier = new StudyRightIdentifier();
         studyRightIdentifier.setStudyRightId("OIK1");
@@ -1218,8 +1223,8 @@ public class StudentRouteIntegrationTest {
         assertTrue(updateStudyRightResp.getMessage().contains(studyRightIdentifier.getStudyRightId()));
         assertTrue(updateStudyRightResp.getMessage().contains(studyRightIdentifier.getOrganisationTkCodeReference()));
 
-        List<StudentEntity> studentEntities = studentRepository.findByOidOrPersonIdOrderByTimestampDesc(
-            updateStudentStudyRightRequest.getOid(), updateStudentStudyRightRequest.getPersonId());
+        List<StudentEntity> studentEntities = studentRepository.findByOidOrPersonId(updateStudentStudyRightRequest.getOid(),
+                updateStudentStudyRightRequest.getPersonId(), Pageable.unpaged());
         assertTrue(CollectionUtils.isEmpty(studentEntities));
     }
 
@@ -1413,12 +1418,8 @@ public class StudentRouteIntegrationTest {
 
         studentEntities = StreamSupport.stream(studentRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studentEntities.size());
-        assertEquals(1, studentEntities.get(0).getStatuses().size());
-        assertEquals(receivingOrganisation.getId(), studentEntities.get(0).getStatuses().get(0).getOrganisationId());
-        assertEquals(StudentStatus.REJECTED, studentEntities.get(0).getStatuses().get(0).getStatus());
-        assertEquals(replyMessage.getRejectionReason().getValue("fi"), studentEntities.get(0).getStatuses().get(0).getRejectionReason().getValue("fi"));
-        assertEquals(replyMessage.getRejectionReason().getValue("en"), studentEntities.get(0).getStatuses().get(0).getRejectionReason().getValue("en"));
-        assertEquals(replyMessage.getRejectionReason().getValue("sv"), studentEntities.get(0).getStatuses().get(0).getRejectionReason().getValue("sv"));
+
+        // Finally ensure that the original update sender received the REJECTED reply.
 
         Message forwardedCancelStatusMessage = jmsTemplate.receive(sendingOrganisation.getQueue());
         ForwardedUpdateStudentStudyRightReplyRequest receivedForwardedCancelStatusMessage =
@@ -1585,12 +1586,6 @@ public class StudentRouteIntegrationTest {
 
         studentEntities = StreamSupport.stream(studentRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studentEntities.size());
-        assertEquals(1, studentEntities.get(0).getStatuses().size());
-        assertEquals(receivingOrganisation.getId(), studentEntities.get(0).getStatuses().get(0).getOrganisationId());
-        assertEquals(StudentStatus.UPDATED, studentEntities.get(0).getStatuses().get(0).getStatus());
-        assertEquals(updateReplyMessage.getRejectionReason().getValue("fi"), studentEntities.get(0).getStatuses().get(0).getRejectionReason().getValue("fi"));
-        assertEquals(updateReplyMessage.getRejectionReason().getValue("en"), studentEntities.get(0).getStatuses().get(0).getRejectionReason().getValue("en"));
-        assertEquals(updateReplyMessage.getRejectionReason().getValue("sv"), studentEntities.get(0).getStatuses().get(0).getRejectionReason().getValue("sv"));
 
         Message forwardedUpdateStatusMessage = jmsTemplate.receive(sendingOrganisation.getQueue());
         ForwardedUpdateStudentReplyRequest receivedForwardedUpdateStatusMessage = (ForwardedUpdateStudentReplyRequest) jmsTemplate.getMessageConverter().fromMessage(forwardedUpdateStatusMessage);

@@ -16,7 +16,7 @@
       </v-btn>
 
       <v-text-field
-        :disabled="!isSuperUser || !newOrganisation"
+        :readonly="!isSuperUser || !newOrganisation"
         v-model="currentOrganisation.id"
         :label="$t('organisation.organisationTkCode')"
         :rules="[requiredRule]"

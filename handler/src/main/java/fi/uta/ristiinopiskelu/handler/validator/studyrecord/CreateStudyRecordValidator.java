@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.validator.studyrecord;
 
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.CompletedCredit;
@@ -18,6 +19,7 @@ import org.springframework.util.StringUtils;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 @Component
 public class CreateStudyRecordValidator implements RequestValidator<CreateStudyRecordRequest> {
@@ -59,7 +61,7 @@ public class CreateStudyRecordValidator implements RequestValidator<CreateStudyR
         NetworkEntity givenNetwork = null;
 
         if(StringUtils.hasText(studyRecord.getNetworkIdentifier())) {
-            givenNetwork = networkService.findValidNetworkById(studyRecord.getNetworkIdentifier())
+            givenNetwork = networkService.findValidNetworkById(studyRecord.getNetworkIdentifier(), true, false)
                 .orElseThrow(() -> new ValidNetworkNotFoundValidationException("Could not find valid network with given network id: " + studyRecord.getNetworkIdentifier()));
 
             if(!isOrganisationValidInNetwork(givenNetwork, studyRecord.getSendingOrganisation())) {
@@ -97,12 +99,11 @@ public class CreateStudyRecordValidator implements RequestValidator<CreateStudyR
         }
     }
 
-    private RegistrationEntity getValidRegistrations(StudyRecordStudent student, CompletedCredit completedCredit,
-                                                               String sendingOrganisation) {
+    private RegistrationEntity getValidRegistrations(StudyRecordStudent student, CompletedCredit completedCredit, String sendingOrganisation) {
 
         String completedCreditTargetId = completedCredit.getCompletedCreditTarget().getCompletedCreditTargetId();
         CompletedCreditTargetType completedCreditTargetType = completedCredit.getCompletedCreditTarget().getCompletedCreditTargetType();
-        CompositeIdentifiedEntity entity = null;
+        CompositeIdentifiedEntity entity;
 
         switch (completedCreditTargetType) {
             case DEGREE:
@@ -125,24 +126,35 @@ public class CreateStudyRecordValidator implements RequestValidator<CreateStudyR
         }
 
         Optional<RegistrationEntity> latestRegistrationOptional = registrationService.findByStudentAndSelectionsReplies(student, entity.getElementId(),
-                entity.getOrganizingOrganisationId(), completedCreditTargetType.name()).stream().max(Comparator.comparing(RegistrationEntity::getEnrolmentDateTime));
+                entity.getOrganizingOrganisationId(), completedCreditTargetType.name()).stream()
+            .max(Comparator.comparing(compare -> compare.getReceivingDateTime() != null ? compare.getReceivingDateTime() : compare.getEnrolmentDateTime()));
 
         if(latestRegistrationOptional.isPresent()) {
             RegistrationEntity latestRegistration = latestRegistrationOptional.get();
-            if(latestRegistration.getStatus() == RegistrationStatus.REGISTERED &&
-                latestRegistration.getSelectionsReplies().stream().anyMatch(sr -> sr.getSelectionItemId().equals(completedCreditTargetId) &&
-                    sr.getSelectionItemStatus() == RegistrationSelectionItemStatus.ACCEPTED)) {
+            if(latestRegistration.getStatus() == RegistrationStatus.REGISTERED && latestRegistration.getSelectionsReplies()
+                .stream()
+                .anyMatch(isAcceptedRegistrationSelection(completedCreditTargetId))) {
                 return latestRegistration;
             }
         }
 
         return null;
     }
+
+    private Predicate<RegistrationSelection> isAcceptedRegistrationSelection(String completedCreditTargetId) {
+        return new Predicate<>() {
+
+            @Override
+            public boolean test(RegistrationSelection registrationSelection) {
+                return registrationSelection != null && ((registrationSelection.getSelectionItemId().equals(completedCreditTargetId) &&
+                    registrationSelection.getSelectionItemStatus() == RegistrationSelectionItemStatus.ACCEPTED) || test(registrationSelection.getParent()));
+            }
+        };
+    }
                                                                                     
     protected boolean isOrganisationValidInNetwork(NetworkEntity networkEntity, String organisation) {
         return networkEntity.getOrganisations().stream().anyMatch(o -> o.getOrganisationTkCode().equals(organisation)
             && (o.getValidityInNetwork() != null)
-            && (o.getValidityInNetwork().getStart() != null && DateUtils.isBeforeOrEqual(o.getValidityInNetwork().getStart(), OffsetDateTime.now()))
-            && (o.getValidityInNetwork().getEnd() == null || DateUtils.isAfterOrEqual(o.getValidityInNetwork().getEnd(), OffsetDateTime.now())));
+            && (o.getValidityInNetwork().getStart() != null && DateUtils.isBeforeOrEqual(o.getValidityInNetwork().getStart(), OffsetDateTime.now())));
     }
 }

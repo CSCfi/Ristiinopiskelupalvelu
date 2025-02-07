@@ -14,6 +14,7 @@ import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyModuleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.MultiValueMap;
@@ -31,6 +32,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * TODO: @DirtiesContext is a quick'n'dirty fix here, should _NOT_ be necessary. Removing it will make
+ * StudyRecordRouteIntegrationTest#testSendingCreateStudyRecordMessageForCourseUnit_withOnlyTestPersonsAllowed_shouldFail() test case
+ * fail mystically when running *all* tests in handler. Probably something to do with MockMvc use here, all controller integration
+ * tests should probably be refactored to use TestRestTemplate or something similar that does actual requests. Just a hunch though.
+ */
+@DirtiesContext
 public class AbstractStudiesControllerV9IntegrationTest {
 
     @Autowired

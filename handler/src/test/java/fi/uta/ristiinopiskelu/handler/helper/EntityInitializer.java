@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.helper;
 
+import com.github.mpolla.HetuUtil;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
@@ -11,6 +12,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.RoutingTy
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.messaging.util.Oid;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -155,8 +157,8 @@ public class EntityInitializer {
         StudyRight hostStudyRight = DtoInitializer.getStudyRight(receivingOrganisationId);
 
         ExtendedStudent student = new ExtendedStudent();
-        student.setOid("123.456789.12341234");
-        student.setPersonId("010101-0101");
+        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        student.setPersonId(HetuUtil.generateRandom());
         student.setHomeEppn("mactestington@eppn.fi");
         student.setHomeStudentNumber("1234567");
         student.setFirstNames("Testi");
@@ -164,8 +166,6 @@ public class EntityInitializer {
         student.setGivenName("Testo");
         student.setHostStudentNumber("1234566");
         student.setHostEppn("testst@testi2.fi");
-        student.setOid(student.getOid());
-        student.setPersonId(student.getPersonId());
         student.setHomeStudyRight(homeStudyRight);
         student.setHostStudyRight(hostStudyRight);
 

@@ -3,8 +3,8 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.validation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeReference;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 
 public class DelegatingCodeSetConstraintValidator implements ConstraintValidator<CodeSetConstraint, CodeReference> {
 

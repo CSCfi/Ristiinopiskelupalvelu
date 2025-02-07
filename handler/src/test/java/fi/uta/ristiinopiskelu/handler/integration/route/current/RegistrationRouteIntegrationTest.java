@@ -1,10 +1,14 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.mpolla.HetuUtil;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.Rank;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
@@ -13,10 +17,14 @@ import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.helper.*;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.JsonValidationFailedResponse;
+import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.*;
+import fi.uta.ristiinopiskelu.messaging.util.Oid;
 import fi.uta.ristiinopiskelu.persistence.repository.*;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,19 +38,22 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class RegistrationRouteIntegrationTest {
@@ -78,7 +89,7 @@ public class RegistrationRouteIntegrationTest {
     @Autowired
     private ModelMapper modelMapper;
 
-    @Value("${general.messageSchema.version}")
+    @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
     private NetworkEntity testNetwork;
@@ -204,6 +215,112 @@ public class RegistrationRouteIntegrationTest {
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() == RegistrationSelectionItemStatus.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getRank().equals(selectionRank)));
+    }
+
+    @Test
+    public void testSendingCourseUnitRegistrationStatusMessage_withInvalidStudentAddressCountryCode_shouldFail() throws JMSException {
+        String jsonContent = """
+            {
+              "sendingOrganisationTkCode" : "TESTORG1",
+              "receivingOrganisationTkCode" : "TESTORG2",
+              "student" : {
+                "homeEppn" : "masa@tuni.fi",
+                "hostEppn" : null,
+                "firstNames" : "Matti",
+                "surName" : "Nykänen",
+                "givenName" : "Matti",
+                "oid" : "1.2.246.562.24.35312849665",
+                "personId" : "230976-156R",
+                "homeStudentNumber" : "1234-1234",
+                "hostStudentNumber" : null,
+                "hostStudyRight" : null,
+                "homeStudyRight" : {
+                  "identifiers" : {
+                    "organisationTkCodeReference" : "TESTORG1",
+                    "studyRightId" : "OPISKOIK1"
+                  },
+                  "studyRightStatus" : {
+                    "studyRightStatusValue" : 1,
+                    "startDate" : "2017-01-01",
+                    "endDate" : "2020-06-01"
+                  },
+                  "studyRightType" : null,
+                  "keywords" : [ {
+                    "key" : "testkey",
+                    "value" : {
+                      "values" : {
+                        "fi" : "value fi",
+                        "en" : "value en",
+                        "sv" : "value sv"
+                      }
+                    },
+                    "keySet" : "testKeySet",
+                    "keySetValue" : null
+                  } ]
+                },
+                "dateOfBirth" : "1950-01-01",
+                "gender" : 1,
+                "addresses" : [ {
+                  "street" : "Kotikatu 1",
+                  "postalCode" : "33100",
+                  "postOffice" : "Peräkylä",
+                  "country" : "2342"
+                } ],
+                "countryOfCitizenship" : null,
+                "municipalityOfResidence" : null,
+                "motherTongue" : "fi",
+                "preferredLanguage" : null,
+                "email" : null,
+                "phone" : null,
+                "safetyProhibition" : null
+              },
+              "networkIdentifier" : "CN-1",
+              "networkDescription" : null,
+              "selections" : [ {
+                "selectionItemId" : "OJ1",
+                "selectionItemType" : "COURSE_UNIT",
+                "selectionItemStatus" : 1,
+                "selectionItemStatusInfo" : null,
+                "parent" : null,
+                "subGroupSelections" : null,
+                "rank" : null
+              } ],
+              "enrolmentDateTime" : "2024-01-12T13:07:35.222+02:00",
+              "warnings" : null,
+              "descriptions" : null
+            }
+            """;
+
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, jsonContent, MessageType.CREATE_REGISTRATION_REQUEST.name(), sendingOrganisation.getId());
+        JsonValidationFailedResponse resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(resp.getStatus() == Status.FAILED);
+        assertTrue(resp.getMessage().contains("$.student.addresses[0].country: does not have a value in the enumeration"));
+    }
+
+    @Test
+    public void testSendingCourseUnitRegistration_registrationRequestIdMatchesEntityId_shouldSucceed() throws JMSException {
+        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+            true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
+            Collections.singletonList(cooperationNetwork), new LocalisedString("Opintojakso 1", null, null));
+
+        courseUnitRepository.create(courseUnitEntity);
+
+        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+
+        CreateRegistrationRequest req = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
+        req.setSelections(Collections.singletonList(selection));
+
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
+        RegistrationResponse resp = (RegistrationResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertEquals(Status.OK, resp.getStatus());
+        assertTrue(StringUtils.isNotBlank(resp.getRegistrationRequestId()));
+
+        List<RegistrationEntity> registrations = StreamSupport.stream(registrationRepository.findAll().spliterator(), false).toList();
+        assertEquals(1, registrations.size());
+        assertEquals(registrations.get(0).getId(), resp.getRegistrationRequestId());
     }
 
     @Test
@@ -530,7 +647,7 @@ public class RegistrationRouteIntegrationTest {
         RegistrationSelection courseUnitParent = DtoInitializer.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
 
         RegistrationSelection selection = DtoInitializer.getRegistrationSelectionRealisation(
-                realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitParent, null);
+                realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitParent, List.of("TESTIRYHMA1"));
 
         CreateRegistrationRequest req = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
         req.setSelections(Collections.singletonList(selection));
@@ -679,7 +796,7 @@ public class RegistrationRouteIntegrationTest {
         RegistrationSelection courseUnitParent = DtoInitializer.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
 
         RegistrationSelection selection = DtoInitializer.getRegistrationSelectionRealisation(
-            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.ABORTED_BY_STUDENT, courseUnitParent, null);
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.ABORTED_BY_STUDENT, courseUnitParent, List.of("TESTIRYHMA1"));
 
         CreateRegistrationRequest req = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
         req.setSelections(Collections.singletonList(selection));
@@ -700,7 +817,7 @@ public class RegistrationRouteIntegrationTest {
 
         CompletionOptionEntity completionOptionEntity = new CompletionOptionEntity();
         completionOptionEntity.setCompletionOptionId("CO1");
-        completionOptionEntity.setAssessmentItems(Arrays.asList(assessmentItemEntity));
+        completionOptionEntity.setAssessmentItems(List.of(assessmentItemEntity));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntityWithCompletionOptions("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
                 Collections.singletonList(cooperationNetwork), new LocalisedString("Opintojakso 1", null, null), Collections.singletonList(completionOptionEntity));
@@ -947,7 +1064,7 @@ public class RegistrationRouteIntegrationTest {
     }
 
     @Test
-    public void testSendingRealisationRegistrationWithNotEnoughGroupSelections_shouldFail() throws JMSException {
+    public void testSendingRealisationRegistrationWithChooseManyGroups_shouldSucceed() throws JMSException {
         CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
@@ -973,26 +1090,33 @@ public class RegistrationRouteIntegrationTest {
 
         RegistrationSelection courseUnitParent = DtoInitializer.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionRealisation(
-                realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitParent, Collections.singletonList("TESTIRYHMA1"));
+        // CHOOSE_MANY was redefined in October 2024 to mean 0-N group registrations, i.e., anything goes.
 
-        // first test without selections. this should fail.
+        // first test without selections (this used to fail with old definition of 1-N)
+        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitParent, null);
         CreateRegistrationRequest req = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
-        req.setSelections(Collections.emptyList());
+        req.setSelections(Collections.singletonList(selection));
 
         Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
-        JsonValidationFailedResponse resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
-        assertTrue(resp.getStatus() == Status.FAILED);
+        DefaultResponse registrationResponse = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(registrationResponse.getStatus() == Status.OK);
 
-        // now test with a single selection. this should succeed, although SelectionType = CHOOSE_MANY (1 selection is considered "MANY" :)
-        req.setSelections(Collections.singletonList(selection));
+        // now test with a single selection (this succeeded also previously)
+        selection.setSubGroupSelections(List.of("TESTIRYHMA1"));
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
-        RegistrationResponse registrationResponse = (RegistrationResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        registrationResponse = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(registrationResponse.getStatus() == Status.OK);
+
+        // and finally test with multiple selections
+        selection.setSubGroupSelections(Arrays.asList("TESTIRYHMA1", "TESTIRYHMA2"));
+        responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
+        registrationResponse = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(registrationResponse.getStatus() == Status.OK);
     }
 
     @Test
-    public void testSendingRealisationRegistrationWithTooManyGroupSelections_shouldFail() throws JMSException {
+    public void testSendingRealisationRegistrationWithChooseOneGroups() throws JMSException {
         CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
@@ -1016,16 +1140,66 @@ public class RegistrationRouteIntegrationTest {
         realisationRepository.create(realisationEntity);
 
         RegistrationSelection courseUnitParent = DtoInitializer.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
-
         RegistrationSelection selection = DtoInitializer.getRegistrationSelectionRealisation(
-                realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitParent, Arrays.asList("TESTIRYHMA1", "TESTIRYHMA2"));
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitParent, null);
 
+        // CHOOSE_ONE was redefined in October 2024 to mean 1-N group registrations, i.e., at least one is required but more is allowed.
+
+        // first test with no selections (must fail)
         CreateRegistrationRequest req = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
         req.setSelections(Collections.singletonList(selection));
 
         Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.FAILED);
+
+        // then test with one selection (the case that was previously required)
+        selection.setSubGroupSelections(List.of("TESTIRYHMA1"));
+        responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
+        resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(resp.getStatus() == Status.OK);
+
+        // finally test with several selections (this used to fail, now should succeed)
+        selection.setSubGroupSelections(Arrays.asList("TESTIRYHMA1", "TESTIRYHMA2"));
+        responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
+        resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(resp.getStatus() == Status.OK);
+    }
+
+    @Test
+    public void testSendingRealisationRegistrationAbortionWithMissingGroups_shouldSucceed() throws JMSException {
+        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+            true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
+            Collections.singletonList(cooperationNetwork), new LocalisedString("Opintojakso 1", null, null));
+
+        courseUnitRepository.create(courseUnitEntity);
+
+        StudyElementReference ref = DtoInitializer.getStudyElementReferenceForCourseUnit(
+            courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
+
+        Selection groupSelection = DtoInitializer.getSelection(new LocalisedString("Opetusryhmä 1", null, null), SelectionType.CHOOSE_ONE,
+            Arrays.asList(
+                new SelectionValue(null, null, new LocalisedString("Tentti", null, null), "TESTIRYHMA1", null),
+                new SelectionValue(null, null, new LocalisedString("Opetus", null, null), "TESTIRYHMA2", null)));
+
+        RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
+            Collections.singletonList(ref), Collections.singletonList(cooperationNetwork), Collections.singletonList(groupSelection));
+        realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
+
+        realisationRepository.create(realisationEntity);
+
+        RegistrationSelection courseUnitParent = DtoInitializer.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
+        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.ABORTED_BY_STUDENT, courseUnitParent, null);
+
+        CreateRegistrationRequest req = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
+        req.setSelections(Collections.singletonList(selection));
+
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
+        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(resp.getStatus() == Status.OK);
     }
 
     @Test
@@ -1038,7 +1212,7 @@ public class RegistrationRouteIntegrationTest {
 
         CompletionOptionEntity completionOptionEntity = new CompletionOptionEntity();
         completionOptionEntity.setCompletionOptionId("CO1");
-        completionOptionEntity.setAssessmentItems(Arrays.asList(assessmentItemEntity));
+        completionOptionEntity.setAssessmentItems(List.of(assessmentItemEntity));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntityWithCompletionOptions("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
                 Collections.singletonList(cooperationNetwork), new LocalisedString("Opintojakso 1", null, null), Collections.singletonList(completionOptionEntity));
@@ -1267,7 +1441,7 @@ public class RegistrationRouteIntegrationTest {
         req.setSelections(Collections.singletonList(selection));
 
         // send only personId
-        req.getStudent().setPersonId("010101-0101");
+        req.getStudent().setPersonId(HetuUtil.generateRandom());
         req.getStudent().setOid(null);
 
         Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
@@ -1277,7 +1451,7 @@ public class RegistrationRouteIntegrationTest {
 
         // send only oid
         req.getStudent().setPersonId(null);
-        req.getStudent().setOid(UUID.randomUUID().toString());
+        req.getStudent().setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
 
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
         resp = (RegistrationResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);

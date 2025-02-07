@@ -13,6 +13,7 @@ import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import javax.validation.Validator;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -334,7 +334,7 @@ public class AbstractRealisationValidatorTest {
         RealisationWriteDTO realisation = new RealisationWriteDTO();
         realisation.setCooperationNetworks(Arrays.asList(coopNetwork, coopNetwork2));
 
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
         validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true);
     }
@@ -394,7 +394,7 @@ public class AbstractRealisationValidatorTest {
         RealisationWriteDTO realisation = new RealisationWriteDTO();
         realisation.setCooperationNetworks(Arrays.asList(coopNetwork, coopNetwork2));
 
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
         assertThrows(NotMemberOfCooperationNetworkValidationException.class,
                 () -> validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true));
@@ -429,31 +429,28 @@ public class AbstractRealisationValidatorTest {
         RealisationWriteDTO realisation = new RealisationWriteDTO();
         realisation.setCooperationNetworks(Arrays.asList(coopNetwork));
 
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
-        // Should fail indefinitely start time before current time
-        assertThrows(NotMemberOfCooperationNetworkValidationException.class,
-                () -> validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true));
+        // Should succeed despite organisation network membership start time being in the future
+        assertDoesNotThrow(() -> validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true));
 
-        // Setup with fixed timestamp and try again (should still fail current time later than fixed time)
+        // Setup with fixed timestamp (membership expired), should still succeed
         networkEntity.getOrganisations().get(0).setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusMonths(1)));
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
-        assertThrows(NotMemberOfCooperationNetworkValidationException.class,
-                () -> validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true));
+        assertDoesNotThrow(() -> validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true));
 
-        // Setup with fixed timestamp and try again (should still fail current time later than fixed time)
+        // Setup with fixed timestamp (membership in the future), should still succeed
         networkEntity.getOrganisations().get(0).setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2)));
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
-        assertThrows(NotMemberOfCooperationNetworkValidationException.class,
-                () -> validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true));
+        assertDoesNotThrow(() -> validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true));
 
-        // Setup with fixed timestamp and try again (should success)
+        // Setup with fixed timestamp (membership valid), should succeed
         networkEntity.getOrganisations().get(0).setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusMonths(1)));
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
-        validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true);
+        assertDoesNotThrow(() -> validator.validateGivenNetworks(realisation, organizingOrganisationId, MessageType.CREATE_REALISATION_REQUEST, true));
     }
 
 }

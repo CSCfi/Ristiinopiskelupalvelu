@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.net.InetAddress;
@@ -36,6 +37,11 @@ public class ApplicationConfig implements WebMvcConfigurer {
 
     @Value("${tomcat.ajp.port}")
     private int ajpPort;
+
+    @Override
+    public void configurePathMatch(PathMatchConfigurer configurer) {
+        configurer.setUseTrailingSlashMatch(true);
+    }
 
     @Bean
     public WebServerFactoryCustomizer<TomcatServletWebServerFactory> servletContainer() {

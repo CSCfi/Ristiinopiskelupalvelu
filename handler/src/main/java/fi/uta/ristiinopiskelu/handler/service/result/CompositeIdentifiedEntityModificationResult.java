@@ -2,18 +2,24 @@ package fi.uta.ristiinopiskelu.handler.service.result;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
+import org.springframework.util.Assert;
 
-import java.util.List;
+public class CompositeIdentifiedEntityModificationResult extends AbstractEntityModificationResult<CompositeIdentifiedEntity> {
 
-public interface CompositeIdentifiedEntityModificationResult {
+    private CompositeIdentifiedEntityType type;
+    
+    public CompositeIdentifiedEntityModificationResult(ModificationOperationType operationType, CompositeIdentifiedEntityType type,
+                                                       CompositeIdentifiedEntity previous, CompositeIdentifiedEntity current) {
+        super(operationType, previous, current);
+        Assert.notNull(type, "type must not be null");
+        this.type = type;
+    }
 
-    List<? extends CompositeIdentifiedEntity> getCreated();
+    public CompositeIdentifiedEntityType getType() {
+        return type;
+    }
 
-    List<? extends CompositeIdentifiedEntity> getUpdated();
-
-    List<? extends CompositeIdentifiedEntity> getDeleted();
-
-    long getCreatedAmount(CompositeIdentifiedEntityType type);
-
-    long getUpdatedAmount(CompositeIdentifiedEntityType type);
+    public void setType(CompositeIdentifiedEntityType type) {
+        this.type = type;
+    }
 }

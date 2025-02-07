@@ -11,7 +11,7 @@ import fi.uta.ristiinopiskelu.messaging.message.current.network.CreateNetworkReq
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.validation.Validator;
+import jakarta.validation.Validator;
 import java.util.Optional;
 
 @Component

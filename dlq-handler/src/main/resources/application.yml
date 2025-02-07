@@ -11,11 +11,19 @@ spring:
   jms:
     template:
       receive-timeout: 10000ms
-  mail:
+
+simplejavamail:
+  smtp:
     host: ${smtp_host}
     port: ${smtp_port}
 
 general:
+  message-schema:
+    version:
+      current: 9
+      available:
+        8: fi.uta.ristiinopiskelu.messaging.message.v8.MessageType
+        9: fi.uta.ristiinopiskelu.messaging.message.current.MessageType
   elasticsearch:
     hosts: ${elasticsearch_hosts}
     clusterName: ripa-cluster
@@ -23,17 +31,33 @@ general:
     password: ${elasticsearch_password}
     caCertificatePath: ${elasticsearch_cacertificatepath}
   activemq:
+    environment: ${activemq_environment}
     dlq-queue-pattern: jms:queue:%s.DLQ
   email:
     address:
       administrator: ${administrator_email_address}
       noreply: ${noreply_address}
-      subject: "WARNING: There has been messages that has ended up into your organisation's Dead Letter Queue"
+      subject: "Ristiinopiskelupalvelussa häiriö viestienkäsittelyssä"
       body: |
-        There was messages found from your organisation's dead letter queue. Handling of these messages have failed in your system and have never been handled.
-        Failed messages can be found from attachment files. Please complete actions required to handle all these failed messages.
+        Tämä on automaattinen viesti johtuen Ristiinopiskelupalvelussa tapahtuneesta viestienkäsittelyn häiriöstä.
+        Organisaationne viestijonossa on ollut viesti tai viestejä, joiden käsittely on toistuvasti epäonnistunut.
+        Nämä viestit on poistettu viestijonosta, jotta ne eivät tuki järjestelmää kokonaan. Viestit ovat kuitenkin
+        tallessa Ristiinopiskelupalvelun palvelimella, josta ne voidaan tarvittaessa noutaa ja käsitellä
+        manuaalisesti. 
 
-        Br. Ristiinopiskelu administrator
+        Ristiinopiskelupalvelun ylläpito auttaa itse vian määrityksessä sekä tarvittaessa viestien noudossa,
+        ristiinopiskelupalvelu@postit.csc.fi. Vian määrittämiseen saatetaan myös tarvita apua organisaationne
+        palvelinylläpidolta sekä perusjärjestelmän toimittajalta.
+
+        Ympäristö: %s
+
+        Alla niiden viestien lukumäärät ja viestityypit, joiden käsittely on epäonnistunut:
+        
+        %s
+
+        Terveisin,
+
+        Ristiinopiskelupalvelun ylläpito
   camel:
     redeliveryDelay: 4500 # in milliseconds
     redeliveryErrorLoggingDelay: 30000 # in milliseconds

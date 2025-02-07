@@ -6,9 +6,9 @@ import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.ExternalCodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.validation.CodeSetConstraint;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.MinEduGuidanceArea;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import org.springframework.util.CollectionUtils;
 
-import javax.validation.Valid;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -128,7 +128,7 @@ public abstract class StudyElement {
     private List<Description> organisationSpecificDescriptions = null;
     private List<StudyElementReference> parents = null;
     private StudyStatus status;
-    private MinEduGuidanceArea minEduGuidanceArea;
+    private List<MinEduGuidanceArea> minEduGuidanceArea;
 
     public Boolean getMissing() {
         return missing;
@@ -552,11 +552,11 @@ public abstract class StudyElement {
         this.status = status;
     }
 
-    public MinEduGuidanceArea getMinEduGuidanceArea() {
+    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
         return minEduGuidanceArea;
     }
 
-    public void setMinEduGuidanceArea(MinEduGuidanceArea minEduGuidanceArea) {
+    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
         this.minEduGuidanceArea = minEduGuidanceArea;
     }
 

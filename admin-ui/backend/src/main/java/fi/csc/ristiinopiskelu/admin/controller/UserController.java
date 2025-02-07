@@ -2,15 +2,12 @@ package fi.csc.ristiinopiskelu.admin.controller;
 
 import fi.csc.ristiinopiskelu.admin.dto.UserInformationDTO;
 import fi.csc.ristiinopiskelu.admin.dto.UserOrganisationDTO;
-import fi.csc.ristiinopiskelu.admin.security.AppUserDetails;
+import fi.csc.ristiinopiskelu.admin.security.ShibbolethAuthenticationDetails;
+import fi.csc.ristiinopiskelu.admin.security.ShibbolethUserDetails;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Role;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,30 +24,26 @@ public class UserController {
 
     @GetMapping(path = "roles")
     public List<Role> checkLogin() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        boolean isAuthenticated = auth != null && auth.isAuthenticated();
-        boolean hasHakaUserDetails = isAuthenticated && (auth.getPrincipal() != null && (auth.getPrincipal() instanceof AppUserDetails));
-
-        if (!hasHakaUserDetails) {
-            throw new AuthenticationCredentialsNotFoundException("Not logged in");
-        }
-
-        return ((AppUserDetails) auth.getPrincipal()).getRoles();
+        ShibbolethUserDetails userDetails = ShibbolethUserDetails.getCurrent();
+        return userDetails.getRoles();
     }
 
     @GetMapping(path = "")
-    public UserInformationDTO getLoginInformation(@AuthenticationPrincipal AppUserDetails user) {
-        UserInformationDTO userInformation = new UserInformationDTO();
-        userInformation.setEmail(user.getEmail());
-        userInformation.setFirstnames(user.getFirstnames());
-        userInformation.setLastname(user.getSurname());
-        userInformation.setGivenname(user.getGivenName());
-        userInformation.setFullname(user.getFullname());
-        userInformation.setRoles(user.getRoles());
+    public UserInformationDTO getLoginInformation() {
+        ShibbolethAuthenticationDetails authenticationDetails = ShibbolethAuthenticationDetails.getCurrent();
+        ShibbolethUserDetails userDetails = ShibbolethUserDetails.getCurrent();
 
-        if(StringUtils.hasText(user.getOrganisation())) {
-            OrganisationEntity organisationEntity = organisationRepository.findById(user.getOrganisation()).orElse(null);
+        UserInformationDTO userInformation = new UserInformationDTO();
+
+        userInformation.setEmail(authenticationDetails.getEmail());
+        userInformation.setFirstnames(authenticationDetails.getFirstNames());
+        userInformation.setLastname(authenticationDetails.getSurName());
+        userInformation.setGivenname(authenticationDetails.getGivenName());
+        userInformation.setFullname(authenticationDetails.getFullName());
+        userInformation.setRoles(userDetails.getAuthorities().stream().map(ga -> Role.from(ga.getAuthority())).toList());
+
+        if(StringUtils.hasText(authenticationDetails.getOrganisation())) {
+            OrganisationEntity organisationEntity = organisationRepository.findById(authenticationDetails.getOrganisation()).orElse(null);
             if (organisationEntity != null) {
                 UserOrganisationDTO userOrganisation = new UserOrganisationDTO();
                 userOrganisation.setId(organisationEntity.getId());

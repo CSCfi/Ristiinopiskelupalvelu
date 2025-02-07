@@ -1,7 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(name = "Degree", allOf = { AbstractStudyElementWriteDTO.class })
 public class DegreeWriteDTO extends AbstractStudyElementWriteDTO {
 
     private double duration;

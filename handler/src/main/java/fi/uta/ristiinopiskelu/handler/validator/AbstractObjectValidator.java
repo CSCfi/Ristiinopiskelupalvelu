@@ -3,8 +3,8 @@ package fi.uta.ristiinopiskelu.handler.validator;
 import fi.uta.ristiinopiskelu.handler.exception.validation.ValidationException;
 import org.springframework.util.CollectionUtils;
 
-import javax.validation.ConstraintViolation;
-import javax.validation.Validator;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;

@@ -5,7 +5,7 @@
 
     <groupId>fi.csc.ristiinopiskelu</groupId>
     <artifactId>admin-ui-backend</artifactId>
-    <version>9.0.12</version>
+    <version>9.0.23</version>
     <packaging>jar</packaging>
 
     <name>admin-ui-backend</name>
@@ -14,7 +14,7 @@
     <parent>
         <groupId>fi.csc.ristiinopiskelu</groupId>
         <artifactId>admin-ui-parent</artifactId>
-        <version>9.0.12</version>
+        <version>9.0.23</version>
         <relativePath>../</relativePath>
     </parent>
 
@@ -25,6 +25,18 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>fi.uta.ristiinopiskelu</groupId>
+            <artifactId>messaging</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>fi.uta.ristiinopiskelu</groupId>
+            <artifactId>persistence</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -52,27 +64,13 @@
         </dependency>
 
         <dependency>
-            <groupId>fi.uta.ristiinopiskelu</groupId>
-            <artifactId>messaging</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>fi.uta.ristiinopiskelu</groupId>
-            <artifactId>persistence</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
         </dependency>
 
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logstash-logback-encoder.version}</version>
         </dependency>
 
         <dependency>
@@ -90,7 +88,6 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>elasticsearch</artifactId>
-            <version>${testcontainers.version}</version>
         </dependency>
     </dependencies>
 

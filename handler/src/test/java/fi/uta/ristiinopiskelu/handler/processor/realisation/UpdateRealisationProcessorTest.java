@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
@@ -18,6 +19,8 @@ import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
+import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.handler.validator.realisation.UpdateRealisationValidator;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
@@ -38,10 +41,15 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(SpringExtension.class)
 public class UpdateRealisationProcessorTest {
@@ -108,7 +116,8 @@ public class UpdateRealisationProcessorTest {
 
         RealisationEntity realisationEntity = modelMapper.map(realisation, RealisationEntity.class);
         when(validator.validateJson(any(), any())).thenReturn(realisationEntity);
-        when(realisationService.update(any(JsonNode.class), eq(organisationIdHeader))).thenReturn(realisationEntity);
+        when(realisationService.update(any(JsonNode.class), eq(organisationIdHeader))).thenReturn(
+                List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE, CompositeIdentifiedEntityType.REALISATION, realisationEntity, realisationEntity)));
  
         UpdateRealisationRequest request = new UpdateRealisationRequest();
         request.setRealisation(realisation);

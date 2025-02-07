@@ -8,8 +8,8 @@ import org.springframework.jms.support.converter.MessageConversionException;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;

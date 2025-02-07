@@ -13,17 +13,19 @@ public interface MessageSchemaService extends Service<MessageSchemaWriteDTO, Mes
 
     int getCurrentSchemaVersion();
 
+    boolean isSchemaVersionSupported(int version);
+
+    List<Integer> getSupportedSchemaVersions();
+
+    String getSchemaVersionPath(MessageGroup messageGroup, String schemaFile, String versionPattern);
+
     String getCurrentSchemaVersionPath(MessageGroup messageGroup, String schemaFile);
 
     int getPreviousSchemaVersion();
 
-    String getPreviousSchemaVersionPath(MessageGroup messageGroup, String schemaFile);
-
     VersionedMessageType getMessageTypeForVersion(String messageTypeName, int version);
 
     <T> T convertObject(Object object, Class<T> targetType);
-
-    <S, T> List<T> convertObjects(List<S> objects, Class<S> sourceType, Class<T> targetType);
 
     <S, T> JsonNode convertJson(JsonNode jsonNode, Class<S> sourceType, Class<T> targetType);
 }

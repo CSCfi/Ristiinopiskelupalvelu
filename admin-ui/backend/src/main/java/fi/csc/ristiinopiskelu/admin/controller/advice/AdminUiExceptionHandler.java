@@ -2,6 +2,7 @@ package fi.csc.ristiinopiskelu.admin.controller.advice;
 
 import fi.csc.ristiinopiskelu.admin.exception.EntityNotFoundException;
 import fi.csc.ristiinopiskelu.admin.exception.MessageSendingFailedException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -25,5 +26,11 @@ public class AdminUiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler({ MessageSendingFailedException.class })
     public void handleMessageSendingFailedException(MessageSendingFailedException e) {
         logger.error("Message sending failed", e);
+    }
+
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler({ Exception.class })
+    public void handleAllUncaughtException(Exception e, HttpServletRequest req) {
+        logger.error("Error while processing request '{}'", req.getRequestURI(), e);
     }
 }

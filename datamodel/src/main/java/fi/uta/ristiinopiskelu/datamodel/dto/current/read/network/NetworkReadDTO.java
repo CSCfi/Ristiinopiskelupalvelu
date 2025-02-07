@@ -12,7 +12,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @Schema(name = "Network")

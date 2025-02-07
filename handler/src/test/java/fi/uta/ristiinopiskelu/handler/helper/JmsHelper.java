@@ -3,8 +3,8 @@ package fi.uta.ristiinopiskelu.handler.helper;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import org.springframework.jms.core.JmsTemplate;
 
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
+import jakarta.jms.Message;
+import jakarta.jms.MessageConsumer;
 
 public class JmsHelper {
 

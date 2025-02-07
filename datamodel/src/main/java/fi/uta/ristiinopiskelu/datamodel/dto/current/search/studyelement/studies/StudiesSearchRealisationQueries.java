@@ -1,41 +1,42 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies;
 
-import org.elasticsearch.index.query.BoolQueryBuilder;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 
 public class StudiesSearchRealisationQueries {
 
-     private BoolQueryBuilder finalQuery;
-     private BoolQueryBuilder aggregationRealisationQuery;
-     private BoolQueryBuilder aggregationAssessmentItemRealisationQuery;
+     private Query finalQuery;
+     private BoolQuery.Builder aggregationRealisationQuery;
+     private BoolQuery.Builder aggregationAssessmentItemRealisationQuery;
 
-    public StudiesSearchRealisationQueries(BoolQueryBuilder finalQuery, BoolQueryBuilder aggregationRealisationQuery,
-                                           BoolQueryBuilder aggregationAssessmentItemRealisationQuery) {
+    public StudiesSearchRealisationQueries(Query finalQuery, BoolQuery.Builder aggregationRealisationQuery,
+                                           BoolQuery.Builder aggregationAssessmentItemRealisationQuery) {
         this.finalQuery = finalQuery;
         this.aggregationRealisationQuery = aggregationRealisationQuery;
         this.aggregationAssessmentItemRealisationQuery = aggregationAssessmentItemRealisationQuery;
     }
 
-    public BoolQueryBuilder getFinalQuery() {
+    public Query getFinalQuery() {
         return finalQuery;
     }
 
-    public void setFinalQuery(BoolQueryBuilder finalQuery) {
+    public void setFinalQuery(Query finalQuery) {
         this.finalQuery = finalQuery;
     }
 
-    public BoolQueryBuilder getAggregationRealisationQuery() {
+    public BoolQuery.Builder getAggregationRealisationQuery() {
         return aggregationRealisationQuery;
     }
 
-    public void setAggregationRealisationQuery(BoolQueryBuilder aggregationRealisationQuery) {
+    public void setAggregationRealisationQuery(BoolQuery.Builder aggregationRealisationQuery) {
         this.aggregationRealisationQuery = aggregationRealisationQuery;
     }
 
-    public BoolQueryBuilder getAggregationAssessmentItemRealisationQuery() {
+    public BoolQuery.Builder getAggregationAssessmentItemRealisationQuery() {
         return aggregationAssessmentItemRealisationQuery;
     }
 
-    public void setAggregationAssessmentItemRealisationQuery(BoolQueryBuilder aggregationAssessmentItemRealisationQuery) {
+    public void setAggregationAssessmentItemRealisationQuery(BoolQuery.Builder aggregationAssessmentItemRealisationQuery) {
         this.aggregationAssessmentItemRealisationQuery = aggregationAssessmentItemRealisationQuery;
     }
 }

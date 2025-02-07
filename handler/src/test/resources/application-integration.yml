@@ -9,13 +9,20 @@ spring:
     pool:
       enabled: true
       max-connections: 10
+springwolf:
+  enabled: false
 camel:
   springboot:
     main-run-controller: true
     stream-caching-enabled: true
 general:
-  messageSchema:
-      version: 9
+  only-test-persons-allowed: false
+  message-schema:
+    version:
+      current: 9
+      available:
+        8: fi.uta.ristiinopiskelu.messaging.message.v8.MessageType
+        9: fi.uta.ristiinopiskelu.messaging.message.current.MessageType
   camel:
     route:
       base:
@@ -58,6 +65,8 @@ general:
         update_studyright: direct:updateStudentStudyRight
         update_studyright_reply: direct:updateStudentStudyRightReply
   activemq:
+    environment: dev
+    loadbalancer: localhost
     queue: jms:queue:handler
   elasticsearch:
     hosts: localhost:9300

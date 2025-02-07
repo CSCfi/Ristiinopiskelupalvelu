@@ -36,7 +36,7 @@
       <v-text-field
         v-model="currNetwork.id"
         :label="$t('networkIdentifier')"
-        disabled
+        readonly
       ></v-text-field>
 
       <v-switch
@@ -562,12 +562,22 @@ export default {
     },
     async addOrg() {
       await this.updateOrganisations();
+      let validityStart = '';
+      let validityEnd = '';
+      let validityContinuity = '';
+      if (this.currNetwork?.organisations?.length > 0) {
+        const previous = this.currNetwork.organisations[this.currNetwork.organisations.length - 1];
+        validityContinuity = previous.validityInNetwork?.continuity || '';
+        validityStart = previous.validityInNetwork?.start || '';
+        validityEnd = previous.validityInNetwork?.end || '';
+      }
       this.currNetwork.organisations.push({
         organisationTkCode: '',
         isCoordinator: false,
         validityInNetwork: {
-          start: '',
-          end: ''
+          continuity: validityContinuity,
+          start: validityStart,
+          end: validityEnd
         }
       });
     },
@@ -677,12 +687,12 @@ export default {
         let name = languageUtils.resolveText(this.locale, org.organisationName.values);
 
         this.organisationMenuItems.push({
-          text: `${name}(${org.id})`,
+          text: `${name} (${org.id})`,
           value: org.id
         });
       });
 
-      _.sortBy(this.organisationMenuItems, 'text');
+      this.organisationMenuItems = _.sortBy(this.organisationMenuItems, 'text');
     }
   },
   data: () => ({

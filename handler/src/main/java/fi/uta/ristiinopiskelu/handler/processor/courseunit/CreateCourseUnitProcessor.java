@@ -12,6 +12,7 @@ import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.processor.AbstractCompositeIdentifiedEntityProcessor;
 import fi.uta.ristiinopiskelu.handler.service.*;
 import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.handler.validator.realisation.CreateRealisationValidator;
 import fi.uta.ristiinopiskelu.handler.validator.studyelement.courseunit.CreateCourseUnitValidator;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
@@ -20,6 +21,11 @@ import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.RistiinopiskeluMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.courseunit.CreateCourseUnitRequest;
+import fi.uta.ristiinopiskelu.messaging.message.current.notification.CompositeIdentifiedEntityModifiedNotification;
+import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
+import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
+import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
+import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +64,21 @@ public class CreateCourseUnitProcessor extends AbstractCompositeIdentifiedEntity
         this.studyModuleService = studyModuleService;
     }
 
+    @AsyncListener(operation = @AsyncOperation(
+            channelName = "handler",
+            description = "Creates a course unit",
+            servers = {"production", "staging"},
+            message = @AsyncMessage(
+                    description = "Creates a course unit"
+            ),
+            payloadType = CreateCourseUnitRequest.class
+    ))
+    @AsyncPublisher(operation = @AsyncOperation(
+            channelName = "<ORGANISATION_QUEUE>",
+            description = "Notification about changed elements",
+            servers = {"production", "staging"},
+            payloadType = CompositeIdentifiedEntityModifiedNotification.class
+    ))
     @Override
     public void process(Exchange exchange) throws Exception {
         CreateCourseUnitRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), CreateCourseUnitRequest.class);
@@ -81,16 +102,16 @@ public class CreateCourseUnitProcessor extends AbstractCompositeIdentifiedEntity
             } catch (Exception e) {
                 // Wrap realisation validator exception again to add course unit ids for error message
                 throw new ValidationException("Course unit's [studyElementId: " + courseUnit.getStudyElementId()
-                    + ", organizer " + organisationId + "] Realisation validation failed with error: " + e.getMessage());
+                        + ", organizer " + organisationId + "] Realisation validation failed with error: " + e.getMessage());
             }
 
             if (!CollectionUtils.isEmpty(courseUnit.getParents())) {
                 for (StudyElementReference studyModuleReference : courseUnit.getParents()) {
                     studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                        studyModuleReference.getReferenceIdentifier(), studyModuleReference.getReferenceOrganizer())
-                        .orElseThrow(() -> new StudyElementEntityNotFoundException("Course unit parent study module does not exist " +
-                            "[studyElementId: " + studyModuleReference.getReferenceIdentifier() +
-                            ", organizer: " + studyModuleReference.getReferenceOrganizer() + "]"));
+                                    studyModuleReference.getReferenceIdentifier(), studyModuleReference.getReferenceOrganizer())
+                            .orElseThrow(() -> new StudyElementEntityNotFoundException("Course unit parent study module does not exist " +
+                                    "[studyElementId: " + studyModuleReference.getReferenceIdentifier() +
+                                    ", organizer: " + studyModuleReference.getReferenceOrganizer() + "]"));
 
                 }
             }
@@ -99,13 +120,13 @@ public class CreateCourseUnitProcessor extends AbstractCompositeIdentifiedEntity
         // no subelements allowed for courseunit
         courseUnits.stream().forEach(cu -> cu.setSubElements(null));
 
-        CompositeIdentifiedEntityModificationResult result = courseUnitService.createAll(courseUnits, organisationId);
-        super.notifyNetworkMembers(organisationId, MessageType.COURSEUNIT_CREATED_NOTIFICATION, result);
+        List<CompositeIdentifiedEntityModificationResult> modificationResults = courseUnitService.createAll(courseUnits, organisationId);
+        super.notifyNetworkMembers(organisationId, MessageType.COURSEUNIT_CREATED_NOTIFICATION, modificationResults);
 
         exchange.setMessage(new RistiinopiskeluMessage(exchange, MessageType.DEFAULT_RESPONSE,
-            new DefaultResponse(Status.OK, "Course unit creation successful " +
-                "[createdCourseUnits=" + result.getCreatedAmount(CompositeIdentifiedEntityType.COURSE_UNIT) +
-                ", createdRealisations=" + result.getCreatedAmount(CompositeIdentifiedEntityType.REALISATION) +
-                ", updatedRealisations=" + result.getUpdatedAmount(CompositeIdentifiedEntityType.REALISATION) + "]")));
+                new DefaultResponse(Status.OK, "Course unit creation successful " +
+                        "[createdCourseUnits=" + getResultAmount(ModificationOperationType.CREATE, CompositeIdentifiedEntityType.COURSE_UNIT, modificationResults) +
+                        ", createdRealisations=" + getResultAmount(ModificationOperationType.CREATE, CompositeIdentifiedEntityType.REALISATION, modificationResults) +
+                        ", updatedRealisations=" + getResultAmount(ModificationOperationType.UPDATE, CompositeIdentifiedEntityType.REALISATION, modificationResults) + "]")));
     }
 }

@@ -1,33 +1,23 @@
 package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchRealisationQueries;
-import fi.uta.ristiinopiskelu.persistence.querybuilder.StudiesNativeSearchQueryBuilder;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
+import fi.uta.ristiinopiskelu.persistence.querybuilder.StudiesSearchRequestBuilder;
 import fi.uta.ristiinopiskelu.persistence.repository.StudiesRepository;
-import org.apache.lucene.search.join.ScoreMode;
-import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.IndicesClient;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.cluster.metadata.AliasMetadata;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Repository
 public class StudiesRepositoryImpl implements StudiesRepository {
@@ -35,42 +25,39 @@ public class StudiesRepositoryImpl implements StudiesRepository {
     private static final Logger logger = LoggerFactory.getLogger(StudiesRepositoryImpl.class);
 
     @Autowired
-    protected ElasticsearchRestTemplate elasticsearchTemplate;
+    protected ElasticsearchTemplate elasticsearchTemplate;
 
     @Override
-    public SearchResponse findAllStudiesByParentReferences(String referenceIdentifier, String referenceOrganizer) {
-        BoolQueryBuilder query = QueryBuilders.boolQuery()
-                .must(QueryBuilders.nestedQuery("parents", QueryBuilders.boolQuery()
-                        .must(QueryBuilders.matchQuery("parents.referenceIdentifier", referenceIdentifier))
-                        .must(QueryBuilders.matchQuery("parents.referenceOrganizer", referenceOrganizer)), ScoreMode.None));
-
-        NativeSearchQuery builder = new NativeSearchQueryBuilder()
-                .withQuery(query)
+    public SearchResponse<StudyElementEntity> findAllStudiesByParentReferences(String referenceIdentifier, String referenceOrganizer) {
+        Query query = new Query.Builder().bool(q -> q
+                        .must(q2 -> q2
+                                .nested(nq -> nq
+                                        .path("parents")
+                                        .scoreMode(ChildScoreMode.None)
+                                        .query(q3 -> q3
+                                                .bool(bq -> bq
+                                                        .must(q4 -> q4
+                                                                .term(tq -> tq
+                                                                        .field("parents.referenceIdentifier")
+                                                                        .value(referenceIdentifier)))
+                                                        .must(q4 -> q4
+                                                                .term(tq -> tq
+                                                                        .field("parents.referenceOrganizer")
+                                                                        .value(referenceOrganizer))))))))
                 .build();
-
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder().query(builder.getQuery());
-        SearchRequest searchRequest = new SearchRequest("opintojaksot", "opintokokonaisuudet", "tutkinnot");
-        searchRequest.source(searchSourceBuilder);
-
-        return elasticsearchTemplate.execute(client -> client.search(searchRequest, RequestOptions.DEFAULT));
+        
+        SearchRequest searchRequest = SearchRequest.of(q -> q.index("opintojaksot", "opintokokonaisuudet", "tutkinnot").query(query));
+        return elasticsearchTemplate.execute(client -> client.search(searchRequest, StudyElementEntity.class));
     }
 
     @Override
-    public SearchResponse findAllStudies(BoolQueryBuilder query, StudiesSearchRealisationQueries realisationQueriesWithTeachingLanguage,
+    public SearchResponse<StudyElementEntity> findAllStudies(BoolQuery.Builder query, StudiesSearchRealisationQueries realisationQueriesWithTeachingLanguage,
                                                      StudiesSearchRealisationQueries realisationQueriesWithoutTeachingLanguage,
                                                      List<String> indices, PageRequest paging, StudiesSearchParameters searchParams) {
-        SearchSourceBuilder searchSourceBuilder = new StudiesNativeSearchQueryBuilder().get(query, realisationQueriesWithTeachingLanguage,
+
+        SearchRequest searchRequest = new StudiesSearchRequestBuilder().build(indices, query, realisationQueriesWithTeachingLanguage,
             realisationQueriesWithoutTeachingLanguage, paging, searchParams);
 
-        SearchRequest searchRequest = new SearchRequest(indices.toArray(new String[0]), searchSourceBuilder);
-
-        return elasticsearchTemplate.execute(client -> client.search(searchRequest, RequestOptions.DEFAULT));
-    }
-
-    @Override
-    public String findIndexNameByAlias(String alias) throws IOException {
-        IndicesClient ic = elasticsearchTemplate.execute(RestHighLevelClient::indices);
-        Map<String, Set<AliasMetadata>> map = ic.getAlias(new GetAliasesRequest(alias), RequestOptions.DEFAULT).getAliases();
-        return map.keySet().iterator().next();
+        return elasticsearchTemplate.execute(client -> client.search(searchRequest, StudyElementEntity.class));
     }
 }

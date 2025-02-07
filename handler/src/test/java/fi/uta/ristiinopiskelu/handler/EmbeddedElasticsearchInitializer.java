@@ -1,12 +1,12 @@
 package fi.uta.ristiinopiskelu.handler;
 
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.reindex.DeleteByQueryRequest;
-import org.junit.jupiter.api.extension.*;
+import co.elastic.clients.elasticsearch.core.DeleteByQueryRequest;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.data.elasticsearch.core.document.Document;
 import org.springframework.data.elasticsearch.core.index.AliasAction;
@@ -62,12 +62,13 @@ public class EmbeddedElasticsearchInitializer implements AfterEachCallback, Befo
     @Override
     public void beforeAll(ExtensionContext extensionContext) throws Exception {
         if(embeddedElastic == null) {
-            embeddedElastic = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch").withTag("7.17.4"));
+            embeddedElastic = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch").withTag("8.10.4"));
             embeddedElastic.addEnv("cluster.name", "ripa-cluster");
             embeddedElastic.addEnv("xpack.security.enabled", "false");
+            embeddedElastic.addEnv("indices.id_field_data.enabled", "true");
             embeddedElastic.start();
 
-            ElasticsearchRestTemplate template = SpringExtension.getApplicationContext(extensionContext).getBean(ElasticsearchRestTemplate.class);
+            ElasticsearchTemplate template = SpringExtension.getApplicationContext(extensionContext).getBean(ElasticsearchTemplate.class);
             createIndices(template);
         }
     }
@@ -79,14 +80,14 @@ public class EmbeddedElasticsearchInitializer implements AfterEachCallback, Befo
 
     @Override
     public void afterEach(ExtensionContext context) throws Exception {
-        ElasticsearchRestTemplate template = SpringExtension.getApplicationContext(context).getBean(ElasticsearchRestTemplate.class);
+        ElasticsearchTemplate template = SpringExtension.getApplicationContext(context).getBean(ElasticsearchTemplate.class);
 
         for(IndexHelper indexHelper : indices) {
             deleteAllAndRefresh(template, indexHelper);
         }
     }
 
-    private void createIndices(ElasticsearchRestTemplate template) {
+    private void createIndices(ElasticsearchTemplate template) {
         for(IndexHelper indexHelper : indices) {
             IndexOperations indexOperations = template.indexOps(IndexCoordinates.of(indexHelper.indexName));
 
@@ -128,11 +129,12 @@ public class EmbeddedElasticsearchInitializer implements AfterEachCallback, Befo
         return embeddedElastic.getHttpHostAddress();
     }
 
-    private void deleteAllAndRefresh(ElasticsearchRestTemplate template, IndexHelper indexHelper) {
-        DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexHelper.indexName);
-        deleteByQueryRequest.setQuery(QueryBuilders.matchAllQuery());
+    private void deleteAllAndRefresh(ElasticsearchTemplate template, IndexHelper indexHelper) {
+        DeleteByQueryRequest.Builder deleteByQueryRequest = new DeleteByQueryRequest.Builder()
+            .index(indexHelper.indexName)
+            .query(q -> q.matchAll(ma -> ma));
 
-        template.execute(client -> client.deleteByQuery(deleteByQueryRequest, RequestOptions.DEFAULT));
+        template.execute(client -> client.deleteByQuery(deleteByQueryRequest.build()));
 
         IndexOperations indexOperations = template.indexOps(IndexCoordinates.of(indexHelper.indexName));
         indexOperations.refresh();

@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import javax.validation.Validator;
+import jakarta.validation.Validator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;

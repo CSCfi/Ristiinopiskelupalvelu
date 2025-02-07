@@ -29,13 +29,31 @@ springdoc:
   api-docs:
     groups:
       enabled: true
+springwolf:
+  docket:
+    base-package: fi.uta.ristiinopiskelu.handler.processor
+    info:
+      title: Ristiinopiskelupalvelu
+      version: ${general.message-schema.version.current}
+    servers:
+      production:
+        protocol: ssl
+        host: prod.ripa.csc.fi:61617
+      staging:
+        protocol: ssl
+        host: risti-lb.csc.fi:61617
 camel:
   springboot:
     main-run-controller: true
     stream-caching-enabled: true
 general:
-  messageSchema:
-    version: 9
+  only-test-persons-allowed: ${only_test_persons_allowed}
+  message-schema:
+    version:
+      current: 9
+      available:
+        8: fi.uta.ristiinopiskelu.messaging.message.v8.MessageType
+        9: fi.uta.ristiinopiskelu.messaging.message.current.MessageType
   camel:
     route:
       base:
@@ -78,6 +96,8 @@ general:
         update_studyright: direct:updateStudentStudyRight
         update_studyright_reply: direct:updateStudentStudyRightReply
   activemq:
+    environment: ${activemq_environment}
+    loadbalancer: ${activemq_loadbalancer}
     queue: jms:queue:handler
   elasticsearch:
     hosts: ${elasticsearch_hosts}

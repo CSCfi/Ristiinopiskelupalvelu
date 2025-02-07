@@ -21,6 +21,7 @@ import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.handler.service.StudiesService;
 import fi.uta.ristiinopiskelu.handler.service.StudyModuleService;
+import fi.uta.ristiinopiskelu.handler.service.impl.processor.StudiesSearchResultsConverter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -164,7 +165,8 @@ public class StudiesControllerV8 extends AbstractController {
         fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters currentSearchParams =
             super.mapToDto(searchParams, fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters.class);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchResults results = studiesService.search(SSL_CLIENT_S_DN_O, currentSearchParams);
+        fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.InternalStudiesSearchResults internalResults = studiesService.search(SSL_CLIENT_S_DN_O, currentSearchParams);
+        fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchResults results = new StudiesSearchResultsConverter().convert(internalResults);
 
         return new StudiesRestSearchResults(
             results.getResults().stream().map(this::mapStudyElement).collect(Collectors.toList()),

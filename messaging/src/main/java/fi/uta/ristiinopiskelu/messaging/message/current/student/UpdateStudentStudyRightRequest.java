@@ -3,7 +3,6 @@ package fi.uta.ristiinopiskelu.messaging.message.current.student;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentStudyRight;
 import fi.uta.ristiinopiskelu.messaging.message.current.AbstractPersonIdentifiableRequest;
-import org.springframework.util.StringUtils;
 
 public class UpdateStudentStudyRightRequest extends AbstractPersonIdentifiableRequest {
 
@@ -19,6 +18,7 @@ public class UpdateStudentStudyRightRequest extends AbstractPersonIdentifiableRe
         this.oid = oid;
     }
 
+    @Override
     public String getPersonId() {
         return personId;
     }
@@ -37,7 +37,7 @@ public class UpdateStudentStudyRightRequest extends AbstractPersonIdentifiableRe
 
     @JsonIgnore
     @Override
-    public String getPersonIdentifier() {
-        return !StringUtils.isEmpty(personId) ? personId : oid;
+    public String getPersonOid() {
+        return oid;
     }
 }

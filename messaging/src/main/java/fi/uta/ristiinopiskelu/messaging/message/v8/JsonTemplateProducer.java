@@ -2,7 +2,6 @@ package fi.uta.ristiinopiskelu.messaging.message.v8;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.messaging.exception.JsonTemplateException;
-import fi.uta.ristiinopiskelu.messaging.message.v8.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

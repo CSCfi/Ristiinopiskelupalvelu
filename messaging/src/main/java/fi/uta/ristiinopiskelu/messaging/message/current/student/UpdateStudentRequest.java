@@ -6,7 +6,6 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Country;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Phone;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentWarning;
 import fi.uta.ristiinopiskelu.messaging.message.current.AbstractPersonIdentifiableRequest;
-import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -38,6 +37,7 @@ public class UpdateStudentRequest extends AbstractPersonIdentifiableRequest {
         this.oid = oid;
     }
 
+    @Override
     public String getPersonId() {
         return personId;
     }
@@ -152,7 +152,7 @@ public class UpdateStudentRequest extends AbstractPersonIdentifiableRequest {
 
     @JsonIgnore
     @Override
-    public String getPersonIdentifier() {
-        return !StringUtils.isEmpty(personId) ? personId : oid;
+    public String getPersonOid() {
+        return oid;
     }
 }

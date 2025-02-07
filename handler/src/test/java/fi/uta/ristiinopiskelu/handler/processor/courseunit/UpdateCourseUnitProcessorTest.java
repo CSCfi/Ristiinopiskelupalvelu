@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
@@ -13,6 +14,8 @@ import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
+import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.handler.validator.studyelement.courseunit.UpdateCourseUnitValidator;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
@@ -29,10 +32,14 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.text.SimpleDateFormat;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 @ExtendWith(SpringExtension.class)
 public class UpdateCourseUnitProcessorTest {
@@ -98,7 +105,8 @@ public class UpdateCourseUnitProcessorTest {
                 "}"
         );
 
-        when(courseUnitService.update(any(JsonNode.class), any(String.class))).thenReturn(cuEntity);
+        when(courseUnitService.update(any(JsonNode.class), any(String.class))).thenReturn(
+                List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE, CompositeIdentifiedEntityType.COURSE_UNIT, cuEntity, cuEntity)));
 
         processor.process(exchange);
 

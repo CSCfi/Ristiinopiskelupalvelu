@@ -349,8 +349,18 @@
     },
     "minEduGuidanceArea" : {
       "description": "VIRTA: Koulutusala (https://wiki.eduuni.fi/display/CSCVIRTA/Tietovarannon+koodistot#Tietovarannonkoodistot-Koulutusala,Utbildningsomr%C3%A5de)",
-      "type" : ["null", "integer"],
-      "enum": [null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "enum": [null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+          }
+        }
+      ]
     }
   }
 }

@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import javax.validation.Validator;
+import jakarta.validation.Validator;
 import java.util.ArrayList;
 import java.util.Collections;
 

@@ -21,6 +21,8 @@ import fi.uta.ristiinopiskelu.messaging.message.current.studymodule.DeleteStudyM
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyModuleRepository;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,12 +33,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -47,8 +47,10 @@ import java.util.List;
 import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrationTest {
@@ -79,12 +81,12 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
     private CourseUnitRepository courseUnitRepository;
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchTemplate;
+    private ElasticsearchTemplate elasticsearchTemplate;
 
     @Autowired
     private ModelMapper modelMapper;
 
-    @Value("${general.messageSchema.version}")
+    @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
     @BeforeEach

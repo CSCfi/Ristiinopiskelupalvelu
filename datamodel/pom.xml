@@ -6,7 +6,7 @@
 
     <groupId>fi.uta.ristiinopiskelu</groupId>
     <artifactId>datamodel</artifactId>
-    <version>9.0.12</version>
+    <version>9.0.23</version>
     <packaging>jar</packaging>
 
     <name>datamodel</name>
@@ -15,7 +15,7 @@
     <parent>
         <groupId>fi.uta.ristiinopiskelu</groupId>
         <artifactId>parent</artifactId>
-        <version>9.0.12</version>
+        <version>9.0.23</version>
         <relativePath>../</relativePath> <!-- lookup parent from repository -->
     </parent>
     
@@ -32,19 +32,21 @@
 
         <dependency>
             <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-ui</artifactId>
-            <version>${springdoc.version}</version>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
         
         <dependency>
             <groupId>org.modelmapper</groupId>
             <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
         </dependency>
         <dependency>
             <groupId>com.flipkart.zjsonpatch</groupId>
             <artifactId>zjsonpatch</artifactId>
-            <version>${zjsonpatch.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
         </dependency>
     </dependencies>
 </project>

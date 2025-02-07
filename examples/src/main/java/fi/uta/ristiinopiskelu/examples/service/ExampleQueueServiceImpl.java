@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
+import jakarta.jms.Message;
+import jakarta.jms.MessageConsumer;
 import java.util.ArrayList;
 import java.util.List;
 

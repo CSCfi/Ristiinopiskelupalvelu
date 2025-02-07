@@ -3,6 +3,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.PageableSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
@@ -115,6 +116,12 @@ public class StudiesSearchParameters extends PageableSearchParameters<StudyEleme
 
     @Schema(description = "Rajaa opintojaksojen toteutuksia niiden tilojen mukaan. Oletuksena palautetaan kaikki.")
     private List<StudyStatus> realisationStatuses;
+
+    @Schema(description = "Rajaa tarjontaa koulutusalojen mukaan. Oletuksena palautetaan kaikilla koulutusaloilla olevat tarjonnat.")
+    private List<MinEduGuidanceArea> minEduGuidanceAreas;
+
+    @Schema(description = "Rajaa tarjontaa toteutukselle määriteltyjen koulutusalojen mukaan. Oletuksena palautetaan kaikilla koulutusaloilla olevat tarjonnat.")
+    private List<MinEduGuidanceArea> realisationMinEduGuidanceAreas;
 
     /**
      * this is populated by StudiesService after we are sure what networks to actually use in the search in order to avoid re-fetching later.
@@ -313,6 +320,22 @@ public class StudiesSearchParameters extends PageableSearchParameters<StudyEleme
 
     public void setRealisationStatuses(List<StudyStatus> realisationStatuses) {
         this.realisationStatuses = realisationStatuses;
+    }
+
+    public List<MinEduGuidanceArea> getMinEduGuidanceAreas() {
+        return minEduGuidanceAreas;
+    }
+
+    public void setMinEduGuidanceAreas(List<MinEduGuidanceArea> minEduGuidanceAreas) {
+        this.minEduGuidanceAreas = minEduGuidanceAreas;
+    }
+
+    public List<MinEduGuidanceArea> getRealisationMinEduGuidanceAreas() {
+        return realisationMinEduGuidanceAreas;
+    }
+
+    public void setRealisationMinEduGuidanceAreas(List<MinEduGuidanceArea> realisationMinEduGuidanceAreas) {
+        this.realisationMinEduGuidanceAreas = realisationMinEduGuidanceAreas;
     }
 
     public boolean isIncludeCourseUnitsWithoutActiveRealisations() {

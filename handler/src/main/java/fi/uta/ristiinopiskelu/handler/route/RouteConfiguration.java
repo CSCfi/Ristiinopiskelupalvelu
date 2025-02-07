@@ -6,37 +6,31 @@ import org.apache.camel.Processor;
 
 public class RouteConfiguration {
 
-    private String from;
-    private MessageType requestType;
-    private MessageType responseType;
-    private Processor requestProcessor;
-    private AbstractErrorProcessor exceptionProcessor;
-    private AbstractErrorProcessor jsonValidationExceptionProcessor;
-    private String messageSchemaFilename;
-    private int minThreads = AbstractRoute.DEFAULT_MIN_THREADS;
-    private int maxThreads = AbstractRoute.DEFAULT_MAX_THREADS;
-    private String threadName;
+    private final String from;
+    private final MessageType requestType;
+    private final MessageType responseType;
+    private final Processor requestProcessor;
+    private final AbstractErrorProcessor exceptionProcessor;
+    private final AbstractErrorProcessor jsonValidationExceptionProcessor;
+    private final String messageSchemaFilename;
+    private final int minThreads;
+    private final int maxThreads;
+    private final String threadName;
 
     // If new route is created in a current version, set this to true (since there is no backward-compatible route)
     // If this is left false and no previous message schema is found, software does not start.
-    private boolean isRouteBackwardsCompatible;
+    private final boolean routeBackwardsCompatible;
 
     public RouteConfiguration(String from, String messageSchemaFilename, MessageType requestType, MessageType responseType,
                               Processor requestProcessor, AbstractErrorProcessor exceptionProcessor, AbstractErrorProcessor jsonValidationExceptionProcessor,
-                              boolean isRouteBackwardsCompatible) {
-        this.from = from;
-        this.requestType = requestType;
-        this.responseType = responseType;
-        this.requestProcessor = requestProcessor;
-        this.exceptionProcessor = exceptionProcessor;
-        this.messageSchemaFilename = messageSchemaFilename;
-        this.jsonValidationExceptionProcessor = jsonValidationExceptionProcessor;
-        this.isRouteBackwardsCompatible = isRouteBackwardsCompatible;
+                              boolean routeBackwardsCompatible) {
+        this(from, messageSchemaFilename, requestType, responseType, requestProcessor, exceptionProcessor, jsonValidationExceptionProcessor,
+            routeBackwardsCompatible, AbstractRoute.DEFAULT_MIN_THREADS, AbstractRoute.DEFAULT_MAX_THREADS);
     }
 
     public RouteConfiguration(String from, String messageSchemaFilename, MessageType requestType, MessageType responseType,
                               Processor requestProcessor, AbstractErrorProcessor exceptionProcessor, AbstractErrorProcessor jsonValidationExceptionProcessor,
-                              boolean isRouteBackwardsCompatible, int minThreads, int maxThreads) {
+                              boolean routeBackwardsCompatible, int minThreads, int maxThreads) {
         this.from = from;
         this.requestType = requestType;
         this.responseType = responseType;
@@ -44,7 +38,7 @@ public class RouteConfiguration {
         this.exceptionProcessor = exceptionProcessor;
         this.messageSchemaFilename = messageSchemaFilename;
         this.jsonValidationExceptionProcessor = jsonValidationExceptionProcessor;
-        this.isRouteBackwardsCompatible = isRouteBackwardsCompatible;
+        this.routeBackwardsCompatible = routeBackwardsCompatible;
         this.minThreads = minThreads;
         this.maxThreads = maxThreads;
         this.threadName = requestType.name();
@@ -71,11 +65,7 @@ public class RouteConfiguration {
     }
 
     public boolean isRouteBackwardsCompatible() {
-        return isRouteBackwardsCompatible;
-    }
-
-    public void setRouteBackwardsCompatible(boolean routeBackwardsCompatible) {
-        isRouteBackwardsCompatible = routeBackwardsCompatible;
+        return routeBackwardsCompatible;
     }
 
     public AbstractErrorProcessor getJsonValidationExceptionProcessor() {

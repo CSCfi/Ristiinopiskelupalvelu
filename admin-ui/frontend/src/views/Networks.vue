@@ -15,9 +15,13 @@
                 </v-toolbar-items>
               </v-toolbar>
               <v-list>
+                <v-list-tile>
+                  <v-text-field v-model="listFilter" clearable :label="$t('filter')">
+                  </v-text-field>
+                </v-list-tile>
                 <v-list-tile
-                  v-model="networks"
-                  v-for="item in networks"
+                  v-model="filteredNetworks"
+                  v-for="item in filteredNetworks"
                   :key="item.id"
                   active-class="highlighted"
                   :class="['list-tile', item.id === active ? 'highlighted' : '']"
@@ -100,8 +104,36 @@ export default {
       jsonNetwork: {},
       active: false,
       newNetwork: false,
-      networks: []
+      networks: [],
+      listFilter: ''
     };
+  },
+  computed: {
+    filteredNetworks() {
+      if (this.listFilter) {
+        const upperFilter = this.listFilter.toUpperCase();
+        return this.networks.filter(network => {
+          if (
+            network.abbreviation &&
+            network.abbreviation.toUpperCase().indexOf(upperFilter) >= 0
+          ) {
+            return true;
+          }
+          if (network?.name?.values) {
+            if (
+              Object.keys(network.name.values).find(
+                language =>
+                  (network.name.values[language] || '').toUpperCase().indexOf(upperFilter) >= 0
+              )
+            ) {
+              return true;
+            }
+          }
+          return false;
+        });
+      }
+      return this.networks;
+    }
   },
   mounted() {
     this.init();

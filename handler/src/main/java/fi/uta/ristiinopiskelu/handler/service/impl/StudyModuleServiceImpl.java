@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.handler.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
@@ -21,7 +22,12 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.StudyElementEntityNot
 import fi.uta.ristiinopiskelu.handler.exception.validation.StudyElementReferenceIdentifiersMissingValidationException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.StudyElementReferenceNotInSameNetworkValidationException;
 import fi.uta.ristiinopiskelu.handler.service.StudyModuleService;
-import fi.uta.ristiinopiskelu.persistence.repository.*;
+import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
+import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
+import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
+import fi.uta.ristiinopiskelu.persistence.repository.StudyElementRepository;
+import fi.uta.ristiinopiskelu.persistence.repository.StudyModuleRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -67,20 +73,25 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
     }
 
     @Override
-    public StudyModuleEntity delete(String studyElementId, String organizingOrganisationId, boolean deleteCourseUnits) throws DeleteFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> delete(String studyElementId, String organizingOrganisationId, boolean deleteCourseUnits) throws DeleteFailedException {
+        List<CompositeIdentifiedEntityModificationResult> modificationResults = new ArrayList<>();
+
         List<CourseUnitEntity> courseUnits = courseUnitRepository.findByStudyElementReference(
                 studyElementId, organizingOrganisationId, CourseUnitEntity.class);
 
         if(!CollectionUtils.isEmpty(courseUnits)) {
             if(deleteCourseUnits) {
                 for(CourseUnitEntity courseUnit : courseUnits) {
+                    CourseUnitEntity original = copy(courseUnit, CourseUnitEntity.class);
+
                     Predicate<StudyElementReference> matches =
                             ser -> ser.getReferenceIdentifier().equals(studyElementId) &&
                                 ser.getReferenceOrganizer().equals(organizingOrganisationId);
 
                     courseUnitRepository.saveHistory(courseUnit, CourseUnitEntity.class);
                     courseUnit.getParents().removeIf(matches);
-                    courseUnitRepository.update(courseUnit);
+                    modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
+                        CompositeIdentifiedEntityType.COURSE_UNIT, original, courseUnitRepository.update(courseUnit)));
                 }
             } else {
                 throw new DeleteFailedException("Study module cannot be deleted if it has course units and deleteCourseUnits is false.");
@@ -95,17 +106,20 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
             studyModuleRepository.saveHistory(studyModuleEntity, StudyModuleEntity.class);
             studyModuleRepository.delete(studyModuleEntity);
 
-            return studyModuleEntity;
+            modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.DELETE, CompositeIdentifiedEntityType.STUDY_MODULE, studyModuleEntity, null));
+            return modificationResults;
         } catch(Exception e) {
             throw new DeleteFailedException(getEntityClass(), studyElementId, organizingOrganisationId, e);
         }
     }
 
     @Override
-    public StudyModuleEntity update(JsonNode json, String organisationId) throws UpdateFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> update(JsonNode json, String organisationId) throws UpdateFailedException {
         Assert.notNull(json, "Json cannot be null");
         Assert.notNull(json.get("studyElementId"), "Json must have studyElementId field");
         Assert.hasText(organisationId, "Missing organisation JMS header");
+
+        List<CompositeIdentifiedEntityModificationResult> modificationResults = new ArrayList<>();
 
         String id = json.get("studyElementId").asText();
         List<CooperationNetwork> studyModuleCooperationNetworks = new ArrayList<>();
@@ -117,21 +131,24 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
         try {
             if(json.has("subElements")) {
                 List<AbstractStudyElementWriteDTO> subElements = getObjectMapper().convertValue(json.get("subElements"), new TypeReference<>(){});
-                updateStudyModuleReferences(id, organisationId, studyModuleCooperationNetworks, subElements);
+                modificationResults.addAll(updateStudyModuleReferences(id, organisationId, studyModuleCooperationNetworks, subElements));
             }
         } catch (Exception e) {
             throw new UpdateFailedException(getEntityClass(), id, e);
         }
 
-        return super.update(json, organisationId);
+        modificationResults.addAll(super.update(json, organisationId));
+        return modificationResults;
     }
 
     // This method can throw exception if no studyElement is found with given ids so this must be called before saving anything to elasticsearch
-    private void updateStudyModuleReferences(String parentStudyModuleId, String organisationId, List<CooperationNetwork> parentCooperationNetworks,
-                                             List<AbstractStudyElementWriteDTO> subElements) throws Exception {
+    private List<CompositeIdentifiedEntityModificationResult> updateStudyModuleReferences(String parentStudyModuleId, String organisationId, List<CooperationNetwork> parentCooperationNetworks,
+                                                                                          List<AbstractStudyElementWriteDTO> subElements) {
         if(subElements == null) {
             subElements = new ArrayList<>();
         }
+
+        List<CompositeIdentifiedEntityModificationResult> modificationResults = new ArrayList<>();
 
         for(AbstractStudyElementWriteDTO subElement : subElements) {
             if(StringUtils.isEmpty(subElement.getStudyElementId())) {
@@ -162,8 +179,10 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
             getReferencesAndStudyElementsToAddRefTo(parentStudyModuleId, organisationId, parentCooperationNetworks,
                 studyElementsWithAddedOrUpdatedReferences);
 
-        upsertStudyElementReferences(refsToAddAndStudyElementEntities);
-        removeStudyElementReferences(parentStudyModuleId, organisationId, referencesStudyElements, subElements);
+        modificationResults.addAll(upsertStudyElementReferences(refsToAddAndStudyElementEntities));
+        modificationResults.addAll(removeStudyElementReferences(parentStudyModuleId, organisationId, referencesStudyElements, subElements));
+
+        return modificationResults;
     }
 
     private List<AbstractStudyElementWriteDTO> getStudyElementsWithAddedOrUpdatedReferences(List<AbstractStudyElementWriteDTO> subElements,
@@ -200,7 +219,7 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
                                                                                                        List<AbstractStudyElementWriteDTO> newOrUpdatedReference) {
         HashMap<StudyElementEntity, StudyElementReference> refsToAddAndStudyElementEntities = new HashMap<>();
         for(AbstractStudyElementWriteDTO newReference : newOrUpdatedReference) {
-            StudyElementEntity entity = (StudyElementEntity) getRepositoryForStudyElementWriteDTO(newReference).findByStudyElementIdAndOrganizingOrganisationId(
+            StudyElementEntity entity = getRepositoryForStudyElementWriteDTO(newReference).findByStudyElementIdAndOrganizingOrganisationId(
                     newReference.getStudyElementId(), newReference.getOrganizingOrganisationId())
                     .orElse(null);
 
@@ -231,9 +250,13 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
         return refsToAddAndStudyElementEntities;
     }
 
-    private void upsertStudyElementReferences(HashMap<StudyElementEntity, StudyElementReference> refsToAddAndStudyElementEntities) {
+    private List<CompositeIdentifiedEntityModificationResult> upsertStudyElementReferences(HashMap<StudyElementEntity, StudyElementReference> refsToAddAndStudyElementEntities) {
+        List<CompositeIdentifiedEntityModificationResult> modificationResults = new ArrayList<>();
+
         for(Map.Entry<StudyElementEntity, StudyElementReference> refToAddAndStudyElementEntity : refsToAddAndStudyElementEntities.entrySet()) {
             StudyElementEntity entityToUpdate = refToAddAndStudyElementEntity.getKey();
+            StudyElementEntity original = copy(entityToUpdate, entityToUpdate.getClass());
+
             StudyElementReference studyElementReference = refToAddAndStudyElementEntity.getValue();
 
             getRepositoryForEntityClass(entityToUpdate.getClass()).saveHistory(entityToUpdate, entityToUpdate.getClass());
@@ -248,12 +271,18 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
                     && p.getReferenceOrganizer().equals(studyElementReference.getReferenceOrganizer()));
 
             entityToUpdate.getParents().add(studyElementReference);
-            getRepositoryForEntityClass(entityToUpdate.getClass()).update(entityToUpdate);
+
+            modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
+                entityToUpdate.getType(), original, getRepositoryForEntityClass(entityToUpdate.getClass()).update(entityToUpdate)));
         }
+
+        return modificationResults;
     }
 
-    private void removeStudyElementReferences(String parentStudyModuleId, String organisationId, List<StudyElementEntity> referencesStudyElements,
+    private List<CompositeIdentifiedEntityModificationResult> removeStudyElementReferences(String parentStudyModuleId, String organisationId, List<StudyElementEntity> referencesStudyElements,
                                               List<AbstractStudyElementWriteDTO> finalSubElements) {
+        List<CompositeIdentifiedEntityModificationResult> modificationResults = new ArrayList<>();
+
         List<StudyElementEntity> refRemovedStudyElements = referencesStudyElements.stream()
                 .filter(se -> finalSubElements.stream().noneMatch(
                             sub -> sub.getStudyElementId().equals(se.getStudyElementId())
@@ -262,6 +291,7 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
 
         // Delete removed references
         for(StudyElementEntity refRemoved : refRemovedStudyElements) {
+            StudyElementEntity original = copy(refRemoved, refRemoved.getClass());
             Predicate<StudyElementReference> removePredicate =
                     p -> p.getReferenceIdentifier().equals(parentStudyModuleId)
                             && p.getReferenceType().equals(StudyElementType.STUDY_MODULE)
@@ -269,7 +299,10 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
 
             getRepositoryForEntityClass(refRemoved.getClass()).saveHistory(refRemoved, refRemoved.getClass());
             refRemoved.getParents().removeIf(removePredicate);
-            getRepositoryForEntityClass(refRemoved.getClass()).update(refRemoved);
+            modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
+                refRemoved.getType(), original, getRepositoryForEntityClass(refRemoved.getClass()).update(refRemoved)));
         }
+
+        return modificationResults;
     }
 }

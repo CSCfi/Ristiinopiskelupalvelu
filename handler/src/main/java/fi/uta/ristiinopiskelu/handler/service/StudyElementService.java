@@ -2,9 +2,9 @@ package fi.uta.ristiinopiskelu.handler.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.StudyElementSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.StudyElementSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.StudyElementSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
 import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.DeleteFailedException;
@@ -17,13 +17,13 @@ import java.util.Optional;
 
 public interface StudyElementService<W extends AbstractStudyElementWriteDTO, T extends StudyElementEntity, R extends AbstractStudyElementReadDTO> extends Service<W, T, R> {
 
-    CompositeIdentifiedEntityModificationResult createAll(List<W> studyElements, String organisationId) throws CreateFailedException;
+    List<CompositeIdentifiedEntityModificationResult> createAll(List<W> studyElements, String organisationId) throws CreateFailedException;
 
-    T update(JsonNode updateJson, String organisationId) throws UpdateFailedException;
+    List<CompositeIdentifiedEntityModificationResult> update(JsonNode updateJson, String organisationId) throws UpdateFailedException;
 
-    T deleteByStudyElementIdAndOrganizingOrganisationId(String studyElementId, String organizingOrganisationId) throws DeleteFailedException;
+    List<CompositeIdentifiedEntityModificationResult> deleteByStudyElementIdAndOrganizingOrganisationId(String studyElementId, String organizingOrganisationId) throws DeleteFailedException;
 
-    T delete(String studyElementId, String organizingOrganisationId, boolean deleteSubElements) throws DeleteFailedException;
+    List<CompositeIdentifiedEntityModificationResult> delete(String studyElementId, String organizingOrganisationId, boolean deleteSubElements) throws DeleteFailedException;
 
     Optional<T> findByIdAndOrganizingOrganisationIds(String id, List<String> organizingOrganisationIds) throws FindFailedException;
 

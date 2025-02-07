@@ -1,20 +1,20 @@
 package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.CommonStudyRepository;
-import org.apache.lucene.search.join.ScoreMode;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.annotations.Document;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,7 +25,7 @@ public class CommonStudyRepositoryImpl<T extends CompositeIdentifiedEntity> impl
     private ObjectMapper objectMapper;
 
     @Autowired
-    protected ElasticsearchRestTemplate elasticsearchTemplate;
+    protected ElasticsearchTemplate elasticsearchTemplate;
 
     private final String HISTORY_SUFFIX = "-history";
 
@@ -53,19 +53,34 @@ public class CommonStudyRepositoryImpl<T extends CompositeIdentifiedEntity> impl
 
     @Override
     public List<T> findByStudyElementReference(String referenceIdentifier, String referenceOrganizer, Class<T> type) {
-        String referenceField = "studyElementReferences";
+        String referenceField;
+
         if(type.getSuperclass() == StudyElementEntity.class) {
             // studyelement's parent references are in field "parents"
             referenceField = "parents";
+        } else {
+            referenceField = "studyElementReferences";
         }
 
-        BoolQueryBuilder query = QueryBuilders.boolQuery()
-                .must(QueryBuilders.nestedQuery(referenceField, QueryBuilders.boolQuery()
-                .must(QueryBuilders.matchQuery(referenceField + ".referenceIdentifier", referenceIdentifier))
-                .must(QueryBuilders.matchQuery(referenceField + ".referenceOrganizer", referenceOrganizer)), ScoreMode.None));
+        BoolQuery.Builder query = new BoolQuery.Builder()
+                .must(q -> q
+                    .nested(nq -> nq
+                        .path(referenceField)
+                        .scoreMode(ChildScoreMode.None)
+                        .query(q2 -> q2
+                            .bool(bq -> bq
+                                .must(q3 -> q3
+                                    .term(tq -> tq
+                                        .field(referenceField + ".referenceIdentifier")
+                                        .value(referenceIdentifier)))
+                                .must(q3 -> q3
+                                    .term(tq -> tq
+                                        .field(referenceField + ".referenceOrganizer")
+                                        .value(referenceOrganizer)))))));
 
-        NativeSearchQuery builder = new NativeSearchQueryBuilder()
-                .withQuery(query)
+        NativeQuery builder = new NativeQueryBuilder()
+                .withQuery(query.build()._toQuery())
+                .withPageable(Pageable.unpaged())
                 .build();
 
         return elasticsearchTemplate.search(builder, type).get().map(SearchHit::getContent).collect(Collectors.toList());

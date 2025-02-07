@@ -9,7 +9,7 @@ import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.handler.validator.AbstractObjectValidator;
 import org.springframework.util.CollectionUtils;
 
-import javax.validation.Validator;
+import jakarta.validation.Validator;
 import java.util.List;
 import java.util.stream.Collectors;
 

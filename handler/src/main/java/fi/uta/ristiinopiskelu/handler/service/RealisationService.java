@@ -7,23 +7,27 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.Realisati
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.DeleteFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
+import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface RealisationService extends Service<RealisationWriteDTO, RealisationEntity, RealisationReadDTO> {
+public interface RealisationService extends CompositeIdentifiedService<RealisationWriteDTO, RealisationEntity, RealisationReadDTO> {
 
-    RealisationEntity update(JsonNode updateJson, String organisationId) throws UpdateFailedException;
+    List<CompositeIdentifiedEntityModificationResult> create(RealisationEntity entity) throws CreateFailedException;
 
-    RealisationEntity delete(String realisationId, String organizingOrganisationId) throws DeleteFailedException;
+    List<CompositeIdentifiedEntityModificationResult> createAll(List<RealisationEntity> entities) throws CreateFailedException;
+
+    List<CompositeIdentifiedEntityModificationResult> update(JsonNode updateJson, String organisationId) throws UpdateFailedException;
+
+    List<CompositeIdentifiedEntityModificationResult> delete(String realisationId, String organizingOrganisationId) throws DeleteFailedException;
 
     Optional<RealisationEntity> findByIdAndOrganizingOrganisationId(String id, String organisationId) throws FindFailedException;
-
-    void deleteByRealisationIdAndOrganizingOrganisationId(String id, String organizingOrganisationId) throws DeleteFailedException;
 
     List<RealisationEntity> findByStudyElementReference(String referenceIdentifier, String referenceOrganizer) throws FindFailedException;
 

@@ -1,36 +1,32 @@
 package fi.csc.ristiinopiskelu.admin.controller.interceptor;
 
 import com.google.common.base.Joiner;
-import fi.csc.ristiinopiskelu.admin.security.AppUserDetails;
+import fi.csc.ristiinopiskelu.admin.security.ShibbolethUserDetails;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import org.springframework.web.servlet.HandlerInterceptor;
 
 import static net.logstash.logback.marker.Markers.append;
 
-public class AuditLoggingInterceptor extends HandlerInterceptorAdapter {
+public class AuditLoggingInterceptor implements HandlerInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditLoggingInterceptor.class);
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        AppUserDetails details = null;
+        ShibbolethUserDetails details = null;
 
-        if(authentication != null && authentication.getPrincipal() != null && authentication.getPrincipal() instanceof AppUserDetails) {
-            details = (AppUserDetails) authentication.getPrincipal();
+        if(authentication != null && authentication.getPrincipal() != null && authentication.getPrincipal() instanceof ShibbolethUserDetails shibbolethUserDetails) {
+            details = shibbolethUserDetails;
         }
 
         String eppn = details != null ? details.getEppn() : null;
-        Assert.hasText(eppn, "User eppn missing, unauthorized user?");
-
         String requestURI = request.getRequestURI();
         String requestParams = CollectionUtils.isEmpty(request.getParameterMap()) ? Joiner.on(",").withKeyValueSeparator("=").join(request.getParameterMap()) : null;
         String method = request.getMethod();

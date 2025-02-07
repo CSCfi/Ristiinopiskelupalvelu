@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.Student;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.student.StudentReadDTO;
@@ -10,8 +11,10 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.student.StudentWriteDT
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudentEntity;
+import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
 import fi.uta.ristiinopiskelu.handler.service.StudentService;
+import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationResult;
 import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RegistrationRepository;
@@ -41,6 +44,9 @@ public class StudentServiceImpl extends AbstractService<StudentWriteDTO, Student
     @Autowired
     private ModelMapper modelMapper;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     public StudentServiceImpl() {
         super(StudentWriteDTO.class, StudentEntity.class, StudentReadDTO.class);
     }
@@ -51,14 +57,26 @@ public class StudentServiceImpl extends AbstractService<StudentWriteDTO, Student
     }
 
     @Override
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
+    }
+
+    @Override
     public ModelMapper getModelMapper() {
         return modelMapper;
     }
 
     @Override
-    public List<StudentEntity> findByOidOrPersonIdOrderByTimestampDesc(String oid, String personId) throws FindFailedException {
+    public List<GenericEntityModificationResult> create(StudentEntity entity) throws CreateFailedException {
+        return super.create(entity).stream()
+                .map(GenericEntityModificationResult.class::cast)
+                .toList();
+    }
+
+    @Override
+    public List<StudentEntity> findByOidOrPersonId(String oid, String personId, Pageable pageable) throws FindFailedException {
        try {
-            return studentRepository.findByOidOrPersonIdOrderByTimestampDesc(oid, personId);
+            return studentRepository.findByOidOrPersonId(oid, personId, pageable);
         } catch (Exception e) {
             throw new FindFailedException(getEntityClass(), oid, e);
         }

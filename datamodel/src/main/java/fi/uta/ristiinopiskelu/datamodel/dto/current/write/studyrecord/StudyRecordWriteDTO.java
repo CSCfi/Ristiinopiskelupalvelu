@@ -4,10 +4,12 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.Completed
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.RoutingType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
+@Schema(name = "StudyRecord")
 public class StudyRecordWriteDTO {
 
     private String sendingOrganisation;

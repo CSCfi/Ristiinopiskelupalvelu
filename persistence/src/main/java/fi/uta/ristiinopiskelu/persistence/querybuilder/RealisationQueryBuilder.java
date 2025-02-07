@@ -1,63 +1,88 @@
 package fi.uta.ristiinopiskelu.persistence.querybuilder;
 
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
+import co.elastic.clients.json.JsonData;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CourseUnitReference;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
-import org.apache.lucene.search.join.ScoreMode;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.NestedQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
 
 public class RealisationQueryBuilder extends StudiesQueryBuilder {
+
     public void filterOngoingEnrollments() {
         String formattedNow = DateUtils.getFormattedNow();
-        BoolQueryBuilder onGoingEnrollment = QueryBuilders.boolQuery()
-                .must(QueryBuilders.rangeQuery("enrollmentStartDateTime").lte(formattedNow))
-                .must(QueryBuilders.boolQuery()
-                        .should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery("enrollmentEndDateTime")))
-                        .should(QueryBuilders.rangeQuery("enrollmentEndDateTime").gte(formattedNow)));
-
-        this.must(onGoingEnrollment);
+        this.must(q -> q.bool(bq -> bq
+                .must(q2 -> q2.range(rq -> rq
+                    .field("enrollmentStartDateTime")
+                    .lte(JsonData.of(formattedNow))))
+                .must(q2 -> q2.bool(bq2 -> bq2
+                        .should(q3 -> q3.bool(bq3 -> bq3
+                            .mustNot(q4 -> q4
+                                .exists(eq -> eq.field("enrollmentEndDateTime")))))
+                        .should(q3 -> q3.range(rq -> rq
+                            .field("enrollmentEndDateTime")
+                            .gte(JsonData.of(formattedNow))))))));
     }
 
     @Override
     public void filterByComposedId(String id, String code, String organizingOrganisationId) {
         if(StringUtils.hasText(id)) {
-            this.must(QueryBuilders.termQuery("realisationId", id));
+            this.must(q -> q
+                .term(tq -> tq
+                    .field("realisationId")
+                    .value(id)));
         }
 
         if(StringUtils.hasText(code)) {
-            this.must(QueryBuilders.matchQuery("realisationIdentifierCode", code));
+            this.must(q -> q
+                .match(mq -> mq
+                    .field("realisationIdentifierCode")
+                    .query(code)));
         }
 
         if(StringUtils.hasText(organizingOrganisationId)) {
-            this.must(QueryBuilders.termQuery("organizingOrganisationId", organizingOrganisationId));
+            this.must(q -> q
+                .term(tq -> tq
+                    .field("organizingOrganisationId")
+                    .value(organizingOrganisationId)));
         }
     }
 
     public void filterByCourseUnitReferences(List<CourseUnitReference> courseUnitReferences) {
-        BoolQueryBuilder multipleReferencesQuery = QueryBuilders.boolQuery();
+        BoolQuery.Builder multipleReferencesQuery = new BoolQuery.Builder();
 
         for(CourseUnitReference ref : courseUnitReferences) {
-            BoolQueryBuilder courseUnitReferenceQuery = QueryBuilders.boolQuery();
+            BoolQuery.Builder courseUnitReferenceQuery = new BoolQuery.Builder();
             if(ref.getCourseUnitId() != null) {
-                courseUnitReferenceQuery.must(QueryBuilders.matchQuery("studyElementReferences.referenceIdentifier", ref.getCourseUnitId()));
+                courseUnitReferenceQuery.must(q -> q
+                    .match(mq -> mq
+                        .field("studyElementReferences.referenceIdentifier")
+                        .query(ref.getCourseUnitId())));
             }
 
             if(ref.getOrganizingOrganisationId() != null) {
-                courseUnitReferenceQuery.must(QueryBuilders.matchQuery("studyElementReferences.referenceOrganizer", ref.getOrganizingOrganisationId()));
+                courseUnitReferenceQuery.must(q -> q
+                    .match(mq -> mq
+                        .field("studyElementReferences.referenceOrganizer")
+                        .query(ref.getOrganizingOrganisationId())));
             }
 
-            multipleReferencesQuery.should(courseUnitReferenceQuery);
+            multipleReferencesQuery.should(courseUnitReferenceQuery.build()._toQuery());
         }
 
-        NestedQueryBuilder nestedQueryBuilder = QueryBuilders.nestedQuery("studyElementReferences", multipleReferencesQuery, ScoreMode.None);
-        this.must(nestedQueryBuilder);
+        this.must(q -> q
+            .nested(nq -> nq
+                .path("studyElementReferences")
+                .query(multipleReferencesQuery.build()._toQuery())
+                .scoreMode(ChildScoreMode.None)));
     }
 
     public void filterPastEndDate() {
-        this.must(QueryBuilders.rangeQuery("endDate").gte("now/d"));
+        this.must(q -> q
+            .range(rq -> rq
+                .field("endDate")
+                .gte(JsonData.of("now/d"))));
     }
 }

@@ -5,9 +5,9 @@ spring:
   main:
     allow-bean-definition-overriding: true
   artemis:
-    user: ${activemq_admin_ui_username}
-    password: ${activemq_admin_ui_password}
-    broker-url: ${activemq_hosts}
+    user: admin
+    password: admin
+    broker-url: tcp://localhost:5672
     embedded:
       enabled: false
     pool:
@@ -22,10 +22,21 @@ tomcat:
     port: 8099
 
 general:
+  message-schema:
+    version:
+      current: 9
+      available:
+        8: fi.uta.ristiinopiskelu.messaging.message.v8.MessageType
+        9: fi.uta.ristiinopiskelu.messaging.message.current.MessageType
   elasticsearch:
     embedded: true
-    hosts: ${elasticsearch_hosts}
+    hosts: localhost
     clusterName: ripa-cluster
-    username: ${elasticsearch_username}
-    password: ${elasticsearch_password}
-    caCertificatePath: ${elasticsearch_cacertificatepath}
+    username:
+    password:
+    caCertificatePath: 
+
+ristiinopiskelupalvelu:
+  hakaLogoutUrl: http://www.disney.com
+  activemq:
+    queueName: handler

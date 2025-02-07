@@ -1,107 +1,116 @@
 package fi.uta.ristiinopiskelu.dlqhandler.component;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.DeadLetterQueueEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.DeadLetterQueueRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
+import org.simplejavamail.api.email.Email;
+import org.simplejavamail.api.mailer.Mailer;
+import org.simplejavamail.email.EmailBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import javax.mail.internet.MimeMessage;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.groupingBy;
 
 @Component
 public class EmailSender {
+
     private static final Logger logger = LoggerFactory.getLogger(EmailSender.class);
 
-    private final String ATTACHMENT_FILE_TYPE = ".json";
+    private final String UNKNOWN_ENVIRONMENT = "unknown";
+
+    private final Map<String, String> environmentTranslations = Map.of(
+        "local", "Paikallinen kehitysympäristö",
+        "develop", "Kehitysympäristö",
+        "staging", "Testiympäristö",
+        "production", "Tuotanto",
+        UNKNOWN_ENVIRONMENT, "Tuntematon"
+    );
 
     private String administratorEmail;
     private String noreplyEmail;
     private boolean isEnabled;
     private String subject;
     private String body;
+    private String environment;
 
     private OrganisationRepository organisationRepository;
     private DeadLetterQueueRepository deadLetterQueueRepository;
 
-    private JavaMailSender javaMailSender;
-    private ObjectMapper objectMapper;
+    private Mailer mailer;
 
     @Autowired
     public EmailSender(OrganisationRepository organisationRepository,
                        DeadLetterQueueRepository deadLetterQueueRepository,
-                       JavaMailSender javaMailSender,
-                       ObjectMapper objectMapper,
+                       Mailer mailer,
                        @Value("${general.email.address.administrator}") String administratorEmail,
                        @Value("${general.email.address.noreply}") String noreplyEmail,
                        @Value("${general.emailsender.enabled}") boolean isEnabled,
                        @Value("${general.email.address.subject}") String subject,
-                       @Value("${general.email.address.body}") String body) {
+                       @Value("${general.email.address.body}") String body,
+                       @Value("${general.activemq.environment}") String environment) {
         this.organisationRepository = organisationRepository;
         this.deadLetterQueueRepository = deadLetterQueueRepository;
-        this.javaMailSender = javaMailSender;
-        this.objectMapper = objectMapper;
+        this.mailer = mailer;
         this.administratorEmail = administratorEmail;
         this.noreplyEmail = noreplyEmail;
         this.isEnabled = isEnabled;
         this.subject = subject;
         this.body = body;
+        this.environment = environment;
     }
 
     @Scheduled(cron = "${general.emailsender.pollingRate}")
     public void sendDeadLetterQueueEmail() {
-        if(!isEnabled) {
+        if (!isEnabled) {
             return;
         }
 
         try {
-            List<OrganisationEntity> organisations = StreamSupport.stream(organisationRepository.findAll().spliterator(), false).collect(Collectors.toList());
+            List<OrganisationEntity> organisations = StreamSupport.stream(organisationRepository.findAll().spliterator(), false).toList();
+            PageRequest pageRequest = PageRequest.of(0, 1000, Sort.by(Sort.Order.asc("consumedTimestamp")));
 
-            for(OrganisationEntity organisation : organisations) {
-                List<DeadLetterQueueEntity> deadLetters = deadLetterQueueRepository.findAllByOrganisationIdAndEmailSentOrderByConsumedTimestampAsc(organisation.getId(), false);
+            for (OrganisationEntity organisation : organisations) {
+                List<DeadLetterQueueEntity> deadLetters;
 
-                if(CollectionUtils.isEmpty(deadLetters)) {
+                try(Stream<DeadLetterQueueEntity> stream = deadLetterQueueRepository.findByOrganisationIdAndEmailSent(
+                        organisation.getId(), false, pageRequest)) {
+                    deadLetters = stream.toList();
+                }
+
+                if (CollectionUtils.isEmpty(deadLetters)) {
                     continue;
                 }
 
-                if(StringUtils.isEmpty(organisation.getAdministratorEmail())) {
-                    logger.error("Organisation " + organisation.getId() + " is missing administrator email, cannot process forward!");
+                if (!StringUtils.hasText(organisation.getAdministratorEmail())) {
+                    logger.error("Organisation {} is missing administrator email, cannot process forward!", organisation.getId());
                     continue;
                 }
 
-                logger.info("Creating dead letter queue email for: " + organisation.getId() + " with email: " + organisation.getAdministratorEmail());
-                MimeMessage message = createEmail(organisation.getAdministratorEmail(), deadLetters);
-                javaMailSender.send(message);
+                logger.info("Creating dead letter queue email for organisation {} with email address {}", organisation.getId(),
+                        organisation.getAdministratorEmail());
+                mailer.sendMail(createEmail(organisation.getAdministratorEmail(), deadLetters));
 
-                logger.info("Succesfully sent email");
-                logger.info("Email attachment includes " + deadLetters.size() + " messages from dead letter queue.");
-                logger.info("Email should include following attachments: " + String.join(", ", deadLetters.stream().map(dl -> dl.getMessageType() + ".json").distinct().collect(Collectors.toList())));
-
+                logger.info("Successfully sent email, email includes {} messages from dead letter queue.", deadLetters.size());
                 markDeadLetterEmailSent(deadLetters);
             }
 
-        } catch(Exception e) {
-            logger.error("Unable to process dead letter queue and send email: ", e);
+        } catch (Exception e) {
+            logger.error("Unable to process dead letter queue and send email", e);
         }
     }
 
@@ -112,45 +121,32 @@ public class EmailSender {
         }
     }
 
-    private MimeMessage createEmail(String organisationEmail, List<DeadLetterQueueEntity> deadLetters) throws Exception {
-        MimeMessage msg = javaMailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(msg, true);
-        helper.setTo(organisationEmail);
-        helper.setBcc(administratorEmail);
-        helper.setFrom(noreplyEmail);
-        helper.setSubject(subject);
-        helper.setText(body);
-
-        Map<String, ByteArrayResource> attachments = createAttachments(deadLetters);
-
-        for(Map.Entry<String, ByteArrayResource> attachment : attachments.entrySet()) {
-            helper.addAttachment(attachment.getKey(), attachment.getValue());
-        }
-
-        return msg;
+    private Email createEmail(String organisationEmail, List<DeadLetterQueueEntity> deadLetters) {
+        return EmailBuilder.startingBlank()
+            .from(noreplyEmail)
+            .to(organisationEmail)
+            .bcc(administratorEmail)
+            .withSubject(subject)
+            .withPlainText(body.formatted(getEnvironmentText(), getDeadLetterCountByMessageTypeStringList(deadLetters)))
+            .buildEmail();
     }
 
-    private Map<String, ByteArrayResource> createAttachments(List<DeadLetterQueueEntity> deadLetters) throws UnsupportedEncodingException, JsonProcessingException {
-        Map<String, List<DeadLetterQueueEntity>> deadLettersByMessageType = deadLetters.stream()
-                .collect(groupingBy(DeadLetterQueueEntity::getMessageType));
+    private String getEnvironmentText() {
+        String environmentText = environmentTranslations.get(environment);
 
-
-        Map<String, ByteArrayResource> attachments = new HashMap<>();
-        for(Map.Entry<String, List<DeadLetterQueueEntity>> deadLetter : deadLettersByMessageType.entrySet()) {
-            List<String> messages = new ArrayList<>();
-            for(DeadLetterQueueEntity deadLetterQueueEntity : deadLetter.getValue()) {
-                messages.add(deadLetterQueueEntity.getMessage());
-            }
-
-            Attachment attachment = new Attachment();
-            attachment.setMessages(messages);
-            attachment.setMessageType(deadLetter.getKey());
-
-            String filename = deadLetter.getKey() + ATTACHMENT_FILE_TYPE;
-            attachments.put(filename, new ByteArrayResource(objectMapper.writeValueAsString(attachment).getBytes("UTF-8")));
-            logger.info("Added " + messages.size() + " messages to " + filename);
+        if(!StringUtils.hasText(environmentText)) {
+            return environmentTranslations.get(UNKNOWN_ENVIRONMENT);
         }
 
-        return attachments;
+        return environmentText;
+    }
+
+    protected String getDeadLetterCountByMessageTypeStringList(List<DeadLetterQueueEntity> deadLetters) {
+        Map<String, Long> deadLetterCountByMessageType = deadLetters.stream()
+            .collect(groupingBy(DeadLetterQueueEntity::getMessageType, Collectors.counting()));
+
+        return deadLetterCountByMessageType.entrySet().stream()
+            .map(entry -> "%s: %s".formatted(entry.getKey(), entry.getValue()))
+            .collect(Collectors.joining("\n"));
     }
 }

@@ -7,7 +7,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.CodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.validation.CodeSetConstraint;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 
 public class Network {

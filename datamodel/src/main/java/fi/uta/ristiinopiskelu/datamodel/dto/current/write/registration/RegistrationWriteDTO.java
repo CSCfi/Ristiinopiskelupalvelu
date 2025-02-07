@@ -1,12 +1,14 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.write.registration;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
+@Schema(name = "Registration")
 public class RegistrationWriteDTO {
     private String registrationRequestId;
     private String sendingOrganisationTkCode;

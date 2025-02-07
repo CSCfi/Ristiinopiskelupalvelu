@@ -1,18 +1,19 @@
 package fi.uta.ristiinopiskelu.handler.helper;
 
+import com.github.mpolla.HetuUtil;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.CompletedCredit;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.RoutingType;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.messaging.message.v8.registration.CreateRegistrationRequest;
 import fi.uta.ristiinopiskelu.messaging.message.v8.studyrecord.CreateStudyRecordRequest;
+import fi.uta.ristiinopiskelu.messaging.util.Oid;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 public class MessageTemplateInitializerV8 {
     public static CreateRegistrationRequest getCreateRegistrationRequestTemplate(String sendingOrganisationId, String receivingOrganisationId, String networkId) {
@@ -36,8 +37,8 @@ public class MessageTemplateInitializerV8 {
         studyRight.setKeywords(Collections.singletonList(keyword));
 
         ExtendedStudent student = new ExtendedStudent();
-        student.setPersonId("010101-0101");
-        student.setOid(UUID.randomUUID().toString());
+        student.setPersonId(HetuUtil.generateRandom());
+        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
         student.setFirstNames("Matti");
         student.setSurName("Nykänen");
         student.setGivenName("Matti");

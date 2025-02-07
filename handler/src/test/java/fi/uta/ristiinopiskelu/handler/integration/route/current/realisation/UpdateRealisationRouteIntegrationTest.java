@@ -1,6 +1,8 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current.realisation;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
@@ -18,7 +20,10 @@ import fi.uta.ristiinopiskelu.messaging.message.current.JsonValidationFailedResp
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
+import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,12 +33,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -44,8 +47,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrationTest {
@@ -61,7 +66,7 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchTemplate;
+    private ElasticsearchTemplate elasticsearchTemplate;
 
     @Autowired
     private CourseUnitService courseUnitService;
@@ -81,7 +86,10 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     @Autowired
     private RealisationRepository realisationRepository;
 
-    @Value("${general.messageSchema.version}")
+    @Autowired
+    private NetworkRepository networkRepository;
+
+    @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
     @BeforeEach
@@ -188,6 +196,100 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(createdEntity.getPersonReferences().stream().allMatch(pr -> pr.getPerson() != null));
         assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi@test.fi")));
         assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi2@test.fi")));
+
+        // Send update message for realisation to remove one teacher (identifier 7228) and update min seats to 20 and max seats to 200
+        Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateRealisationJson, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
+
+        DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
+        assertTrue(updResp.getStatus() == Status.OK);
+
+        RealisationEntity updatedEntity = realisationService.findByIdAndOrganizingOrganisationId("129177", organisingOrganisationId)
+            .orElse(null);
+        assertNotNull(updatedEntity);
+        assertNotNull(updatedEntity.getUpdateTime());
+        assertEquals(createdEntity.getCreatedTime(), updatedEntity.getCreatedTime());
+        assertNotEquals(updatedEntity.getId(), "129177");
+        assertEquals("129177", updatedEntity.getRealisationId());
+        assertEquals("129177", updatedEntity.getRealisationIdentifierCode());
+        assertEquals(20, updatedEntity.getMinSeats());
+        assertEquals(200, updatedEntity.getMaxSeats());
+        assertEquals(1, updatedEntity.getPersonReferences().size());
+        assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi@test.fi")));
+    }
+
+    @Test
+    public void testSendingUpdateRealisationMessage_withExpiredCooperationNetwork_shouldSucceed() throws JMSException {
+        String organisingOrganisationId = "TUNI";
+
+        Validity validity = new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusDays(2));
+        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+            Collections.singletonList(new NetworkOrganisation(organisingOrganisationId, true, validity)),
+            validity, true);
+        networkRepository.create(networkEntity);
+
+        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+            true, LocalDate.now().minusYears(1), LocalDate.now().minusDays(2));
+
+        CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("CU-1", "4CO19KBIOP", organisingOrganisationId,
+            Collections.singletonList(cooperationNetwork), null);
+        courseUnitRepository.create(courseUnitEntity);
+
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, testRealisationJson, MessageType.CREATE_REALISATION_REQUEST.name(), organisingOrganisationId);
+
+        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(resp.getStatus() == Status.OK);
+
+        RealisationEntity createdEntity = realisationService.findByIdAndOrganizingOrganisationId(
+            "129177", organisingOrganisationId).orElse(null);
+
+        assertNotNull(createdEntity);
+        assertNotNull(createdEntity.getCreatedTime());
+
+        assertNotEquals(createdEntity.getId(), "129177");
+        assertNotEquals(createdEntity.getId(), "129177");
+        assertEquals("129177", createdEntity.getRealisationId());
+        assertEquals("129177", createdEntity.getRealisationIdentifierCode());
+        assertEquals(10, createdEntity.getMinSeats());
+        assertEquals(400, createdEntity.getMaxSeats());
+        assertEquals(createdEntity.getStudyElementReferences().size(), 1);
+        assertEquals(2, createdEntity.getPersonReferences().size());
+        assertTrue(createdEntity.getPersonReferences().stream().allMatch(pr -> pr.getPerson() != null));
+        assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi@test.fi")));
+        assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi2@test.fi")));
+
+        String updateRealisationJson = """
+                {
+                    "realisation": {
+                        "realisationId": "129177",
+                        "minSeats": 20,
+                        "maxSeats": 200,
+                        "personReferences": [
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi2@test.fi",
+                                    "surName": "Testinen2"
+                                }
+                            }
+                        ],
+                        "cooperationNetworks": [
+                            {
+                                "id": "%s",
+                                "name": {
+                                    "values": {
+                                        "fi": "Verkosto",
+                                        "en": "Verkosto en",
+                                        "sv": "Verkosto sv"
+                                    }
+                                },
+                                "enrollable": true
+                            }
+                        ]
+                    }
+                }""".formatted(networkEntity.getId());
 
         // Send update message for realisation to remove one teacher (identifier 7228) and update min seats to 20 and max seats to 200
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateRealisationJson, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);

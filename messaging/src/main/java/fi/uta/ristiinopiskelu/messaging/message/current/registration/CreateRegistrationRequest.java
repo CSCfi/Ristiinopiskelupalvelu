@@ -2,11 +2,10 @@ package fi.uta.ristiinopiskelu.messaging.message.current.registration;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Description;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentWarning;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
 import fi.uta.ristiinopiskelu.messaging.message.current.AbstractPersonIdentifiableRequest;
-import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -107,12 +106,13 @@ public class CreateRegistrationRequest extends AbstractPersonIdentifiableRequest
 
     @JsonIgnore
     @Override
-    public String getPersonIdentifier() {
-        if(getStudent() != null) {
-            return !StringUtils.isEmpty(getStudent().getPersonId()) ?
-                    getStudent().getPersonId() : getStudent().getOid();
-        }
+    public String getPersonId() {
+        return getStudent() != null ? getStudent().getPersonId() : null;
+    }
 
-        return null;
+    @JsonIgnore
+    @Override
+    public String getPersonOid() {
+        return getStudent() != null ? getStudent().getOid() : null;
     }
 }

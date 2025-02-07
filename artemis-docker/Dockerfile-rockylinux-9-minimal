@@ -1,0 +1,65 @@
+FROM rockylinux:9.1-minimal
+
+ENV MICRODNF_CMD "microdnf -y --setopt=install_weak_deps=0"
+
+# Make sure pipes are considered to determine success, see: https://github.com/hadolint/hadolint/wiki/DL4006
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN $MICRODNF_CMD update \
+    && $MICRODNF_CMD install java-21-openjdk curl tar libaio \
+    && $MICRODNF_CMD clean all
+
+WORKDIR /opt
+
+# Web Server
+EXPOSE 8161 \
+# JMX Exporter
+    9404 \
+# Port for CORE,MQTT,AMQP,HORNETQ,STOMP,OPENWIRE
+    61616 \
+# Port for HORNETQ,STOMP
+    5445 \
+# Port for AMQP
+    5672 \
+# Port for MQTT
+    1883 \
+#Port for STOMP
+    61613
+
+ENV ARTEMIS_VERSION 2.37.0
+ENV ARTEMIS_DIST_FILE_NAME apache-artemis-${ARTEMIS_VERSION}-bin.tar.gz
+
+# NOTE: this needs to be changed manually depending on version. Current release is downloadable from separate url than the current one.
+ENV ARTEMIS_DIST_FILE_URL https://archive.apache.org/dist/activemq/activemq-artemis/${ARTEMIS_VERSION}/apache-artemis-${ARTEMIS_VERSION}-bin.tar.gz
+
+ENV ARTEMIS_DIR_NAME apache-artemis-${ARTEMIS_VERSION}
+ENV ARTEMIS_USER artemis
+ENV ARTEMIS_PASSWORD artemis
+ENV ANONYMOUS_LOGIN false
+ENV EXTRA_ARGS --http-host 0.0.0.0 --relax-jolokia
+
+# add user and group for artemis
+RUN groupadd -g 1001 -r artemis && useradd -r -u 1001 -g artemis artemis
+
+# download & unpack the artemis distribution
+RUN curl --progress-bar "${ARTEMIS_DIST_FILE_URL}" --output ./${ARTEMIS_DIST_FILE_NAME}
+RUN tar zxf ${ARTEMIS_DIST_FILE_NAME}
+RUN rm -f ${ARTEMIS_DIST_FILE_NAME}
+RUN mv ${ARTEMIS_DIR_NAME} activemq-artemis
+
+RUN mkdir /var/lib/artemis-instance && chown -R ${ARTEMIS_USER}.${ARTEMIS_USER} /var/lib/artemis-instance
+
+COPY ./docker-run.sh /
+
+WORKDIR /var/lib/artemis-instance
+
+# copy tracker dependencies
+COPY ./lib/* lib/
+RUN chown -R ${ARTEMIS_USER}.${ARTEMIS_USER} lib/
+
+# create instance
+USER artemis
+RUN /opt/activemq-artemis/bin/artemis create --user ${ARTEMIS_USER} --password ${ARTEMIS_PASSWORD} --require-login --silent .
+
+ENTRYPOINT ["/docker-run.sh"]
+CMD ["run"]

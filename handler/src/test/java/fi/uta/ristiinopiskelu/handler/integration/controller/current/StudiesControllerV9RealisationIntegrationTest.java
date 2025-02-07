@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation.RealisationReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
@@ -32,8 +33,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("integration")
@@ -424,5 +427,81 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(0, actualResult.size());
+    }
+
+    @Test
+    public void testFindRealisations_filterByMinEduGuidanceAreas_shouldSucceed() throws Exception {
+        String url = "/api/v9/studies/realisations/search";
+
+        createNetworkWithOrganisations("CN-1", "UEF");
+        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+
+        RealisationEntity realisationEntity = createRealisation("R1", "UEF", null, Collections.singletonList(coopNetwork));
+        realisationEntity.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.EDUCATION, MinEduGuidanceArea.SERVICES));
+        realisationRepository.update(realisationEntity);
+
+        RealisationEntity realisationEntity2 = createRealisation("R2", "UEF", null, Collections.singletonList(coopNetwork));
+        realisationEntity2.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.MEDICAL_SCIENCE, MinEduGuidanceArea.SERVICES));
+        realisationRepository.update(realisationEntity2);
+
+        RealisationEntity realisationEntity3 = createRealisation("R3", "JYU", null, Collections.singletonList(coopNetwork));
+        realisationEntity3.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.HUMANITIES, MinEduGuidanceArea.SERVICES, MinEduGuidanceArea.ARTS_AND_CULTURE));
+        realisationRepository.update(realisationEntity3);
+
+        RealisationSearchParameters searchParams = new RealisationSearchParameters();
+        searchParams.setIncludeOwn(true);
+        searchParams.setOngoingEnrollment(false);
+        searchParams.setMinEduGuidanceAreas(List.of(MinEduGuidanceArea.SERVICES));
+
+        MvcResult result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        String content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        assertEquals(3, actualResult.size());
+        assertThat(actualResult, containsInAnyOrder(
+            hasProperty("realisationId", is(realisationEntity.getRealisationId())),
+            hasProperty("realisationId", is(realisationEntity2.getRealisationId())),
+            hasProperty("realisationId", is(realisationEntity3.getRealisationId()))
+        ));
+        
+        searchParams.setMinEduGuidanceAreas(List.of(MinEduGuidanceArea.HUMANITIES));
+
+        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        assertEquals(1, actualResult.size());
+        assertThat(actualResult, containsInAnyOrder(
+            hasProperty("realisationId", is(realisationEntity3.getRealisationId()))
+        ));
+
+        searchParams.setMinEduGuidanceAreas(List.of(MinEduGuidanceArea.HUMANITIES, MinEduGuidanceArea.EDUCATION));
+
+        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        assertEquals(2, actualResult.size());
+        assertThat(actualResult, containsInAnyOrder(
+            hasProperty("realisationId", is(realisationEntity.getRealisationId())),
+            hasProperty("realisationId", is(realisationEntity3.getRealisationId()))
+        ));
+
+        searchParams.setMinEduGuidanceAreas(null);
+
+        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        assertEquals(3, actualResult.size());
+        assertThat(actualResult, containsInAnyOrder(
+            hasProperty("realisationId", is(realisationEntity.getRealisationId())),
+            hasProperty("realisationId", is(realisationEntity2.getRealisationId())),
+            hasProperty("realisationId", is(realisationEntity3.getRealisationId()))
+        ));
     }
 }

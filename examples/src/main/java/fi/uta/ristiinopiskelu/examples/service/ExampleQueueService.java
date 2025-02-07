@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.examples.service;
 
-import javax.jms.Message;
+import jakarta.jms.Message;
 import java.util.List;
 
 public interface ExampleQueueService {

@@ -24,6 +24,12 @@ tomcat:
     port: 8009
 
 general:
+  message-schema:
+    version:
+      current: 9
+      available:
+        8: fi.uta.ristiinopiskelu.messaging.message.v8.MessageType
+        9: fi.uta.ristiinopiskelu.messaging.message.current.MessageType
   elasticsearch:
     hosts: ${elasticsearch_hosts}
     clusterName: ripa-cluster

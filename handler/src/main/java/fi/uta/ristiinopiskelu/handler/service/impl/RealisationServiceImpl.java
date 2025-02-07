@@ -3,10 +3,7 @@ package fi.uta.ristiinopiskelu.handler.service.impl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation.RealisationReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchResults;
@@ -17,6 +14,8 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundExcepti
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
+import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.handler.utils.KeyHelper;
 import fi.uta.ristiinopiskelu.persistence.querybuilder.RealisationQueryBuilder;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
@@ -72,12 +71,17 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
     }
 
     @Override
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
+    }
+
+    @Override
     public ModelMapper getModelMapper() {
         return modelMapper;
     }
 
     @Override
-    public RealisationEntity create(RealisationEntity realisationEntity) throws CreateFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> create(RealisationEntity realisationEntity) throws CreateFailedException {
         Assert.notNull(realisationEntity, "Realisation cannot be null");
 
         if(isValidateId()) {
@@ -94,19 +98,19 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
         try {
             RealisationEntity createdEntity = realisationRepository.create(realisationEntity, IndexQuery.OpType.CREATE);
             addOrUpdateDenormalizedData(createdEntity, createdEntity.getStudyElementReferences());
-            return createdEntity;
+            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.CREATE, CompositeIdentifiedEntityType.REALISATION, null, createdEntity));
         } catch(Exception e) {
             throw new CreateFailedException(getEntityClass(), e);
         }
     }
 
     @Override
-    public List<RealisationEntity> createAll(List<RealisationEntity> realisationEntities) throws CreateFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> createAll(List<RealisationEntity> realisationEntities) throws CreateFailedException {
         Assert.notEmpty(realisationEntities, "Realisation entities cannot be null or empty");
-        List<RealisationEntity> createdRealisationEntities = new ArrayList<>();
+        List<CompositeIdentifiedEntityModificationResult> createdRealisationEntities = new ArrayList<>();
         try {
             for(RealisationEntity realisation : realisationEntities) {
-                createdRealisationEntities.add(this.create(realisation));
+                createdRealisationEntities.addAll(this.create(realisation));
             }
         } catch (Exception e) {
             rollback(createdRealisationEntities);
@@ -176,14 +180,14 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
         }
     }
 
-    private void rollback(List<RealisationEntity> createdRealisations) {
+    private void rollback(List<CompositeIdentifiedEntityModificationResult> createdRealisations) {
         List<KeyHelper> rollbackFailedEntities = new ArrayList<>();
         logger.info("Rollbacking CREATE_REALISATION_REQUEST.");
-        for(RealisationEntity realisation : createdRealisations) {
+        for(CompositeIdentifiedEntityModificationResult realisation : createdRealisations) {
             try {
-                realisationRepository.delete(realisation);
+                realisationRepository.delete((RealisationEntity) realisation.getCurrent());
             } catch(Exception e) {
-                rollbackFailedEntities.add(new KeyHelper(realisation.getRealisationId(), realisation.getOrganizingOrganisationId()));
+                rollbackFailedEntities.add(new KeyHelper(realisation.getCurrent().getElementId(), realisation.getCurrent().getOrganizingOrganisationId()));
             }
         }
 
@@ -194,7 +198,7 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
     }
     
     @Override
-    public RealisationEntity update(JsonNode updateJson, String organisationId) throws UpdateFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> update(JsonNode updateJson, String organisationId) throws UpdateFailedException {
         Assert.notNull(updateJson, "Realisation jsonNode cannot be null");
         Assert.notNull(updateJson.get("realisationId"), "Realisation json must have realisationId field");
 
@@ -229,14 +233,15 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
             handleDenormalizedData(realisationId, organisationId, originalStudyElementReferences,
                 updateJson, updatedRealisationEntity);
 
-            return realisationRepository.update(updatedRealisationEntity);
+            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
+                CompositeIdentifiedEntityType.REALISATION, originalForUpdating, realisationRepository.update(updatedRealisationEntity)));
         } catch (Exception e) {
             throw new UpdateFailedException(getEntityClass(), realisationId, e);
         }
     }
 
     @Override
-    public RealisationEntity delete(String realisationId, String organizingOrganisationId) throws DeleteFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> delete(String realisationId, String organizingOrganisationId) throws DeleteFailedException {
         Assert.hasText(realisationId, "Realisation id cannot be empty");
         Assert.hasText(organizingOrganisationId, "Realisation organizingOrganisationId cannot be empty");
 
@@ -248,7 +253,7 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
             realisationRepository.saveHistory(realisationEntity, RealisationEntity.class);
             realisationRepository.delete(realisationEntity);
 
-            return realisationEntity;
+            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.DELETE, CompositeIdentifiedEntityType.REALISATION, realisationEntity, null));
         } catch (Exception e) {
             throw new DeleteFailedException(getEntityClass(), realisationId, organizingOrganisationId, e);
         }
@@ -358,18 +363,6 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
     }
 
     @Override
-    public void deleteByRealisationIdAndOrganizingOrganisationId(String id, String organizingOrganisationId) throws DeleteFailedException {
-        Assert.hasText(id, "Realisation id cannot be empty");
-        Assert.hasText(organizingOrganisationId, "Realisation organizingOrganisationId cannot be empty");
-
-        try {
-            realisationRepository.deleteByRealisationIdAndOrganizingOrganisationId(id, organizingOrganisationId);
-        } catch(Exception e) {
-            throw new DeleteFailedException(getEntityClass(), id, organizingOrganisationId, e);
-        }
-    }
-
-    @Override
     public List<RealisationEntity> findByStudyElementReference(String referenceIdentifier, String referenceOrganizer) throws FindFailedException {
         try {
             return realisationRepository.findByStudyElementReference(referenceIdentifier, referenceOrganizer, RealisationEntity.class);
@@ -407,7 +400,7 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
             realisationQuery.filterByStatuses(statuses);
         }
 
-        List<RealisationReadDTO> results = getRepository().search(realisationQuery, pageable).stream()
+        List<RealisationReadDTO> results = getRepository().search(realisationQuery.build()._toQuery(), pageable).stream()
             .map(this::toReadDTO)
             .collect(Collectors.toList());
 
@@ -458,7 +451,11 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
             realisationQuery.filterByStatuses(searchParams.getStatuses());
         }
 
-        List<RealisationReadDTO> results = realisationRepository.search(realisationQuery,
+        if(!CollectionUtils.isEmpty(searchParams.getMinEduGuidanceAreas())) {
+            realisationQuery.filterByMinEduGuidanceAreas(searchParams.getMinEduGuidanceAreas());
+        }
+
+        List<RealisationReadDTO> results = realisationRepository.search(realisationQuery.build()._toQuery(),
                 searchParams.getPageRequest()).stream()
             .map(this::toReadDTO)
             .collect(Collectors.toList());

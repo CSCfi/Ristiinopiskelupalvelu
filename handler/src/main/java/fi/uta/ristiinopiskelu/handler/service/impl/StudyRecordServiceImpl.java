@@ -1,18 +1,23 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyrecord.StudyRecordReadDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordAmountSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordAmountSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordGrouping;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyrecord.StudyRecordWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
-import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.InvalidSearchParametersException;
 import fi.uta.ristiinopiskelu.handler.service.StudyRecordService;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyRecordRepository;
-import org.elasticsearch.action.search.SearchResponse;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregations;
+import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -30,6 +35,9 @@ public class StudyRecordServiceImpl extends AbstractService<StudyRecordWriteDTO,
     @Autowired
     private ModelMapper modelMapper;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     public StudyRecordServiceImpl() {
         super(StudyRecordWriteDTO.class, StudyRecordEntity.class, StudyRecordReadDTO.class);
     }
@@ -40,18 +48,13 @@ public class StudyRecordServiceImpl extends AbstractService<StudyRecordWriteDTO,
     }
 
     @Override
-    public ModelMapper getModelMapper() {
-        return modelMapper;
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
     }
 
     @Override
-    public StudyRecordEntity create(StudyRecordEntity studyRecord) throws CreateFailedException {
-        Assert.notNull(studyRecord, "StudyRecord cannot be null");
-        try {
-            return this.studyRecordRepository.create(studyRecord);
-        } catch (Exception e) {
-            throw new CreateFailedException(getEntityClass(), e);
-        }
+    public ModelMapper getModelMapper() {
+        return modelMapper;
     }
 
     @Override
@@ -83,14 +86,21 @@ public class StudyRecordServiceImpl extends AbstractService<StudyRecordWriteDTO,
 
         validateSearchParameters(organisationId, searchParams.getSendingOrganisation(), searchParams.getReceivingOrganisation());
 
-        if((searchParams.getGroupBy() != null && searchParams.getGroupBy() == StudyRecordGrouping.DATES) &&
-            CollectionUtils.isEmpty(searchParams.getGroupByDates())) {
-            throw new InvalidSearchParametersException("groupByDates parameter cannot be empty if groupBy = DATES");
+        if(searchParams.getGroupBy() != null && searchParams.getGroupBy() == StudyRecordGrouping.DATES) {
+            if(CollectionUtils.isEmpty(searchParams.getGroupByDates())) {
+                throw new InvalidSearchParametersException("groupByDates parameter cannot be empty if groupBy = DATES");
+            }
+
+            searchParams.getGroupByDates().forEach(gbd -> {
+                if(gbd.getStart() == null || gbd.getEnd() == null) {
+                    throw new InvalidSearchParametersException("groupByDates parameter must have both start and end date specified");
+                }
+            });
         }
 
         try {
-            SearchResponse response = studyRecordRepository.findAmounts(searchParams);
-            return new StudyRecordAmountSearchResults(response.getHits().getTotalHits().value, response.getAggregations());
+            SearchHits<StudyRecordEntity> response = studyRecordRepository.findAmounts(searchParams);
+            return new StudyRecordAmountSearchResults(response.getTotalHits(), (ElasticsearchAggregations) response.getAggregations());
         } catch (Exception e) {
             throw new FindFailedException(getEntityClass(), e);
         }

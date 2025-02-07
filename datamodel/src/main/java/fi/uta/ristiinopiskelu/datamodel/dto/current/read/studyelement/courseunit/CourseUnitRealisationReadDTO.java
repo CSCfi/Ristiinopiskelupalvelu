@@ -3,6 +3,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseuni
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
@@ -38,6 +39,7 @@ public class CourseUnitRealisationReadDTO {
     private List<CooperationNetwork> cooperationNetworks;
     private List<String> teachingLanguage;
     private StudyStatus status;
+    private List<MinEduGuidanceArea> minEduGuidanceArea;
 
     public CourseUnitRealisationReadDTO() {
     }
@@ -136,6 +138,14 @@ public class CourseUnitRealisationReadDTO {
 
     public StudyStatus getStatus() {
         return status;
+    }
+
+    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
+        return minEduGuidanceArea;
+    }
+
+    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
+        this.minEduGuidanceArea = minEduGuidanceArea;
     }
 
     @Override

@@ -1,6 +1,13 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.CooperationNetwork;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.Keyword;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.Organisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationRole;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyModule;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateCourseUnitRequestDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateStudyModuleRequestDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
@@ -11,7 +18,11 @@ import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
-import fi.uta.ristiinopiskelu.handler.helper.*;
+import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
+import fi.uta.ristiinopiskelu.handler.helper.DtoInitializerV8;
+import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
+import fi.uta.ristiinopiskelu.handler.helper.HistoryHelper;
+import fi.uta.ristiinopiskelu.handler.helper.JmsHelper;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
@@ -25,8 +36,11 @@ import fi.uta.ristiinopiskelu.messaging.message.v8.studymodule.CreateStudyModule
 import fi.uta.ristiinopiskelu.messaging.message.v8.studymodule.DeleteStudyModuleRequest;
 import fi.uta.ristiinopiskelu.messaging.message.v8.studymodule.UpdateStudyModuleRequest;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
+import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyModuleRepository;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,26 +50,33 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.util.CollectionUtils;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.junit.Assert.assertNull;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class StudyModuleRouteV8IntegrationTest {
@@ -89,7 +110,10 @@ public class StudyModuleRouteV8IntegrationTest {
     private CourseUnitRepository courseUnitRepository;
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchTemplate;
+    private NetworkRepository networkRepository;
+
+    @Autowired
+    private ElasticsearchTemplate elasticsearchTemplate;
 
     @Autowired
     private ModelMapper modelMapper;
@@ -610,10 +634,21 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(response.getStatus() == Status.FAILED);
 
         // Errors that should be given:
-        // $.studyModules[0].subElements: array found, null expected - array found, null expected - does not match other "oneOf" option subElement (null)
-        // $.studyModules[0].subElements[0].creditsMax: integer found, null expected - Tested against sub study module schemas optionality
-        // $.studyModules[0].subElements[0].type: does not have a value in the enumeration [STUDY_MODULE] - does not have a value in the enumeration [STUDY_MODULE]
-        assertEquals(3, response.getErrors().size());
+        //$.studyModules[0].subElements: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].subElements: array found, null expected
+        //$.studyModules[0].subElements[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].subElements[0].name: is missing but it is required
+        //$.studyModules[0].subElements[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].subElements[0].creditsMax: integer found, null expected
+        //$.studyModules[0].subElements[0].amountValueMin: is missing but it is required
+        //$.studyModules[0].subElements[0].amountValueMax: is missing but it is required
+        //$.studyModules[0].subElements[0].optionality: is missing but it is required
+        //$.studyModules[0].subElements[0].creditsMin: is missing but it is required
+        //$.studyModules[0].subElements[0].optionality: is missing but it is required
+        //$.studyModules[0].subElements[0].optionality: is missing but it is required
+        //$.studyModules[0].subElements[0].type: does not have a value in the enumeration [STUDY_MODULE]
+        //$.studyModules[0].subElements[0].name: is missing but it is required.
+        assertEquals(14, response.getErrors().size());
     }
 
     @Test
@@ -643,11 +678,15 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(response.getStatus() == Status.FAILED);
 
         // Errors that should be given:
-        // $.studyModules[0].creditsMax: integer found, null expected
-        // $.studyModules[0].optionality: string found, null expected
-        // $.studyModules[0].optionality: does not have a value in the enumeration [ALL]
-        // $.studyModules[0].creditsMax: integer found, but [null] is required.
-        assertEquals(4, response.getErrors().size());
+        //$.studyModules[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].creditsMax: integer found, null expected
+        //$.studyModules[0].optionality: string found, null expected
+        //$.studyModules[0].amountValueMin: is missing but it is required
+        //$.studyModules[0].amountValueMax: is missing but it is required
+        //$.studyModules[0].creditsMin: is missing but it is required
+        //$.studyModules[0].creditsMax: integer found, but [null] is required
+        //$.studyModules[0].optionality: does not have a value in the enumeration [ALL].
+        assertEquals(8, response.getErrors().size());
     }
     
     @Test
@@ -670,12 +709,16 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(response.getStatus() == Status.FAILED);
 
         // Errors that should be given:
-        // $.studyModules[0].creditsMin: number found, null expected
-        // $.studyModules[0].optionality: string found, null expected
-        // $.studyModules[0].optionality: does not have a value in the enumeration [ALL]
-        // $.studyModules[0].creditsMin: number found, but [null] is required
-        // $.studyModules[0].cooperationNetworks: is missing but it is required
-        assertEquals(5, response.getErrors().size());
+        //$.studyModules[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].creditsMin: number found, null expected
+        //$.studyModules[0].optionality: string found, null expected
+        //$.studyModules[0].amountValueMin: is missing but it is required
+        //$.studyModules[0].amountValueMax: is missing but it is required
+        //$.studyModules[0].creditsMax: is missing but it is required
+        //$.studyModules[0].creditsMin: number found, but [null] is required
+        //$.studyModules[0].optionality: does not have a value in the enumeration [ALL]
+        //$.studyModules[0].cooperationNetworks: is missing but it is required.
+        assertEquals(9, response.getErrors().size());
     }
 
     @Test
@@ -2880,6 +2923,6 @@ public class StudyModuleRouteV8IntegrationTest {
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(id, name, networkOrgs,
                 DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
 
-        return networkService.create(networkEntity);
+        return networkRepository.create(networkEntity);
     }
 }

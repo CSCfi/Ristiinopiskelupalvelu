@@ -4,13 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fi.uta.ristiinopiskelu.examples.message.CreateRegistrationRequest;
+import jakarta.jms.ConnectionFactory;
 import org.apache.activemq.artemis.api.core.TransportConfiguration;
 import org.apache.activemq.artemis.core.remoting.impl.netty.NettyConnectorFactory;
 import org.apache.activemq.artemis.core.remoting.impl.netty.TransportConstants;
 import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
-import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.jms.DefaultJmsListenerContainerFactoryConfigurer;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -30,7 +33,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.ResourceUtils;
 import org.springframework.web.client.RestTemplate;
 
-import javax.jms.ConnectionFactory;
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.security.KeyManagementException;
@@ -148,7 +150,13 @@ public class ExampleApplicationConfig {
             .loadKeyMaterial(ResourceUtils.getFile(KEYSTORE_FILE), KEYSTORE_PASSWORD.toCharArray(), KEYSTORE_PASSWORD.toCharArray())
             .build();
 
-        HttpClient client = HttpClients.custom().setSSLContext(sslContext).build();
+        // note: this always forces ssl regardless of "http" for example
+        BasicHttpClientConnectionManager connectionManager = new BasicHttpClientConnectionManager(httpMethod -> new SSLConnectionSocketFactory(sslContext));
+
+        HttpClient client = HttpClients.custom()
+                .setConnectionManager(connectionManager)
+                .build();
+
         RestTemplate restTemplate = builder.requestFactory(() -> new HttpComponentsClientHttpRequestFactory(client)).build();
 
         // add "eppn" header to all queries as it is required. It's supposed to be the EPPN of the actual user executing the query.

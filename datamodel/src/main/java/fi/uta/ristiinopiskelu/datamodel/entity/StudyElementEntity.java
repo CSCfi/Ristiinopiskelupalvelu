@@ -66,9 +66,7 @@ public abstract class StudyElementEntity extends CompositeIdentifiedEntity imple
     private String organizingOrganisationId;
     private List<StudyElementReference> parents;
     private StudyStatus status;
-
-    @Field(type = FieldType.Integer)
-    private MinEduGuidanceArea minEduGuidanceArea;
+    private List<MinEduGuidanceArea> minEduGuidanceArea;
     
     private CompositeIdentifiedEntityType type;
 
@@ -323,11 +321,11 @@ public abstract class StudyElementEntity extends CompositeIdentifiedEntity imple
         this.studyElementPermanentId = studyElementPermanentId;
     }
 
-    public MinEduGuidanceArea getMinEduGuidanceArea() {
+    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
         return minEduGuidanceArea;
     }
 
-    public void setMinEduGuidanceArea(MinEduGuidanceArea minEduGuidanceArea) {
+    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
         this.minEduGuidanceArea = minEduGuidanceArea;
     }
 

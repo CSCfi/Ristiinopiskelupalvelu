@@ -1,19 +1,41 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.AssessmentItem;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.CompletionOption;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.CooperationNetwork;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.Organisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationRole;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.Realisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyElementReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.network.Network;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateCourseUnitRequestDTO;
-import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.CompletionOptionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
-import fi.uta.ristiinopiskelu.handler.helper.*;
-import fi.uta.ristiinopiskelu.handler.service.*;
+import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
+import fi.uta.ristiinopiskelu.handler.helper.DtoInitializerV8;
+import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
+import fi.uta.ristiinopiskelu.handler.helper.HistoryHelper;
+import fi.uta.ristiinopiskelu.handler.helper.JmsHelper;
+import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
+import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
+import fi.uta.ristiinopiskelu.handler.service.NetworkService;
+import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
+import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.messaging.message.v8.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.MessageType;
@@ -22,8 +44,11 @@ import fi.uta.ristiinopiskelu.messaging.message.v8.courseunit.CreateCourseUnitRe
 import fi.uta.ristiinopiskelu.messaging.message.v8.courseunit.DeleteCourseUnitRequest;
 import fi.uta.ristiinopiskelu.messaging.message.v8.notification.CompositeIdentifiedEntityModifiedNotification;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
+import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,26 +58,37 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class CourseUnitRouteV8IntegrationTest {
@@ -68,9 +104,6 @@ public class CourseUnitRouteV8IntegrationTest {
     }
 
     @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
     private CourseUnitService courseUnitService;
 
     @Autowired
@@ -83,6 +116,9 @@ public class CourseUnitRouteV8IntegrationTest {
     private RealisationRepository realisationRepository;
 
     @Autowired
+    private NetworkRepository networkRepository;
+
+    @Autowired
     private NetworkService networkService;
 
     @Autowired
@@ -92,7 +128,7 @@ public class CourseUnitRouteV8IntegrationTest {
     private OrganisationService organisationService;
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchTemplate;
+    private ElasticsearchTemplate elasticsearchTemplate;
 
     @Autowired
     private MessageSchemaService schemaService;
@@ -935,10 +971,13 @@ public class CourseUnitRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.FAILED);
 
         // Expected errors:
-        // $.courseUnits[0].realisations: array found, null expected
-        // $.courseUnits[0].realisations[0].organisationReferences: null found, array expected
-        // $.courseUnits[0].realisations[0].cooperationNetworks: null found, array expected
-        assertEquals(3, resp.getErrors().size());
+        //$.courseUnits[0].realisations: should be valid to one and only one schema, but 0 are valid
+        //$.courseUnits[0].realisations: array found, null expected
+        //$.courseUnits[0].realisations[0].organisationReferences: null found, array expected
+        //$.courseUnits[0].realisations: should be valid to one and only one schema, but 0 are valid
+        //$.courseUnits[0].realisations: array found, null expected
+        //$.courseUnits[0].realisations[0].cooperationNetworks: null found, array expected.
+        assertEquals(6, resp.getErrors().size());
     }
 
     @Test
@@ -2429,7 +2468,7 @@ public class CourseUnitRouteV8IntegrationTest {
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(id, name, networkOrgs,
                 DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
 
-        return networkService.create(networkEntity);
+        return networkRepository.create(networkEntity);
     }
 
     private final String createCourseUnitJson =

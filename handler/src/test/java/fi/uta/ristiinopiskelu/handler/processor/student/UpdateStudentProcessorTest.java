@@ -11,9 +11,12 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.MessageForwardingFail
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.RegistrationService;
 import fi.uta.ristiinopiskelu.handler.service.StudentService;
+import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.UpdateStudentRequest;
+import fi.uta.ristiinopiskelu.messaging.util.Oid;
 import org.apache.camel.Exchange;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.support.DefaultExchange;
@@ -88,11 +91,11 @@ public class UpdateStudentProcessorTest {
         studentEntity.setId("STUDENT-ID1");
 
         when(registrationService.findAllStudentRegistrationsPerOrganisation(eq("TUNI"), any(), any(), any())).thenReturn(organisationsAndRegistrations);
-        when(studentService.create(any())).thenReturn(studentEntity);
+        when(studentService.create(any())).thenReturn(List.of(new GenericEntityModificationResult(ModificationOperationType.CREATE, null, studentEntity)));
         doNothing().when(jmsMessageForwarder).forwardRequestToOrganisation(anyString(), any(), eq(MessageType.FORWARDED_UPDATE_STUDENT_REQUEST), anyString(), any(OrganisationEntity.class));
 
         UpdateStudentRequest request = new UpdateStudentRequest();
-        request.setOid("123123.141.1231");
+        request.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
         request.setFirstNames("Jaakko");
 
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
@@ -133,14 +136,14 @@ public class UpdateStudentProcessorTest {
         studentEntity.setId("STUDENT-ID1");
 
         when(registrationService.findAllStudentRegistrationsPerOrganisation(eq("TUNI"), any(), any(), any())).thenReturn(organisationsAndRegistrations);
-        when(studentService.create(any())).thenReturn(studentEntity);
+        when(studentService.create(any())).thenReturn(List.of(new GenericEntityModificationResult(ModificationOperationType.CREATE, null, studentEntity)));
         doNothing().when(jmsMessageForwarder).forwardRequestToOrganisation(anyString(), any(),
             eq(MessageType.FORWARDED_UPDATE_STUDENT_REQUEST), any(), eq(org1), any());
         doThrow(new MessageForwardingFailedException("FAILURE")).when(jmsMessageForwarder)
             .forwardRequestToOrganisation(anyString(), any(), eq(MessageType.FORWARDED_UPDATE_STUDENT_REQUEST), any(), eq(org2), any());
 
         UpdateStudentRequest request = new UpdateStudentRequest();
-        request.setOid("123123.141.1231");
+        request.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
         request.setFirstNames("Jaakko");
 
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());

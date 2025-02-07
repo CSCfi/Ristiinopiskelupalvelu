@@ -1,13 +1,13 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord;
 
-import org.elasticsearch.search.aggregations.Aggregations;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregations;
 
 public class StudyRecordAmountSearchResults {
 
     private long totalHits;
-    private Aggregations aggregations;
+    private ElasticsearchAggregations aggregations;
 
-    public StudyRecordAmountSearchResults(long totalHits, Aggregations aggregations) {
+    public StudyRecordAmountSearchResults(long totalHits, ElasticsearchAggregations aggregations) {
         this.totalHits = totalHits;
         this.aggregations = aggregations;
     }
@@ -20,11 +20,11 @@ public class StudyRecordAmountSearchResults {
         this.totalHits = totalHits;
     }
 
-    public Aggregations getAggregations() {
+    public ElasticsearchAggregations getAggregations() {
         return aggregations;
     }
 
-    public void setAggregations(Aggregations aggregations) {
+    public void setAggregations(ElasticsearchAggregations aggregations) {
         this.aggregations = aggregations;
     }
 }

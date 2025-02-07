@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.mpolla.HetuUtil;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Person;
@@ -18,10 +19,13 @@ import fi.uta.ristiinopiskelu.messaging.message.v8.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.Status;
 import fi.uta.ristiinopiskelu.messaging.message.v8.studyrecord.*;
+import fi.uta.ristiinopiskelu.messaging.util.Oid;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RegistrationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyRecordRepository;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,19 +38,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class StudyRecordRouteV8IntegrationTest {
@@ -122,8 +125,8 @@ public class StudyRecordRouteV8IntegrationTest {
         StudyRight hostStudyRight = DtoInitializerV8.getStudyRight(courseUnitOrganizerOrganization.getId());
 
         ExtendedStudent extendedStudent = new ExtendedStudent();
-        extendedStudent.setOid("123.456789.12341234");
-        extendedStudent.setPersonId("010101-0101");
+        extendedStudent.setOid(registration.getStudent().getOid());
+        extendedStudent.setPersonId(registration.getStudent().getPersonId());
         extendedStudent.setHomeEppn("mactestington@eppn.fi");
         extendedStudent.setHomeStudentNumber("1234567");
         extendedStudent.setFirstNames("Testi");
@@ -131,8 +134,6 @@ public class StudyRecordRouteV8IntegrationTest {
         extendedStudent.setGivenName("Testo");
         extendedStudent.setHostStudentNumber("1234566");
         extendedStudent.setHostEppn("testst@testi2.fi");
-        extendedStudent.setOid(extendedStudent.getOid());
-        extendedStudent.setPersonId(extendedStudent.getPersonId());
         extendedStudent.setHomeStudyRight(homeStudyRight);
         extendedStudent.setHostStudyRight(hostStudyRight);
         
@@ -355,7 +356,7 @@ public class StudyRecordRouteV8IntegrationTest {
             student, student.getHomeStudyRightIdentifier(), student.getHostStudyRightIdentifier(), RoutingType.OTHER);
 
         // send only personId
-        createStudyRecordRequest.getStudent().setPersonId("01010101-0101");
+        createStudyRecordRequest.getStudent().setPersonId(HetuUtil.generateRandom());
         createStudyRecordRequest.getStudent().setOid(null);
 
         Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, studentHomeOrganization.getId());
@@ -365,7 +366,7 @@ public class StudyRecordRouteV8IntegrationTest {
 
         // send only oid
         createStudyRecordRequest.getStudent().setPersonId(null);
-        createStudyRecordRequest.getStudent().setOid(UUID.randomUUID().toString());
+        createStudyRecordRequest.getStudent().setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
 
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, studentHomeOrganization.getId());
         resp = (StudyRecordResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -373,8 +374,8 @@ public class StudyRecordRouteV8IntegrationTest {
         assertTrue(StringUtils.isNotBlank(resp.getStudyRecordRequestId()));
 
         // send both
-        createStudyRecordRequest.getStudent().setPersonId("01010101-0101");
-        createStudyRecordRequest.getStudent().setOid(UUID.randomUUID().toString());
+        createStudyRecordRequest.getStudent().setPersonId(HetuUtil.generateRandom());
+        createStudyRecordRequest.getStudent().setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
 
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, studentHomeOrganization.getId());
         resp = (StudyRecordResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);

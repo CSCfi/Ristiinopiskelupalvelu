@@ -7,8 +7,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CourseUnitReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.InternalStudiesSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchResults;
 import fi.uta.ristiinopiskelu.handler.controller.v9.StudiesControllerV9;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
@@ -18,8 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.elasticsearch.config.ElasticsearchConfigurationSupport;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -35,8 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(StudiesControllerV9.class)
-@Import(ElasticsearchConfigurationSupport.class)
 public class StudiesControllerTest {
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -94,7 +92,7 @@ public class StudiesControllerTest {
 
     @Test
     public void testPOSTsearch_allDeprecatedParametersGiven_shouldSuccessInParsingParametersAndReturn200() throws Exception {
-        when(studiesService.search(any(), any())).thenReturn(new StudiesSearchResults());
+        when(studiesService.search(any(), any())).thenReturn(new InternalStudiesSearchResults());
 
         StudiesSearchParameters params = new StudiesSearchParameters();
         params.setNetworkIdentifiers(Arrays.asList("CN1", "CN2"));
@@ -118,7 +116,7 @@ public class StudiesControllerTest {
 
     @Test
     public void testPOSTsearch_allParametersGiven_shouldSuccessInParsingParametersAndReturn200() throws Exception {
-        when(studiesService.search(any(), any())).thenReturn(new StudiesSearchResults());
+        when(studiesService.search(any(), any())).thenReturn(new InternalStudiesSearchResults());
 
         StudiesSearchParameters params = new StudiesSearchParameters();
         params.setNetworkIdentifiers(Arrays.asList("CN1", "CN2"));
@@ -142,7 +140,7 @@ public class StudiesControllerTest {
 
     @Test
     public void testPOSTsearch_allParametersGivenAsJsonNode_shouldSuccessInParsingParametersAndReturn200() throws Exception {
-        when(studiesService.search(any(), any())).thenReturn(new StudiesSearchResults());
+        when(studiesService.search(any(), any())).thenReturn(new InternalStudiesSearchResults());
 
         JsonNode node = objectMapper.createObjectNode();
         ((ObjectNode)node).put("query", "TEST");

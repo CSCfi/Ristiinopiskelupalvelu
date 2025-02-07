@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.organisation.OrganisationReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.organisation.OrganisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
@@ -28,6 +29,9 @@ public class OrganisationServiceImpl extends AbstractService<OrganisationWriteDT
     @Autowired
     private ModelMapper modelMapper;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     public OrganisationServiceImpl() {
         super(OrganisationWriteDTO.class, OrganisationEntity.class, OrganisationReadDTO.class);
     }
@@ -35,6 +39,11 @@ public class OrganisationServiceImpl extends AbstractService<OrganisationWriteDT
     @Override
     protected ExtendedRepository<OrganisationEntity, String> getRepository() {
         return organisationRepository;
+    }
+
+    @Override
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
     }
 
     @Override

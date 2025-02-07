@@ -16,6 +16,10 @@ import fi.uta.ristiinopiskelu.messaging.message.current.RegistrationMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.ForwardedRegistrationReplyRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.RegistrationReplyRequest;
+import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
+import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
+import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
+import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.slf4j.Logger;
@@ -46,6 +50,21 @@ public class RegistrationReplyProcessor implements Processor {
         this.messageForwarder = messageForwarder;
     }
 
+    @AsyncListener(operation = @AsyncOperation(
+            channelName = "handler",
+            description = "Replies to a registration request",
+            servers = {"production", "staging"},
+            message = @AsyncMessage(
+                    description = "Replies to a registration request"
+            ),
+            payloadType = RegistrationReplyRequest.class
+    ))
+    @AsyncPublisher(operation = @AsyncOperation(
+            channelName = "<ORGANISATION_QUEUE>",
+            description = "Forwarded registration reply",
+            servers = {"production", "staging"},
+            payloadType = ForwardedRegistrationReplyRequest.class
+    ))
     @Override
     public void process(Exchange exchange) throws Exception {
         RegistrationReplyRequest req = objectMapper.readValue(exchange.getIn().getBody(String.class), RegistrationReplyRequest.class);
@@ -62,9 +81,9 @@ public class RegistrationReplyProcessor implements Processor {
 
         OrganisationEntity organisation = organisationService.findById(registrationEntity.getSendingOrganisationTkCode())
                 .orElseThrow(() -> new EntityNotFoundException(OrganisationEntity.class, registrationEntity.getSendingOrganisationTkCode()));
-        
+
         // Persist the reply.
-        if(req.getStatus() == RegistrationStatus.RECEIVED) {
+        if (req.getStatus() == RegistrationStatus.RECEIVED) {
             registrationEntity.setStatus(req.getStatus());
         } else {
             registrationEntity.setSelectionsReplies(req.getSelections());
@@ -79,10 +98,10 @@ public class RegistrationReplyProcessor implements Processor {
 
         // send to correct organisations
         this.messageForwarder.forwardRequestToOrganisation(registrationEntity.getId(), new ForwardedRegistrationReplyRequest(registrationEntity),
-            MessageType.FORWARDED_REGISTRATION_REPLY_REQUEST, correlationId, organisation,
-            Collections.singletonMap("registrationRequestId", req.getRegistrationRequestId()));
+                MessageType.FORWARDED_REGISTRATION_REPLY_REQUEST, correlationId, organisation,
+                Collections.singletonMap("registrationRequestId", req.getRegistrationRequestId()));
 
         exchange.setMessage(new RegistrationMessage(exchange, MessageType.DEFAULT_RESPONSE, correlationId, req.getRegistrationRequestId(),
-            new DefaultResponse(Status.OK, "Registration replies processed successfully and forwarded to recipient organisations")));
+                new DefaultResponse(Status.OK, "Registration replies processed successfully and forwarded to recipient organisations")));
     }
 }

@@ -2,16 +2,19 @@ package fi.csc.ristiinopiskelu.admin.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.csc.ristiinopiskelu.admin.security.AppUserDetails;
+import fi.csc.ristiinopiskelu.admin.exception.MessageSendingFailedException;
+import fi.csc.ristiinopiskelu.admin.security.ShibbolethAuthenticationDetails;
+import fi.csc.ristiinopiskelu.admin.security.ShibbolethUserDetails;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.network.NetworkReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
-import fi.csc.ristiinopiskelu.admin.exception.MessageSendingFailedException;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.*;
 import fi.uta.ristiinopiskelu.messaging.message.current.network.CreateNetworkRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.network.UpdateNetworkRequest;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,8 +23,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Service;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -43,41 +44,51 @@ public class NetworkService {
     @Autowired
     private ModelMapper modelMapper;
 
-    public List<NetworkReadDTO> findAll(AppUserDetails user) {
+    public List<NetworkReadDTO> findAll() {
+        ShibbolethUserDetails userDetails = ShibbolethUserDetails.getCurrent();
+        ShibbolethAuthenticationDetails authenticationDetails = ShibbolethAuthenticationDetails.getCurrent();
+
         List<NetworkEntity> networks;
 
-        if(user.isSuperUser()) {
+        if(userDetails.isSuperUser()) {
             networks = StreamSupport.stream(networkRepository.findAll().spliterator(), false).collect(Collectors.toList());
         } else {
-            networks = networkRepository.findAllNetworksByOrganisationId(user.getOrganisation(), Pageable.unpaged());
+            networks = networkRepository.findAllNetworksByOrganisationId(authenticationDetails.getOrganisation(), Pageable.unpaged());
         }
 
         return networks.stream().map(network -> modelMapper.map(network, NetworkReadDTO.class)).collect(Collectors.toList());
     }
 
-    public Optional<NetworkReadDTO> findById(String networkId, AppUserDetails user) {
+    public Optional<NetworkReadDTO> findById(String networkId) {
+        ShibbolethUserDetails userDetails = ShibbolethUserDetails.getCurrent();
+        ShibbolethAuthenticationDetails authenticationDetails = ShibbolethAuthenticationDetails.getCurrent();
+
         Optional<NetworkReadDTO> network;
 
-        if(user.isSuperUser()) {
+        if(userDetails.isSuperUser()) {
             network = networkRepository.findById(networkId)
                 .map(networkEntity -> Optional.ofNullable(modelMapper.map(networkEntity, NetworkReadDTO.class))).orElse(null);
         } else {
-            network = networkRepository.findNetworkByOrganisationIdAndNetworkId(user.getOrganisation(), networkId)
+            network = networkRepository.findNetworkByOrganisationIdAndNetworkId(authenticationDetails.getOrganisation(), networkId)
                 .map(networkEntity -> Optional.ofNullable(modelMapper.map(networkEntity, NetworkReadDTO.class))).orElse(null);
         }
 
         return network;
     }
 
-    public void create(NetworkWriteDTO network, AppUserDetails user) {
+    public void create(NetworkWriteDTO network) {
+        ShibbolethUserDetails userDetails = ShibbolethUserDetails.getCurrent();
+
         CreateNetworkRequest req = new CreateNetworkRequest();
         req.setNetwork(network);
 
-        Message responseMessage = sendAndReceiveJmsMessage(req, MessageType.CREATE_NETWORK_REQUEST, user.getEppn());
+        Message responseMessage = sendAndReceiveJmsMessage(req, MessageType.CREATE_NETWORK_REQUEST, userDetails.getEppn());
         verifyMessageSuccess(responseMessage, MessageType.CREATE_NETWORK_REQUEST);
     }
 
-    public void update(NetworkWriteDTO network, AppUserDetails user) {
+    public void update(NetworkWriteDTO network) {
+        ShibbolethUserDetails userDetails = ShibbolethUserDetails.getCurrent();
+
         NetworkEntity original = networkRepository.findById(network.getId()).orElse(null);
 
         if (original == null) {
@@ -89,7 +100,7 @@ public class NetworkService {
         UpdateNetworkRequest req = new UpdateNetworkRequest();
         req.setNetwork(network);
 
-        Message responseMessage = sendAndReceiveJmsMessage(req, MessageType.UPDATE_NETWORK_REQUEST, user.getEppn());
+        Message responseMessage = sendAndReceiveJmsMessage(req, MessageType.UPDATE_NETWORK_REQUEST, userDetails.getEppn());
         verifyMessageSuccess(responseMessage, MessageType.UPDATE_NETWORK_REQUEST);
     }
 
@@ -102,8 +113,10 @@ public class NetworkService {
         }
     }
 
-    public List<NetworkReadDTO> findNetworksByName(String name, String lang, AppUserDetails user) {
-        return networkRepository.findAllNetworksByOrganisationIdAndNetworkNameByLanguage(user.getOrganisation(), name, lang, Pageable.unpaged()).stream()
+    public List<NetworkReadDTO> findNetworksByName(String name, String lang) {
+        ShibbolethAuthenticationDetails authenticationDetails = ShibbolethAuthenticationDetails.getCurrent();
+
+        return networkRepository.findAllNetworksByOrganisationIdAndNetworkNameByLanguage(authenticationDetails.getOrganisation(), name, lang, Pageable.unpaged()).stream()
             .map(network -> modelMapper.map(network, NetworkReadDTO.class)).collect(Collectors.toList());
     }
 

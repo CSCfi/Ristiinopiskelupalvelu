@@ -1,11 +1,19 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.registration.RegistrationReadDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchResult;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationSelectionIdentifier;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationStatusAmountSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationStatusAmountSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.registration.RegistrationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.studyrecord.SearchDirection;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
@@ -14,6 +22,7 @@ import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
 import fi.uta.ristiinopiskelu.handler.service.RegistrationService;
+import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationResult;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RegistrationRepository;
@@ -52,6 +61,9 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
     @Autowired
     private ModelMapper modelMapper;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     public RegistrationServiceImpl() {
         super(RegistrationWriteDTO.class, RegistrationEntity.class, RegistrationReadDTO.class);
     }
@@ -62,8 +74,20 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
     }
 
     @Override
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
+    }
+
+    @Override
     public ModelMapper getModelMapper() {
         return modelMapper;
+    }
+
+    @Override
+    public List<GenericEntityModificationResult> create(RegistrationEntity entity) throws CreateFailedException {
+        return super.create(entity).stream()
+                .map(GenericEntityModificationResult.class::cast)
+                .toList();
     }
 
     @Override
@@ -134,16 +158,6 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
                 .ifPresent(o -> organisationsAndRegistrations.put(o, organisationRegistrations));
         }
         return organisationsAndRegistrations;
-    }
-
-    @Override
-    public RegistrationEntity create(RegistrationEntity registration) throws CreateFailedException {
-        Assert.notNull(registration, "Registration cannot be null");
-        try {
-            return this.registrationRepository.create(registration);
-        } catch(Exception e) {
-            throw new CreateFailedException(getEntityClass(), e);
-        }
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchElementType;
@@ -46,8 +47,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("integration")
@@ -2668,5 +2671,84 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
+    }
+
+    @Test
+    public void testFindStudies_filterByMinEduGuidanceAreas_shouldSucceed() throws Exception {
+        createNetworkWithOrganisations("CN-1", "UEF");
+        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+
+        CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "JAR matikka", "UEF",
+            "Keppivirtahepo", coopNetwork, null, null, null);
+        courseUnitEntity.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.MEDICAL_SCIENCE, MinEduGuidanceArea.EDUCATION));
+        courseUnitRepository.update(courseUnitEntity);
+
+        CourseUnitEntity courseUnitEntity2 = createCourseUnit("CU2", "DOR matikka", "UEF",
+            "Keppivirtahepo2", coopNetwork, null, null, null);
+        courseUnitEntity2.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.ARTS_AND_CULTURE, MinEduGuidanceArea.EDUCATION));
+        courseUnitRepository.update(courseUnitEntity2);
+
+        CourseUnitEntity courseUnitEntity3 = createCourseUnit("CU3", "HÖR matikka", "UEF",
+            "Keppivirtahepo3", coopNetwork, null, null, null);
+        courseUnitEntity3.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.HEALTH_AND_WELFARE, MinEduGuidanceArea.EDUCATION, MinEduGuidanceArea.AGRICULTURE_AND_FORESTY));
+        courseUnitRepository.update(courseUnitEntity3);
+
+        String query = """
+            {
+                "includeOwn": "true",
+                "minEduGuidanceAreas": [%s]
+            }""".formatted(MinEduGuidanceArea.EDUCATION.getCode());
+
+        MvcResult result = this.getMvcResult("/api/v9/studies/search", query);
+        String content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(3, actualResult.getResults().size());
+        assertThat(actualResult.getResults(), containsInAnyOrder(
+            hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
+            hasProperty("studyElementId", is(courseUnitEntity2.getStudyElementId())),
+            hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId()))
+        ));
+
+        StudiesSearchParameters searchParams = new StudiesSearchParameters();
+        searchParams.setIncludeOwn(true);
+        searchParams.setMinEduGuidanceAreas(List.of(MinEduGuidanceArea.AGRICULTURE_AND_FORESTY));
+
+        result = getMvcResult(searchParams);
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(1, actualResult.getResults().size());
+        assertThat(actualResult.getResults(), containsInAnyOrder(
+            hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId()))
+        ));
+
+        searchParams.setMinEduGuidanceAreas(List.of(MinEduGuidanceArea.MEDICAL_SCIENCE));
+
+        result = getMvcResult(searchParams);
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(1, actualResult.getResults().size());
+        assertThat(actualResult.getResults(), containsInAnyOrder(
+            hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId()))
+        ));
+
+        searchParams.setMinEduGuidanceAreas(null);
+
+        result = getMvcResult(searchParams);
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(3, actualResult.getResults().size());
+        assertThat(actualResult.getResults(), containsInAnyOrder(
+            hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
+            hasProperty("studyElementId", is(courseUnitEntity2.getStudyElementId())),
+            hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId()))
+        ));
     }
 }

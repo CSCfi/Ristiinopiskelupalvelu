@@ -1,16 +1,16 @@
 package fi.uta.ristiinopiskelu.messaging.message.current.studyrecord;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import fi.uta.ristiinopiskelu.messaging.message.current.AbstractPersonIdentifiableRequest;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.CompletedCredit;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.RoutingType;
-import org.springframework.util.StringUtils;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
+import fi.uta.ristiinopiskelu.messaging.message.current.AbstractPersonIdentifiableRequest;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
 public class CreateStudyRecordRequest extends AbstractPersonIdentifiableRequest {
+
     private String sendingOrganisation;
     private String receivingOrganisation;
     private String networkIdentifier;
@@ -77,11 +77,13 @@ public class CreateStudyRecordRequest extends AbstractPersonIdentifiableRequest 
 
     @JsonIgnore
     @Override
-    public String getPersonIdentifier() {
-        if(getStudent() != null) {
-            return !StringUtils.isEmpty(getStudent().getPersonId()) ? getStudent().getPersonId() : getStudent().getOid();
-        }
+    public String getPersonId() {
+        return getStudent() != null ? getStudent().getPersonId() : null;
+    }
 
-        return null;
+    @JsonIgnore
+    @Override
+    public String getPersonOid() {
+        return getStudent() != null ? getStudent().getOid() : null;
     }
 }

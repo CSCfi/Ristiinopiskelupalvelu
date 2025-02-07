@@ -60,7 +60,7 @@
           "description": "Sukupuoli koodistosta ??? mistä. Voisi muuttaa enumeraatioksi.",
           "type" : "integer"
         },
-        "address" : {
+        "addresses" : {
           "description": "Opiskelijan kotiosoitteet ???.",
           "oneOf": [
             {

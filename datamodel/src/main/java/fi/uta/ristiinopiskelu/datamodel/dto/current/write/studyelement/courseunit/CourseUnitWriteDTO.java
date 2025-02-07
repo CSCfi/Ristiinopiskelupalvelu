@@ -5,12 +5,14 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.ScaleValue;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.annotation.Transient;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Schema(name = "CourseUnit", allOf = { AbstractStudyElementWriteDTO.class })
 public class CourseUnitWriteDTO extends AbstractStudyElementWriteDTO {
 
     private ScaleValue assessmentScale;

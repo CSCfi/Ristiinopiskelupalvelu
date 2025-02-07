@@ -1,34 +1,39 @@
 package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import fi.uta.ristiinopiskelu.datamodel.entity.GenericEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
-import org.elasticsearch.index.query.QueryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.core.*;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
+import org.springframework.data.elasticsearch.core.SearchHitSupport;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.SearchPage;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
-import org.springframework.data.elasticsearch.core.query.*;
+import org.springframework.data.elasticsearch.core.query.IndexQuery;
+import org.springframework.data.elasticsearch.core.query.IndexQueryBuilder;
 import org.springframework.data.elasticsearch.repository.support.ElasticsearchEntityInformation;
 import org.springframework.data.elasticsearch.repository.support.SimpleElasticsearchRepository;
 import org.springframework.util.Assert;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ExtendedRepositoryImpl<T extends GenericEntity>
         extends SimpleElasticsearchRepository<T, String> implements ExtendedRepository<T, String> {
 
     public static final Logger logger = LoggerFactory.getLogger(ExtendedRepositoryImpl.class);
 
-    private final ElasticsearchRestTemplate elasticsearchRestTemplate;
+    private final ElasticsearchTemplate elasticsearchRestTemplate;
 
     public ExtendedRepositoryImpl(ElasticsearchEntityInformation<T, java.lang.String> entityInformation,
-                                  ElasticsearchRestTemplate elasticsearchRestTemplate) {
+                                  ElasticsearchTemplate elasticsearchRestTemplate) {
         super(entityInformation, elasticsearchRestTemplate);
         this.elasticsearchRestTemplate = elasticsearchRestTemplate;
     }
@@ -75,14 +80,17 @@ public class ExtendedRepositoryImpl<T extends GenericEntity>
      * @return
      */
     @Override
-    public List<T> search(QueryBuilder query, Pageable pageable) {
-        NativeSearchQueryBuilder nativeSearchQueryBuilder = new NativeSearchQueryBuilder().withQuery(query);
+    public List<T> search(Query query, Pageable pageable) {
+        NativeQueryBuilder nativeSearchQueryBuilder = new NativeQueryBuilder()
+            .withQuery(query);
 
         if(pageable != null) {
             nativeSearchQueryBuilder.withPageable(pageable);
+        } else {
+            nativeSearchQueryBuilder.withPageable(Pageable.unpaged());
         }
 
-        NativeSearchQuery nativeSearchQuery = nativeSearchQueryBuilder.build();
+        NativeQuery nativeSearchQuery = nativeSearchQueryBuilder.build();
 
         SearchHits<T> searchHits = elasticsearchRestTemplate.search(nativeSearchQuery, super.entityClass);
         SearchPage<T> page = SearchHitSupport.searchPageFor(searchHits, nativeSearchQuery.getPageable());
@@ -91,7 +99,7 @@ public class ExtendedRepositoryImpl<T extends GenericEntity>
 
     @Override
     public List<T> search(Query query) {
-        return elasticsearchRestTemplate.search(query, entityClass).get().map(SearchHit::getContent).collect(Collectors.toList());
+        return search(query, null);
     }
 
     private <S extends T> S save(S entity, IndexQuery.OpType opType) {

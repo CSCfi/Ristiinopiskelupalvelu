@@ -7,7 +7,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface NetworkRepositoryExtended {
+
+    Optional<NetworkEntity> findNetworkById(String networkId);
+
     Optional<NetworkEntity> findValidNetworkById(String networkId);
+
+    Optional<NetworkEntity> findValidNetworkById(String networkId, boolean validityStartMustBeValid, boolean validityEndMustBeValid);
 
     List<NetworkEntity> findAllNetworksByOrganisationIdAndNetworkNameByLanguage(String orgId, String name, String lang, Pageable pageable);
 

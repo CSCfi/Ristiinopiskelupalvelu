@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public interface CourseUnitService extends StudyElementService<CourseUnitWriteDTO, CourseUnitEntity, CourseUnitReadDTO> {
     
-    CompositeIdentifiedEntityModificationResult createAll(List<CourseUnitWriteDTO> studyElements, String organisationId) throws CreateFailedException;
-    
+    List<CompositeIdentifiedEntityModificationResult> createAll(List<CourseUnitWriteDTO> studyElements, String organisationId) throws CreateFailedException;
+
     Optional<CourseUnitEntity> findByIdAndAssessmentItemIdAndOrganizer(String id, String assessmentItemId, String organizingOrganisationId);
 }

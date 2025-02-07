@@ -28,6 +28,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateStudyModuleRequestD
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import org.modelmapper.Converter;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -39,7 +40,7 @@ public class MapperConfig {
     @Bean
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
-        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
         modelMapper.createTypeMap(VirtaCode.class, CodeEntity.class)
                 .addMappings(mapper -> mapper.map(VirtaCode::getKoodiUri, CodeEntity::setCodeUri))
                 .addMappings(mapper -> mapper.map(VirtaCode::getKoodisto, CodeEntity::setCodeSet))

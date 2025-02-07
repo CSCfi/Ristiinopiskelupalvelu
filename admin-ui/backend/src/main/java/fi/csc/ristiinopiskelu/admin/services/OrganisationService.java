@@ -4,7 +4,8 @@ import fi.csc.ristiinopiskelu.admin.dto.CreateOrUpdateOrganisationDTO;
 import fi.csc.ristiinopiskelu.admin.dto.OrganisationDTO;
 import fi.csc.ristiinopiskelu.admin.dto.OrganisationNetworkDTO;
 import fi.csc.ristiinopiskelu.admin.exception.EntityNotFoundException;
-import fi.csc.ristiinopiskelu.admin.security.AppUserDetails;
+import fi.csc.ristiinopiskelu.admin.security.ShibbolethAuthenticationDetails;
+import fi.csc.ristiinopiskelu.admin.security.ShibbolethUserDetails;
 import fi.uta.ristiinopiskelu.datamodel.entity.MessageSchemaEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.MessageSchemaRepository;
@@ -16,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -49,16 +49,14 @@ public class OrganisationService {
     }
 
     public OrganisationDTO update(String organisationId, CreateOrUpdateOrganisationDTO organisation) {
+        ShibbolethUserDetails userDetails = ShibbolethUserDetails.getCurrent();
+        ShibbolethAuthenticationDetails authenticationDetails = ShibbolethAuthenticationDetails.getCurrent();
+
         OrganisationEntity originalOrganisationEntity = organisationRepository.findById(organisationId)
             .orElseThrow(() -> new EntityNotFoundException("Organisation not found"));
 
-        AppUserDetails userDetails = (AppUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if(userDetails == null) {
-            throw new InsufficientAuthenticationException("No user details available");
-        }
-
         if(!userDetails.isSuperUser()) {
-            if(!organisationId.equals(userDetails.getOrganisation())) {
+            if(!organisationId.equals(authenticationDetails.getOrganisation())) {
                 logger.error("User without super-user role tried to update organisation that is not his organisation.");
                 throw new InsufficientAuthenticationException("Organisation id is not the same as user organisation id");
             }
@@ -79,17 +77,15 @@ public class OrganisationService {
     }
 
     public List<OrganisationDTO> findAll() {
-        AppUserDetails userDetails = (AppUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if(userDetails == null) {
-            throw new InsufficientAuthenticationException("No user details available");
-        }
+        ShibbolethUserDetails userDetails = ShibbolethUserDetails.getCurrent();
+        ShibbolethAuthenticationDetails authenticationDetails = ShibbolethAuthenticationDetails.getCurrent();
 
         List<OrganisationEntity> organisationEntities = new ArrayList<>();
         if(userDetails.isSuperUser()) {
             organisationEntities.addAll(StreamSupport.stream(organisationRepository.findAll().spliterator(), false)
                 .collect(Collectors.toList()));
         } else {
-            organisationRepository.findById(userDetails.getOrganisation()).ifPresent(organisationEntities::add);
+            organisationRepository.findById(authenticationDetails.getOrganisation()).ifPresent(organisationEntities::add);
         }
 
         return organisationEntities.stream().map(new OrganisationDtoMapper()).collect(Collectors.toList());

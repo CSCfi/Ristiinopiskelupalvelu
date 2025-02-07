@@ -1,32 +1,31 @@
 package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyRightIdentifier;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.RegistrationRepositoryExtended;
-import org.apache.lucene.search.join.ScoreMode;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
 import org.springframework.data.elasticsearch.core.SearchHit;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class RegistrationRepositoryExtendedImpl implements RegistrationRepositoryExtended {
 
     @Autowired
-    protected ElasticsearchRestTemplate elasticsearchTemplate;
+    protected ElasticsearchTemplate elasticsearchTemplate;
 
     @Override
     public List<RegistrationEntity> findAllByStudentAndSelectionsReplies(StudyRecordStudent student, String selectionItemId,
@@ -40,56 +39,61 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
         return findAllByStudentAndSelectionsOrSelectionsReplies(student, selectionItemId, organizingOrganisationId, selectionItemType, "selections");
     }
 
-    private List<RegistrationEntity> findAllByStudentAndSelectionsOrSelectionsReplies(StudyRecordStudent student, String selectionItemId,
-                                                                                      String organizingOrganisationId, String selectionItemType,
+    private List<RegistrationEntity> findAllByStudentAndSelectionsOrSelectionsReplies(@Nullable StudyRecordStudent student,
+                                                                                      String selectionItemId,
+                                                                                      String organizingOrganisationId,
+                                                                                      String selectionItemType,
                                                                                       String selectionFieldName) {
-        QueryBuilder matchQuery;
 
-        if(StringUtils.hasText(student.getOid()) && StringUtils.hasText(student.getPersonId())) {
-            matchQuery = QueryBuilders.boolQuery()
-                .should(QueryBuilders.boolQuery()
-                    .must(QueryBuilders.termQuery("student.oid", student.getOid()))
-                    .must(QueryBuilders.termQuery("student.personId", student.getPersonId())))
-                .should(QueryBuilders.boolQuery()
-                    .must(QueryBuilders.termQuery("student.oid", student.getOid()))
-                    .mustNot(QueryBuilders.existsQuery("student.personId")))
-                .should(QueryBuilders.boolQuery()
-                    .mustNot(QueryBuilders.existsQuery("student.oid"))
-                    .must(QueryBuilders.termQuery("student.personId", student.getPersonId())));
-        } else if(StringUtils.hasText(student.getOid())) {
-            matchQuery = QueryBuilders.termQuery("student.oid", student.getOid());
-        } else if(StringUtils.hasText(student.getPersonId())) {
-            matchQuery = QueryBuilders.termQuery("student.personId", student.getPersonId());
-        } else {
-            QueryBuilder hostStudyRightQuery = this.getStudentStudyRightIdentifierQuery("hostStudyRight", student.getHostStudyRightIdentifier());
-            QueryBuilder homeStudyRightQuery = this.getStudentStudyRightIdentifierQuery("homeStudyRight", student.getHomeStudyRightIdentifier());
-
-            matchQuery = QueryBuilders.boolQuery().must(hostStudyRightQuery).must(homeStudyRightQuery);
-        }
+        Query homeStudyRightQuery = this.getStudentStudyRightIdentifierQuery("homeStudyRight", student.getHomeStudyRightIdentifier());
 
         // note that receivingOrganisation is the organisation here that registrations are sent _to_, hence it's the organization that's actually organizing the studies
-        BoolQueryBuilder query = QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("receivingOrganisationTkCode", organizingOrganisationId))
-            .must(matchQuery)
-            .must(QueryBuilders.nestedQuery(selectionFieldName, QueryBuilders.boolQuery()
-                .must(QueryBuilders.termQuery(String.format("%s.selectionItemId", selectionFieldName), selectionItemId))
-                .must(QueryBuilders.termQuery(String.format("%s.selectionItemType", selectionFieldName), selectionItemType)), ScoreMode.None));
+        BoolQuery.Builder query = new BoolQuery.Builder()
+            .must(q -> q
+                .term(tq -> tq
+                    .field("receivingOrganisationTkCode")
+                    .value(organizingOrganisationId)))
+            .must(homeStudyRightQuery)
+            .must(q -> q
+                .nested(nq -> nq
+                    .path(selectionFieldName)
+                    .scoreMode(ChildScoreMode.None)
+                    .query(q2 -> q2
+                        .bool(bq -> bq
+                            .should(getSelectionItemQuery(selectionFieldName, selectionItemId, selectionItemType))
+                            .should(getSelectionItemQuery("%s.parent".formatted(selectionFieldName), selectionItemId, selectionItemType))
+                            .should(getSelectionItemQuery("%s.parent.parent".formatted(selectionFieldName), selectionItemId, selectionItemType))
+                            .should(getSelectionItemQuery("%s.parent.parent.parent".formatted(selectionFieldName), selectionItemId, selectionItemType))
+                        )
+                    )
+                )
+            );
 
-        NativeSearchQuery builder = new NativeSearchQueryBuilder()
-            .withQuery(query)
-            .build();
+        NativeQuery builder = new NativeQueryBuilder()
+                .withQuery(query.build()._toQuery())
+                .withPageable(Pageable.unpaged())
+                .build();
 
         return elasticsearchTemplate.search(builder, RegistrationEntity.class).get()
-            .map(SearchHit::getContent).collect(Collectors.toList());
+                .map(SearchHit::getContent)
+                .toList();
     }
 
-    private QueryBuilder getStudentStudyRightIdentifierQuery(String studyRightPropertyName, StudyRightIdentifier studyRightIdentifier) {
+    private Query getSelectionItemQuery(String path, String selectionItemId, String selectionItemType) {
+        return new BoolQuery.Builder()
+            .must(q -> q.term(tq -> tq.field("%s.selectionItemId".formatted(path)).value(selectionItemId)))
+            .must(q -> q.term(tq -> tq.field("%s.selectionItemType".formatted(path)).value(selectionItemType)))
+            .build()._toQuery();
+    }
+
+    private Query getStudentStudyRightIdentifierQuery(String studyRightPropertyName, StudyRightIdentifier studyRightIdentifier) {
         String studyRightPropertyPath = String.format("student.%s", studyRightPropertyName);
         String studyRightIdentifiersPropertyPath = String.format("%s.identifiers", studyRightPropertyPath);
 
-        return QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery(String.format("%s.organisationTkCodeReference", studyRightIdentifiersPropertyPath), studyRightIdentifier.getOrganisationTkCodeReference()))
-            .must(QueryBuilders.termQuery(String.format("%s.studyRightId", studyRightIdentifiersPropertyPath), studyRightIdentifier.getStudyRightId()));
+        return new BoolQuery.Builder()
+            .must(q -> q.term(tq -> tq.field(String.format("%s.organisationTkCodeReference", studyRightIdentifiersPropertyPath)).value(studyRightIdentifier.getOrganisationTkCodeReference())))
+            .must(q -> q.term(tq -> tq.field(String.format("%s.studyRightId", studyRightIdentifiersPropertyPath)).value(studyRightIdentifier.getStudyRightId())))
+            .build()._toQuery();
     }
 
     @Override
@@ -97,47 +101,49 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
                                                     OffsetDateTime sendDateTimeStart, OffsetDateTime sendDateTimeEnd, RegistrationStatus status,
                                                     Pageable pageable) {
 
-        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        BoolQuery.Builder query = new BoolQuery.Builder();
 
-        if(!StringUtils.isEmpty(studentOid)) {
-            query.must(QueryBuilders.matchQuery("student.oid", studentOid));
+        if(StringUtils.hasText(studentOid)) {
+            query.must(q -> q.match(mq -> mq.field("student.oid").query(studentOid)));
         }
 
-        if(!StringUtils.isEmpty(studentId)) {
-            query.must(QueryBuilders.matchQuery("student.personId", studentId));
+        if(StringUtils.hasText(studentId)) {
+            query.must(q -> q.match(mq -> mq.field("student.personId").query(studentId)));
         }
 
-        if(!StringUtils.isEmpty(homeEppn)) {
-            query.must(QueryBuilders.matchQuery("student.homeEppn", homeEppn));
+        if(StringUtils.hasText(homeEppn)) {
+            query.must(q -> q.match(mq -> mq.field("student.homeEppn").query(homeEppn)));
         }
 
         if(!CollectionUtils.isEmpty(organisationIds)) {
-            BoolQueryBuilder organisationQuery = QueryBuilders.boolQuery();
+            BoolQuery.Builder organisationQuery = new BoolQuery.Builder();
             for(String organisationId : organisationIds) {
-                organisationQuery.should(QueryBuilders.matchQuery("sendingOrganisationTkCode", organisationId));
+                organisationQuery.should(q -> q.match(mq -> mq.field("sendingOrganisationTkCode").query(organisationId)));
             }
 
-            query.must(organisationQuery);
+            query.must(organisationQuery.build()._toQuery());
         }
 
         if(sendDateTimeStart != null) {
-            query.must(QueryBuilders.rangeQuery("sendDateTime").from(sendDateTimeStart));
+            query.must(q -> q.range(rq -> rq.field("sendDateTime").from(sendDateTimeStart.toString())));
         }
 
         if(sendDateTimeEnd != null) {
-            query.must(QueryBuilders.rangeQuery("sendDateTime").to(sendDateTimeEnd));
+            query.must(q -> q.range(rq -> rq.field("sendDateTime").to(sendDateTimeEnd.toString())));
         }
 
         if(status != null) {
-            query.must(QueryBuilders.matchQuery("status", status.name()));
+            query.must(q -> q.match(mq -> mq.field("status").query(status.name())));
         }
 
-        NativeSearchQuery builder = new NativeSearchQueryBuilder()
-                .withQuery(query)
+        NativeQuery builder = new NativeQueryBuilder()
+                .withQuery(query.build()._toQuery())
                 .withPageable(pageable)
                 .build();
 
-        return elasticsearchTemplate.search(builder, RegistrationEntity.class).get().map(SearchHit::getContent).collect(Collectors.toList());
+        return elasticsearchTemplate.search(builder, RegistrationEntity.class).get()
+                .map(SearchHit::getContent)
+                .toList();
     }
 
     @Override
@@ -152,30 +158,31 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
             pageable = Pageable.unpaged();
         }
 
-        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        BoolQuery.Builder query = new BoolQuery.Builder();
 
-        query.must(QueryBuilders.termQuery("sendingOrganisationTkCode", sendingOrganisationTkCode));
+        query.must(q -> q.term(tq -> tq.field("sendingOrganisationTkCode").value(sendingOrganisationTkCode)));
 
         if(StringUtils.hasText(studentPersonId) && StringUtils.hasText(studentOid)) {
-            query.must(QueryBuilders.boolQuery()
-                .should(QueryBuilders.termQuery("student.personId", studentPersonId))
-                .should(QueryBuilders.termQuery("student.oid", studentOid)));
+            query.must(q -> q.bool(bq -> bq
+                .should(q2 -> q2.term(tq -> tq.field("student.personId").value(studentPersonId)))
+                .should(q2 -> q2.term(tq -> tq.field("student.oid").value(studentOid)))));
         } else {
             if(StringUtils.hasText(studentPersonId)) {
-                query.must(QueryBuilders.termQuery("student.personId", studentPersonId));
+                query.must(q -> q.term(tq -> tq.field("student.personId").value(studentPersonId)));
             }
 
             if(StringUtils.hasText(studentOid)) {
-                query.must(QueryBuilders.termQuery("student.oid", studentOid));
+                query.must(q -> q.term(tq -> tq.field("student.oid").value(studentOid)));
             }
         }
 
-        NativeSearchQuery builder = new NativeSearchQueryBuilder()
-            .withQuery(query)
+        NativeQuery builder = new NativeQueryBuilder()
+            .withQuery(query.build()._toQuery())
             .withPageable(pageable)
             .build();
 
         return elasticsearchTemplate.search(builder, RegistrationEntity.class).get()
-            .map(SearchHit::getContent).collect(Collectors.toList());
+                .map(SearchHit::getContent)
+                .toList();
     }
 }

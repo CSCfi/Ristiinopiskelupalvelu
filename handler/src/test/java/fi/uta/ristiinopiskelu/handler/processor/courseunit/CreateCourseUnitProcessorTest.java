@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fi.uta.ristiinopiskelu.datamodel.config.MapperConfig;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
@@ -14,9 +15,13 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseuni
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
-import fi.uta.ristiinopiskelu.handler.service.*;
+import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
+import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
+import fi.uta.ristiinopiskelu.handler.service.NetworkService;
+import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
+import fi.uta.ristiinopiskelu.handler.service.StudyModuleService;
 import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
-import fi.uta.ristiinopiskelu.handler.service.result.DefaultCompositeIdentifiedEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.handler.validator.realisation.CreateRealisationValidator;
 import fi.uta.ristiinopiskelu.handler.validator.studyelement.courseunit.CreateCourseUnitValidator;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
@@ -46,8 +51,15 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 @ExtendWith(SpringExtension.class)
 public class CreateCourseUnitProcessorTest {
@@ -115,7 +127,10 @@ public class CreateCourseUnitProcessorTest {
                 .stream()
                 .map(source -> modelMapper.map(source, CourseUnitEntity.class))
                 .collect(Collectors.toList());
-        CompositeIdentifiedEntityModificationResult result = new DefaultCompositeIdentifiedEntityModificationResult(created, null, null);
+
+        List<CompositeIdentifiedEntityModificationResult> result = created.stream()
+                .map(cu -> new CompositeIdentifiedEntityModificationResult(ModificationOperationType.CREATE, CompositeIdentifiedEntityType.COURSE_UNIT, null, cu))
+                .toList();
 
         when(courseUnitService.createAll(any(), any(String.class))).thenReturn(result);
 

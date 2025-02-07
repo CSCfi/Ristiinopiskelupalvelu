@@ -7,14 +7,16 @@
         </layout>
     </appender>
 
+    <appender name="LOGSTASH_TCP" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>${logstash_host}:${logstash_port}</destination>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"applicationId":"dlq-handler"}</customFields>
+        </encoder>
+    </appender>
+
     <appender name="STASH" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
-        <ringBufferSize>50000</ringBufferSize>
-        <appender class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-            <destination>${logstash_host}:${logstash_port}</destination>
-            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                <customFields>{"applicationId":"dlq-handler"}</customFields>
-            </encoder>
-        </appender>
+        <ringBufferSize>65536</ringBufferSize>
+        <appender-ref ref="LOGSTASH_TCP" />
     </appender>
 
     <root level="INFO">

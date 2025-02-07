@@ -1,7 +1,15 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current.courseunit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
@@ -9,7 +17,11 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.Realisatio
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.AssessmentItemWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CompletionOptionWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
-import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -30,8 +42,11 @@ import fi.uta.ristiinopiskelu.messaging.message.current.JsonValidationFailedResp
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.courseunit.CreateCourseUnitRequest;
+import fi.uta.ristiinopiskelu.messaging.message.current.courseunit.UpdateCourseUnitRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.notification.CompositeIdentifiedEntityModifiedNotification;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,9 +59,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.util.CollectionUtils;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -58,10 +72,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class CreateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrationTest {
@@ -97,7 +118,7 @@ public class CreateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
     @Autowired
     private OrganisationService organisationService;
 
-    @Value("${general.messageSchema.version}")
+    @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
     @BeforeEach
@@ -430,6 +451,143 @@ public class CreateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
     }
 
     @Test
+    public void testSendingUpdateCourseUnitMessage_notificationSentToUpdatedNetworks_shouldSucceed() throws JMSException {
+        String organisingOrganisationId = "TUNI";
+        String organisingOrganisationId2 = "SAV";
+
+        Validity validity = new Validity();
+        validity.setStart(OffsetDateTime.now().minusYears(1));
+        validity.setEnd(OffsetDateTime.now().plusYears(1));
+
+        NetworkOrganisation networkOrganisation = new NetworkOrganisation();
+        networkOrganisation.setOrganisationTkCode(organisingOrganisationId);
+        networkOrganisation.setValidityInNetwork(validity);
+        networkOrganisation.setIsCoordinator(true);
+
+        NetworkOrganisation networkOrganisation2 = new NetworkOrganisation();
+        networkOrganisation2.setOrganisationTkCode(organisingOrganisationId2);
+        networkOrganisation2.setValidityInNetwork(validity);
+        networkOrganisation2.setIsCoordinator(false);
+
+        List<NetworkOrganisation> orgsInNetwork1 = new ArrayList<>();
+        orgsInNetwork1.add(networkOrganisation);
+
+        List<NetworkOrganisation> orgsInNetwork2 = new ArrayList<>();
+        orgsInNetwork2.add(networkOrganisation);
+        orgsInNetwork2.add(networkOrganisation2);
+
+        NetworkWriteDTO network1 = DtoInitializer.getNetwork("CN-1", new LocalisedString("Verkosto 1", null, null), validity, orgsInNetwork1);
+        networkService.create(modelMapper.map(network1, NetworkEntity.class));
+
+        NetworkWriteDTO network2 = DtoInitializer.getNetwork("CN-2", new LocalisedString("Verkosto 2", null, null), validity, orgsInNetwork2);
+        networkService.create(modelMapper.map(network2, NetworkEntity.class));
+
+        // TUNI already persisted in setUp()
+        Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
+
+        Organisation organisation2 = DtoInitializer.getOrganisation(organisingOrganisationId2, organisingOrganisationId2);
+        OrganisationEntity organisationEntity2 = modelMapper.map(organisation2, OrganisationEntity.class);
+        organisationEntity2.setId(organisingOrganisationId2);
+        organisationEntity2.setQueue(organisingOrganisationId2);
+        organisationEntity2.setNotificationsEnabled(true);
+        organisationEntity2.setSchemaVersion(messageSchemaVersion);
+        organisationService.create(organisationEntity2);
+
+        OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
+
+        CooperationNetwork cooperationNetwork1 = DtoInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedString("Verkosto 1", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        CooperationNetwork cooperationNetwork2 = DtoInitializer.getCooperationNetwork(
+            "CN-2", new LocalisedString("Verkosto 2", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        LocalisedString courseUnitName = new LocalisedString("Opintojakson nimi 1", "Opintojakson nimi 1 Englanniksi", null);
+        CourseUnitWriteDTO courseUnit = DtoInitializer.getCreateCourseUnitRequestDTO("ID1", "RAIRAI", courseUnitName,
+            Collections.singletonList(cooperationNetwork1), Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5.0));
+        courseUnit.setStatus(StudyStatus.CANCELLED);
+
+        CreateCourseUnitRequest createReq = new CreateCourseUnitRequest();
+        createReq.setCourseUnits(Collections.singletonList(courseUnit));
+
+        Message createResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createReq, organisingOrganisationId);
+        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(createResponseMessage);
+        assertEquals(Status.OK, resp.getStatus());
+
+        // check that message was not sent to sender of the original create message...
+        Message notificationInOrganisation1Queue = JmsHelper.receiveObject(jmsTemplate, organisingOrganisationId);
+        assertNull(notificationInOrganisation1Queue);
+
+        // ...and not sent to organisation2 since it's not part of cooperationNetwork1
+        Message notificationInOrganisation2Queue = JmsHelper.receiveObject(jmsTemplate, organisingOrganisationId2);
+        assertNull(notificationInOrganisation2Queue);
+
+        // now update the courseunit so that it includes cooperationNetwork2 too
+        courseUnit.setCooperationNetworks(List.of(cooperationNetwork1, cooperationNetwork2));
+
+        UpdateCourseUnitRequest updateReq = new UpdateCourseUnitRequest();
+        updateReq.setCourseUnit(courseUnit);
+
+        Message updateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateReq, organisingOrganisationId);
+        DefaultResponse updateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
+        assertEquals(Status.OK, updateResp.getStatus());
+
+        // check that message was not sent to sender of the original create message...
+        notificationInOrganisation1Queue = JmsHelper.receiveObject(jmsTemplate, organisingOrganisationId);
+        assertNull(notificationInOrganisation1Queue);
+
+        // check if notification was received in organisation2...
+        Message studyElementUpdatedMessage = JmsHelper.receiveObject(jmsTemplate, organisingOrganisationId2);
+        assertNotNull(studyElementUpdatedMessage);
+
+        CompositeIdentifiedEntityModifiedNotification notification = (CompositeIdentifiedEntityModifiedNotification) jmsTemplate.getMessageConverter().fromMessage(studyElementUpdatedMessage);
+
+        assertNotNull(notification);
+        assertNotNull(notification.getTimestamp());
+        assertEquals(notification.getSendingOrganisationTkCode(), organisingOrganisationId);
+
+        // make sure it was in the "created" list as it was a "new" course unit in cooperationNetwork2
+        assertEquals(1, notification.getCreated().size());
+        assertTrue(CollectionUtils.isEmpty(notification.getUpdated()));
+        assertTrue(CollectionUtils.isEmpty(notification.getDeleted()));
+
+        assertEquals("ID1", notification.getCreated().get(0).getReferenceIdentifier());
+        assertEquals(organisingOrganisationId, notification.getCreated().get(0).getReferenceOrganizer());
+
+
+        // now update the courseunit so that it only includes cooperationNetwork2
+        courseUnit.setCooperationNetworks(List.of(cooperationNetwork2));
+
+        updateReq = new UpdateCourseUnitRequest();
+        updateReq.setCourseUnit(courseUnit);
+
+        updateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateReq, organisingOrganisationId);
+        updateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
+        assertEquals(Status.OK, updateResp.getStatus());
+
+        // check that message was not sent to sender of the original create message...
+        notificationInOrganisation1Queue = JmsHelper.receiveObject(jmsTemplate, organisingOrganisationId);
+        assertNull(notificationInOrganisation1Queue);
+
+        // check if notification was received in organisation2...
+        studyElementUpdatedMessage = JmsHelper.receiveObject(jmsTemplate, organisingOrganisationId2);
+        assertNotNull(studyElementUpdatedMessage);
+
+        notification = (CompositeIdentifiedEntityModifiedNotification) jmsTemplate.getMessageConverter().fromMessage(studyElementUpdatedMessage);
+
+        assertNotNull(notification);
+        assertNotNull(notification.getTimestamp());
+        assertEquals(notification.getSendingOrganisationTkCode(), organisingOrganisationId);
+
+        // make sure it was in the "updated" list this time in cooperationNetwork2
+        assertTrue(CollectionUtils.isEmpty(notification.getCreated()));
+        assertEquals(1, notification.getUpdated().size());
+        assertTrue(CollectionUtils.isEmpty(notification.getDeleted()));
+
+        assertEquals("ID1", notification.getUpdated().get(0).getReferenceIdentifier());
+        assertEquals(organisingOrganisationId, notification.getUpdated().get(0).getReferenceOrganizer());
+    }
+
+    @Test
     public void testSendingCreateCourseUnitMessage_shouldSucceedCodeContainsSlash() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
@@ -586,10 +744,13 @@ public class CreateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         assertTrue(resp.getStatus() == Status.FAILED);
 
         // Expected errors:
-        // $.courseUnits[0].realisations: array found, null expected
-        // $.courseUnits[0].realisations[0].organisationReferences: null found, array expected
-        // $.courseUnits[0].realisations[0].cooperationNetworks: null found, array expected
-        assertEquals(3, resp.getErrors().size());
+        //$.courseUnits[0].realisations: should be valid to one and only one schema, but 0 are valid
+        //$.courseUnits[0].realisations: array found, null expected
+        //$.courseUnits[0].realisations[0].organisationReferences: null found, array expected
+        //$.courseUnits[0].realisations: should be valid to one and only one schema, but 0 are valid
+        //$.courseUnits[0].realisations: array found, null expected
+        //$.courseUnits[0].realisations[0].cooperationNetworks: null found, array expected.
+        assertEquals(6, resp.getErrors().size());
     }
 
     @Test

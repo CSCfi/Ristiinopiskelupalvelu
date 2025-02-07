@@ -2,19 +2,18 @@ package fi.csc.ristiinopiskelu.admin.config.profiles.dev;
 
 import com.google.common.collect.ImmutableList;
 import fi.csc.ristiinopiskelu.admin.config.WebSecurityConfig;
-import fi.csc.ristiinopiskelu.admin.security.ShibbolethAuthenticationFilter;
-import fi.csc.ristiinopiskelu.admin.security.profiles.dev.DevelopmentShibbolethAuthenticationFilter;
-import fi.csc.ristiinopiskelu.admin.security.profiles.dev.DevelopmentShibbolethAuthenticationProvider;
+import fi.csc.ristiinopiskelu.admin.security.ShibbolethLogoutSuccessHandler;
+import fi.csc.ristiinopiskelu.admin.security.profiles.dev.DevelopmentShibbolethMockAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.preauth.RequestAttributeAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -26,41 +25,32 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class DevelopmentWebSecurityConfig extends WebSecurityConfig {
 
     @Bean
-    public AuthenticationProvider authenticationProvider() {
-        return new DevelopmentShibbolethAuthenticationProvider();
+    @Override
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .anonymous(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessHandler(new ShibbolethLogoutSuccessHandler(getHakaLogoutUrl()))
+                        .permitAll())
+                .exceptionHandling(exceptionHandling -> exceptionHandling
+                        .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")))
+                .authorizeHttpRequests(authz -> authz
+                    .requestMatchers("/error").permitAll()
+                    .requestMatchers("/login").permitAll()
+                    .requestMatchers("/**").hasAnyRole("ADMIN", "SUPERUSER"))
+
+                // add a mock authentication filter that simulates a succesful Shibboleth authentication
+                .addFilterBefore(new DevelopmentShibbolethMockAuthenticationFilter(), RequestAttributeAuthenticationFilter.class)
+                .build();
     }
 
     @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.authenticationProvider(authenticationProvider());
-    }
-
-    @Bean
-    public ShibbolethAuthenticationFilter shibbolethAuthenticationFilter() {
-
-        SimpleUrlAuthenticationSuccessHandler successHandler = new SimpleUrlAuthenticationSuccessHandler();
-        successHandler.setDefaultTargetUrl("/");
-
-        SimpleUrlAuthenticationFailureHandler failureHandler = new SimpleUrlAuthenticationFailureHandler();
-        failureHandler.setDefaultFailureUrl("/error");
-
-        DevelopmentShibbolethAuthenticationFilter filter = new DevelopmentShibbolethAuthenticationFilter("/login/**");
-        filter.setAuthenticationSuccessHandler(successHandler);
-        filter.setAuthenticationFailureHandler(failureHandler);
-
-        return filter;
-    }
-
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        super.configure(http);
-
-        // forward straight to /login -> automagic login always
-        http.anonymous().disable();
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    protected CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(ImmutableList.of("*"));
         config.setAllowedMethods(ImmutableList.of("*"));

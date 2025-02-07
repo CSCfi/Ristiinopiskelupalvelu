@@ -17,7 +17,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -25,7 +24,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
 
-@EnableWebMvc
 @Configuration
 @Import({EsConfig.class, MapperConfig.class, MessagingConfig.class})
 public class ApplicationConfig implements WebMvcConfigurer, ApplicationContextAware {

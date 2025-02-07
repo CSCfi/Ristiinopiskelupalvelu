@@ -5,7 +5,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrgani
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
-import fi.uta.ristiinopiskelu.handler.service.NetworkService;
+import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ public class AbstractRouteIntegrationTest {
     private static final Logger logger = LoggerFactory.getLogger(AbstractRouteIntegrationTest.class);
 
     @Autowired
-    private NetworkService networkService;
+    private NetworkRepository networkRepository;
 
     protected NetworkEntity persistNetworkEntity(String id, LocalisedString name, List<String> organisationIds) {
         List<NetworkOrganisation> networkOrgs = new ArrayList<>();
@@ -33,7 +33,7 @@ public class AbstractRouteIntegrationTest {
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(id, name, networkOrgs,
                 DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
 
-        return networkService.create(networkEntity);
+        return networkRepository.create(networkEntity);
     }
 }
 

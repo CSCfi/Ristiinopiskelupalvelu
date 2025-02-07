@@ -1,9 +1,11 @@
 package fi.uta.ristiinopiskelu.persistence.repository;
 
 import fi.uta.ristiinopiskelu.datamodel.entity.DeadLetterQueueEntity;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
+import java.util.stream.Stream;
 
 public interface DeadLetterQueueRepository extends ExtendedRepository<DeadLetterQueueEntity, String> {
-    List<DeadLetterQueueEntity> findAllByOrganisationIdAndEmailSentOrderByConsumedTimestampAsc(String organisationId, boolean emailSent);
+
+    Stream<DeadLetterQueueEntity> findByOrganisationIdAndEmailSent(String organisationId, boolean emailSent, Pageable pageable);
 }

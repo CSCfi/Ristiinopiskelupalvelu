@@ -3,6 +3,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ import java.util.List;
  *         Based on
  *         https://wiki.eduuni.fi/download/attachments/70202805/CSC6_curriculum_api_1.0.0-oas3_swagger.json?version=1&modificationDate=1531828139937&api=v2
  */
+@Schema(name = "Realisation")
 public class RealisationWriteDTO {
 
     private String realisationId;
@@ -43,7 +45,7 @@ public class RealisationWriteDTO {
     private BigDecimal creditsMin;
     private BigDecimal creditsMax;
     private List<String> teachingLanguage;
-    private MinEduGuidanceArea minEduGuidanceArea;
+    private List<MinEduGuidanceArea> minEduGuidanceArea;
     private boolean enrollmentClosed = false;
 
     /**
@@ -313,11 +315,11 @@ public class RealisationWriteDTO {
         this.teachingLanguage = teachingLanguage;
     }
 
-    public MinEduGuidanceArea getMinEduGuidanceArea() {
+    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
         return minEduGuidanceArea;
     }
 
-    public void setMinEduGuidanceArea(MinEduGuidanceArea minEduGuidanceArea) {
+    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
         this.minEduGuidanceArea = minEduGuidanceArea;
     }
 

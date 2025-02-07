@@ -24,74 +24,86 @@ import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.*;
 public enum MessageType implements VersionedMessageType {
 
     // Requests
-    CREATE_COURSEUNIT_REQUEST(CreateCourseUnitRequest.class),
-    DELETE_COURSEUNIT_REQUEST(DeleteCourseUnitRequest.class),
-    UPDATE_COURSEUNIT_REQUEST(UpdateCourseUnitRequest.class),
+    CREATE_COURSEUNIT_REQUEST(CreateCourseUnitRequest.class, true, true),
+    DELETE_COURSEUNIT_REQUEST(DeleteCourseUnitRequest.class, true, true),
+    UPDATE_COURSEUNIT_REQUEST(UpdateCourseUnitRequest.class, true, true),
 
-    CREATE_STUDYMODULE_REQUEST(CreateStudyModuleRequest.class),
-    DELETE_STUDYMODULE_REQUEST(DeleteStudyModuleRequest.class),
-    UPDATE_STUDYMODULE_REQUEST(UpdateStudyModuleRequest.class),
+    CREATE_STUDYMODULE_REQUEST(CreateStudyModuleRequest.class, true, true),
+    DELETE_STUDYMODULE_REQUEST(DeleteStudyModuleRequest.class, true, true),
+    UPDATE_STUDYMODULE_REQUEST(UpdateStudyModuleRequest.class, true, true),
 
-    CREATE_REGISTRATION_REQUEST(CreateRegistrationRequest.class),
-    FORWARDED_CREATE_REGISTRATION_REQUEST(ForwardedCreateRegistrationRequest.class),
-    REGISTRATION_REPLY_REQUEST(RegistrationReplyRequest.class),
-    FORWARDED_REGISTRATION_REPLY_REQUEST(ForwardedRegistrationReplyRequest.class),
+    CREATE_REGISTRATION_REQUEST(CreateRegistrationRequest.class, true, true),
+    FORWARDED_CREATE_REGISTRATION_REQUEST(ForwardedCreateRegistrationRequest.class, true, false),
+    REGISTRATION_REPLY_REQUEST(RegistrationReplyRequest.class, true, true),
+    FORWARDED_REGISTRATION_REPLY_REQUEST(ForwardedRegistrationReplyRequest.class, true, false),
 
-    CREATE_NETWORK_REQUEST(CreateNetworkRequest.class),
-    UPDATE_NETWORK_REQUEST(UpdateNetworkRequest.class),
+    CREATE_NETWORK_REQUEST(CreateNetworkRequest.class, false, true),
+    UPDATE_NETWORK_REQUEST(UpdateNetworkRequest.class, false, true),
 
-    CREATE_REALISATION_REQUEST(CreateRealisationRequest.class),
-    UPDATE_REALISATION_REQUEST(UpdateRealisationRequest.class),
-    DELETE_REALISATION_REQUEST(DeleteRealisationRequest.class),
+    CREATE_REALISATION_REQUEST(CreateRealisationRequest.class, true, true),
+    UPDATE_REALISATION_REQUEST(UpdateRealisationRequest.class, true, true),
+    DELETE_REALISATION_REQUEST(DeleteRealisationRequest.class, true, true),
 
-    CREATE_STUDYRECORD_REQUEST(CreateStudyRecordRequest.class),
-    FORWARDED_CREATE_STUDYRECORD_REQUEST(ForwardedCreateStudyRecordRequest.class),
-    STUDYRECORD_REPLY_REQUEST(StudyRecordReplyRequest.class),
-    FORWARDED_STUDYRECORD_REPLY_REQUEST(ForwardedStudyRecordReplyRequest.class),
+    CREATE_STUDYRECORD_REQUEST(CreateStudyRecordRequest.class, true, true),
+    FORWARDED_CREATE_STUDYRECORD_REQUEST(ForwardedCreateStudyRecordRequest.class, true, false),
+    STUDYRECORD_REPLY_REQUEST(StudyRecordReplyRequest.class, true, true),
+    FORWARDED_STUDYRECORD_REPLY_REQUEST(ForwardedStudyRecordReplyRequest.class, true, false),
 
-    UPDATE_STUDENT_REQUEST(UpdateStudentRequest.class),
-    FORWARDED_UPDATE_STUDENT_REQUEST(ForwardedUpdateStudentRequest.class),
-    UPDATE_STUDENT_REPLY_REQUEST(UpdateStudentReplyRequest.class),
-    FORWARDED_UPDATE_STUDENT_REPLY_REQUEST(ForwardedUpdateStudentReplyRequest.class),
+    UPDATE_STUDENT_REQUEST(UpdateStudentRequest.class, true, true),
+    FORWARDED_UPDATE_STUDENT_REQUEST(ForwardedUpdateStudentRequest.class, true, false),
+    UPDATE_STUDENT_REPLY_REQUEST(UpdateStudentReplyRequest.class, true, true),
+    FORWARDED_UPDATE_STUDENT_REPLY_REQUEST(ForwardedUpdateStudentReplyRequest.class, true, false),
 
-    UPDATE_STUDENT_STUDYRIGHT_REQUEST(UpdateStudentStudyRightRequest.class),
-    FORWARDED_UPDATE_STUDENT_STUDYRIGHT_REQUEST(ForwardedUpdateStudentStudyRightRequest.class),
-    UPDATE_STUDENT_STUDYRIGHT_REPLY_REQUEST(UpdateStudentStudyRightReplyRequest.class),
-    FORWARDED_UPDATE_STUDENT_STUDYRIGHT_REPLY_REQUEST(ForwardedUpdateStudentStudyRightReplyRequest.class),
+    UPDATE_STUDENT_STUDYRIGHT_REQUEST(UpdateStudentStudyRightRequest.class, true, true),
+    FORWARDED_UPDATE_STUDENT_STUDYRIGHT_REQUEST(ForwardedUpdateStudentStudyRightRequest.class, true, false),
+    UPDATE_STUDENT_STUDYRIGHT_REPLY_REQUEST(UpdateStudentStudyRightReplyRequest.class, true, true),
+    FORWARDED_UPDATE_STUDENT_STUDYRIGHT_REPLY_REQUEST(ForwardedUpdateStudentStudyRightReplyRequest.class, true, false),
 
     // Notifications (note the special cases here)
-    NETWORK_CREATED_NOTIFICATION(NetworkCreatedNotification.class),
-    NETWORK_UPDATED_NOTIFICATION(NetworkUpdatedNotification.class),
+    NETWORK_CREATED_NOTIFICATION(NetworkCreatedNotification.class, true, false),
+    NETWORK_UPDATED_NOTIFICATION(NetworkUpdatedNotification.class, true, false),
 
-    COURSEUNIT_CREATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class),
-    COURSEUNIT_UPDATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class),
-    COURSEUNIT_DELETED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class),
+    COURSEUNIT_CREATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class, true, false),
+    COURSEUNIT_UPDATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class, true, false),
+    COURSEUNIT_DELETED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class, true, false),
 
-    STUDYMODULE_CREATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class),
-    STUDYMODULE_UPDATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class),
-    STUDYMODULE_DELETED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class),
+    STUDYMODULE_CREATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class, true, false),
+    STUDYMODULE_UPDATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class, true, false),
+    STUDYMODULE_DELETED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class, true, false),
 
-    REALISATION_CREATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class),
-    REALISATION_UPDATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class),
-    REALISATION_DELETED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class),
+    REALISATION_CREATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class, true, false),
+    REALISATION_UPDATED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class, true, false),
+    REALISATION_DELETED_NOTIFICATION(CompositeIdentifiedEntityModifiedNotification.class, true, false),
 
     // Common
-    DEFAULT_RESPONSE(DefaultResponse.class),
-    REGISTRATION_RESPONSE(RegistrationResponse.class),
-    STUDYRECORD_RESPONSE(StudyRecordResponse.class),
-    STUDENT_RESPONSE(StudentResponse.class),
-    JSON_VALIDATION_FAILED_RESPONSE(JsonValidationFailedResponse.class),
-    AUTHENTICATION_FAILED_RESPONSE(DefaultResponse.class),
-    ACKNOWLEDGEMENT(Acknowledgement.class);
+    DEFAULT_RESPONSE(DefaultResponse.class, true, false),
+    REGISTRATION_RESPONSE(RegistrationResponse.class, true, false),
+    STUDYRECORD_RESPONSE(StudyRecordResponse.class, true, false),
+    STUDENT_RESPONSE(StudentResponse.class, true, false),
+    JSON_VALIDATION_FAILED_RESPONSE(JsonValidationFailedResponse.class, true, false),
+    AUTHENTICATION_FAILED_RESPONSE(DefaultResponse.class, true, false),
+    ACKNOWLEDGEMENT(Acknowledgement.class, true, true);
 
     private Class<? extends Message> clazz;
+    private boolean documented;
+    private boolean consumer;
 
-    MessageType(Class<? extends Message> clazz) {
+    MessageType(Class<? extends Message> clazz, boolean documented, boolean consumer) {
         this.clazz = clazz;
+        this.documented = documented;
+        this.consumer = consumer;
     }
 
     public Class<? extends Message> getClazz() {
         return clazz;
+    }
+
+    public boolean isDocumented() {
+        return documented;
+    }
+
+    public boolean isConsumer() {
+        return consumer;
     }
 
     public static MessageGroup getMessageGroup(MessageType messageType) {

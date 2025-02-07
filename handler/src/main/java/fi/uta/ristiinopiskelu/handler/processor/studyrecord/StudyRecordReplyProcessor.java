@@ -7,6 +7,7 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundExcepti
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.handler.service.StudyRecordService;
+import fi.uta.ristiinopiskelu.handler.service.result.EntityModificationResult;
 import fi.uta.ristiinopiskelu.handler.validator.studyrecord.StudyRecordStatusValidator;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
@@ -15,6 +16,10 @@ import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.StudyRecordMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.ForwardedStudyRecordReplyRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.StudyRecordReplyRequest;
+import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
+import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
+import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
+import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.slf4j.Logger;
@@ -23,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -46,6 +52,21 @@ public class StudyRecordReplyProcessor implements Processor {
         this.objectMapper = objectMapper;
     }
 
+    @AsyncListener(operation = @AsyncOperation(
+            channelName = "handler",
+            description = "Replies to a study record request",
+            servers = {"production", "staging"},
+            message = @AsyncMessage(
+                    description = "Replies to a study record request"
+            ),
+            payloadType = StudyRecordReplyRequest.class
+    ))
+    @AsyncPublisher(operation = @AsyncOperation(
+            channelName = "<ORGANISATION_QUEUE>",
+            description = "Forwarded study record reply",
+            servers = {"production", "staging"},
+            payloadType = ForwardedStudyRecordReplyRequest.class
+    ))
     @Override
     public void process(Exchange exchange) throws Exception {
         StudyRecordReplyRequest req = objectMapper.readValue(exchange.getIn().getBody(String.class), StudyRecordReplyRequest.class);
@@ -58,14 +79,14 @@ public class StudyRecordReplyProcessor implements Processor {
 
         Optional<StudyRecordEntity> studyRecordEntityOptional = studyRecordService.findById(req.getStudyRecordRequestId());
 
-        if(!studyRecordEntityOptional.isPresent()) {
+        if (!studyRecordEntityOptional.isPresent()) {
             throw new EntityNotFoundException(StudyRecordEntity.class, req.getStudyRecordRequestId());
         }
 
         StudyRecordEntity studyRecordEntity = studyRecordEntityOptional.get();
 
         Optional<OrganisationEntity> organisationEntityOptional = organisationService.findById(studyRecordEntity.getSendingOrganisation());
-        if(!organisationEntityOptional.isPresent()) {
+        if (!organisationEntityOptional.isPresent()) {
             throw new EntityNotFoundException(OrganisationEntity.class, studyRecordEntity.getSendingOrganisation());
         }
 
@@ -74,12 +95,14 @@ public class StudyRecordReplyProcessor implements Processor {
         // Persist the reply.
         studyRecordEntity.setStatus(req.getStatus());
         studyRecordEntity.setRejectionReason(req.getRejectionReason());
-        studyRecordEntity = studyRecordService.update(studyRecordEntity);
+
+        List<? extends EntityModificationResult<?>> modificationResults = studyRecordService.update(studyRecordEntity);
+        studyRecordEntity = (StudyRecordEntity) modificationResults.get(0).getCurrent();
 
         // send to correct organisations
         jmsMessageForwarder.forwardRequestToOrganisation(studyRecordEntity.getId(), new ForwardedStudyRecordReplyRequest(studyRecordEntity),
-            MessageType.FORWARDED_STUDYRECORD_REPLY_REQUEST, correlationId, organisation,
-            Collections.singletonMap("studyRecordRequestId", req.getStudyRecordRequestId()));
+                MessageType.FORWARDED_STUDYRECORD_REPLY_REQUEST, correlationId, organisation,
+                Collections.singletonMap("studyRecordRequestId", req.getStudyRecordRequestId()));
 
         exchange.setMessage(new StudyRecordMessage(exchange, MessageType.DEFAULT_RESPONSE, correlationId, req.getStudyRecordRequestId(),
                 new DefaultResponse(Status.OK, "Study record reply processed successfully and forwarded to recipient organisations")));

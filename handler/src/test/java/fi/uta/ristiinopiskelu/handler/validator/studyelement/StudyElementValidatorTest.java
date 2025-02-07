@@ -14,6 +14,7 @@ import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.impl.AbstractStudyElementService;
 import fi.uta.ristiinopiskelu.handler.utils.KeyHelper;
 import fi.uta.ristiinopiskelu.handler.validator.studyelement.studymodule.CreateStudyModuleValidatorTest;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,11 +23,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import javax.validation.Validator;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -182,7 +183,7 @@ public class StudyElementValidatorTest {
         studyElement.setStudyElementIdentifierCode("SECODE-1");
         studyElement.setCooperationNetworks(Arrays.asList(coopNetwork, coopNetwork2));
 
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
         validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true);
     }
@@ -245,7 +246,7 @@ public class StudyElementValidatorTest {
         studyElement.setStudyElementIdentifierCode("SECODE-1");
         studyElement.setCooperationNetworks(Arrays.asList(coopNetwork, coopNetwork2));
 
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
         assertThrows(NotMemberOfCooperationNetworkValidationException.class,
                 () -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
@@ -281,31 +282,28 @@ public class StudyElementValidatorTest {
         studyElement.setStudyElementIdentifierCode("SECODE-1");
         studyElement.setCooperationNetworks(Arrays.asList(coopNetwork));
 
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
-        // Should fail indefinitely start time before current time
-        assertThrows(NotMemberOfCooperationNetworkValidationException.class,
-                () -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
+        // Should succeed despite organisation network membership start time being in the future
+        assertDoesNotThrow(() -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
 
-        // Setup with fixed timestamp and try again (should still fail current time later than fixed time)
+        // Setup with fixed timestamp (membership expired), should still succeed
         networkEntity.getOrganisations().get(0).setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusMonths(1)));
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
-        assertThrows(NotMemberOfCooperationNetworkValidationException.class,
-                () -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
+        assertDoesNotThrow(() -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
 
-        // Setup with fixed timestamp and try again (should still fail current time later than fixed time)
+        // Setup with fixed timestamp (membership in the future), should still succeed
         networkEntity.getOrganisations().get(0).setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2)));
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
-        assertThrows(NotMemberOfCooperationNetworkValidationException.class,
-                () -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
+        assertDoesNotThrow(() -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
 
-        // Setup with fixed timestamp and try again (should success)
+        // Setup with fixed timestamp (membership valid), should succeed
         networkEntity.getOrganisations().get(0).setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusMonths(1)));
-        when(networkService.findValidNetworkById(any())).thenReturn(Optional.of(networkEntity));
+        when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
-        validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true);
+        assertDoesNotThrow(() -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
     }
 
     @Test

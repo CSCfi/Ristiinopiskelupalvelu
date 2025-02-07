@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.handler.processor.AuditLoggingProcessor;
 import fi.uta.ristiinopiskelu.handler.processor.MessageSchemaVersionCompatabilityProcessor;
 import fi.uta.ristiinopiskelu.handler.processor.MessageSchemaVersionValidatorProcessor;
+import fi.uta.ristiinopiskelu.handler.processor.PersonIdValidatorProcessor;
 import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.JsonValidationFailedResponse;
@@ -45,6 +46,9 @@ public abstract class AbstractRoute extends RouteBuilder {
     @Autowired
     private MessageSchemaVersionCompatabilityProcessor schemaVersionCompatabilityProcessor;
 
+    @Autowired
+    private PersonIdValidatorProcessor personIdValidatorProcessor;
+
     protected abstract List<RouteConfiguration> getConfigs();
 
     protected abstract String getQueueUri();
@@ -84,7 +88,7 @@ public abstract class AbstractRoute extends RouteBuilder {
 
     protected void buildRoutes() {
         if(!CollectionUtils.isEmpty(this.getConfigs())) {
-            this.getConfigs().forEach(config -> buildRoute(config));
+            this.getConfigs().forEach(this::buildRoute);
         }
     }
 
@@ -99,9 +103,9 @@ public abstract class AbstractRoute extends RouteBuilder {
         // If route is backwards compatible add schema version compatibility processor to route
         if(config.isRouteBackwardsCompatible()) {
             tryDefinition
-                .choice().when(header(MessageHeader.SCHEMA_VERSION).isEqualTo(String.valueOf(schemaVersionService.getPreviousSchemaVersion())))
-                    .to("json-validator:" + schemaVersionService.getPreviousSchemaVersionPath(
-                        MessageType.getMessageGroup(config.getRequestType()), config.getMessageSchemaFilename()))
+                .choice().when(header(MessageHeader.SCHEMA_VERSION).isNotEqualTo(String.valueOf(schemaVersionService.getCurrentSchemaVersion())))
+                    .toD("json-validator:" + schemaVersionService.getSchemaVersionPath(
+                        MessageType.getMessageGroup(config.getRequestType()), config.getMessageSchemaFilename(), "${header.%s}".formatted(MessageHeader.SCHEMA_VERSION)))
                     .process(schemaVersionCompatabilityProcessor)
                 .endChoice();
         }
@@ -112,6 +116,7 @@ public abstract class AbstractRoute extends RouteBuilder {
             .to("json-validator:" + schemaVersionService.getCurrentSchemaVersionPath(
                     MessageType.getMessageGroup(config.getRequestType()), config.getMessageSchemaFilename()))
             .to("micrometer:timer:jsonValidator?action=stop")
+            .process(personIdValidatorProcessor)
             .to(String.format("micrometer:timer:%s?action=start", getProcessorClassName(config)))
             .process(config.getRequestProcessor())
             .to(String.format("micrometer:timer:%s?action=stop", getProcessorClassName(config)))

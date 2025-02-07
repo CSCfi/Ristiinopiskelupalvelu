@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
 import org.jsoup.Jsoup;
-import org.jsoup.safety.Whitelist;
+import org.jsoup.safety.Safelist;
 import org.springframework.boot.jackson.JsonComponent;
 import org.springframework.util.StringUtils;
 
@@ -25,7 +25,7 @@ public class HtmlSanitizingStringDeserializer extends JsonDeserializer<String> i
         String value = p.getValueAsString();
 
         if(StringUtils.hasText(value)) {
-            return Jsoup.clean(value, Whitelist.none());
+            return Jsoup.clean(value, Safelist.none());
         }
 
         return value;

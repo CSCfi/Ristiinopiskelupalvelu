@@ -1,41 +1,41 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.search;
 
-import org.elasticsearch.index.query.BoolQueryBuilder;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 
 public class StudiesSearchRealisationQueries {
 
-     private BoolQueryBuilder finalQuery;
-     private BoolQueryBuilder mainRealisationQuery;
-     private BoolQueryBuilder mainAssessmentItemRealisationQuery;
+     private BoolQuery.Builder finalQuery;
+     private BoolQuery.Builder mainRealisationQuery;
+     private BoolQuery.Builder mainAssessmentItemRealisationQuery;
 
-    public StudiesSearchRealisationQueries(BoolQueryBuilder finalQuery, BoolQueryBuilder mainRealisationQuery,
-                                           BoolQueryBuilder mainAssessmentItemRealisationQuery) {
+    public StudiesSearchRealisationQueries(BoolQuery.Builder finalQuery, BoolQuery.Builder mainRealisationQuery,
+                                           BoolQuery.Builder mainAssessmentItemRealisationQuery) {
         this.finalQuery = finalQuery;
         this.mainRealisationQuery = mainRealisationQuery;
         this.mainAssessmentItemRealisationQuery = mainAssessmentItemRealisationQuery;
     }
 
-    public BoolQueryBuilder getFinalQuery() {
+    public BoolQuery.Builder getFinalQuery() {
         return finalQuery;
     }
 
-    public void setFinalQuery(BoolQueryBuilder finalQuery) {
+    public void setFinalQuery(BoolQuery.Builder finalQuery) {
         this.finalQuery = finalQuery;
     }
 
-    public BoolQueryBuilder getMainRealisationQuery() {
+    public BoolQuery.Builder getMainRealisationQuery() {
         return mainRealisationQuery;
     }
 
-    public void setMainRealisationQuery(BoolQueryBuilder mainRealisationQuery) {
+    public void setMainRealisationQuery(BoolQuery.Builder mainRealisationQuery) {
         this.mainRealisationQuery = mainRealisationQuery;
     }
 
-    public BoolQueryBuilder getMainAssessmentItemRealisationQuery() {
+    public BoolQuery.Builder getMainAssessmentItemRealisationQuery() {
         return mainAssessmentItemRealisationQuery;
     }
 
-    public void setMainAssessmentItemRealisationQuery(BoolQueryBuilder mainAssessmentItemRealisationQuery) {
+    public void setMainAssessmentItemRealisationQuery(BoolQuery.Builder mainAssessmentItemRealisationQuery) {
         this.mainAssessmentItemRealisationQuery = mainAssessmentItemRealisationQuery;
     }
 }

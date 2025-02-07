@@ -13,6 +13,8 @@ import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
+import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.handler.validator.network.CreateNetworkValidator;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
@@ -37,7 +39,12 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(SpringExtension.class)
 public class CreateNetworkProcessorTest {
@@ -105,7 +112,7 @@ public class CreateNetworkProcessorTest {
         }
 
         when(organisationService.findByIds(any())).thenReturn(returningOrgEntitys);
-        when(networkService.create(any())).thenReturn(NetworkEntity.fromDto(network));
+        when(networkService.create(any())).thenReturn(List.of(new GenericEntityModificationResult(ModificationOperationType.CREATE, null, NetworkEntity.fromDto(network))));
         when(messageSchemaService.getCurrentSchemaVersion()).thenReturn(1);
 
         processor.process(exchange);

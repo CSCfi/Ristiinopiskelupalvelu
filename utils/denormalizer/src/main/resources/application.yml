@@ -1,0 +1,12 @@
+spring:
+  main:
+    web-application-type: NONE
+    banner-mode: off
+general:
+  runner-enabled: true
+  elasticsearch:
+    hosts: ${elasticsearch_host}
+    clusterName: ${elasticsearch_cluster_name}
+    username: ${elasticsearch_username}
+    password: ${elasticsearch_password}
+    caCertificatePath: ${elasticsearch_ca_certificate_path}

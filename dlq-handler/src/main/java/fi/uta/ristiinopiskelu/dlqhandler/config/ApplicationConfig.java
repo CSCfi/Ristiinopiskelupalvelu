@@ -3,7 +3,8 @@ package fi.uta.ristiinopiskelu.dlqhandler.config;
 import fi.uta.ristiinopiskelu.datamodel.config.MapperConfig;
 import fi.uta.ristiinopiskelu.messaging.config.MessagingConfig;
 import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
-import org.apache.camel.component.jms.JmsComponent;
+import jakarta.jms.ConnectionFactory;
+import org.simplejavamail.springsupport.SimpleJavaMailSpringSupport;
 import org.springframework.boot.autoconfigure.jms.DefaultJmsListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,12 +15,10 @@ import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-import javax.jms.ConnectionFactory;
-
 @Configuration
 @EnableTransactionManagement
 @EnableScheduling
-@Import({EsConfig.class, MapperConfig.class, MessagingConfig.class})
+@Import({EsConfig.class, MapperConfig.class, MessagingConfig.class, SimpleJavaMailSpringSupport.class})
 public class ApplicationConfig {
 
     @Bean
@@ -29,11 +28,6 @@ public class ApplicationConfig {
         return jmsTransactionManager;
     }
 
-    @Bean
-    public JmsComponent jmsComponent(final ConnectionFactory connectionFactory, final JmsTransactionManager jmsTransactionManager) {
-        JmsComponent jmsComponent = JmsComponent.jmsComponentTransacted(connectionFactory, jmsTransactionManager);
-        return jmsComponent;
-    }
     @Bean
     public JmsListenerContainerFactory<?> jmsListenerContainerFactory(
             ConnectionFactory connectionFactory,

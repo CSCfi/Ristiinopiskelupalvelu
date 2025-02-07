@@ -1,6 +1,6 @@
 package fi.csc.ristiinopiskelu.admin.controller;
 
-import fi.csc.ristiinopiskelu.admin.security.AppUserDetails;
+import fi.csc.ristiinopiskelu.admin.security.ShibbolethAuthenticationDetails;
 import fi.csc.ristiinopiskelu.admin.services.NetworkService;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
@@ -31,13 +30,13 @@ public class NetworksController {
     private NetworkService networkService;
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<NetworkReadDTO> getNetworks(@AuthenticationPrincipal AppUserDetails user) {
-        return networkService.findAll(user);
+    public List<NetworkReadDTO> getNetworks() {
+        return networkService.findAll();
     }
 
     @RequestMapping(value = "/{networkId}", method = RequestMethod.GET)
-    public Optional<NetworkReadDTO> getNetworkById(@PathVariable String networkId, @AuthenticationPrincipal AppUserDetails user) {
-       return networkService.findById(networkId, user);
+    public Optional<NetworkReadDTO> getNetworkById(@PathVariable String networkId) {
+       return networkService.findById(networkId);
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -47,26 +46,28 @@ public class NetworksController {
     }
 
     @RequestMapping(value = "/search", method = RequestMethod.GET)
-    public List<NetworkReadDTO> findNetworksByName(@RequestParam String name, @RequestParam String lang, @AuthenticationPrincipal AppUserDetails user) {
-        return networkService.findNetworksByName(name, lang, user);
+    public List<NetworkReadDTO> findNetworksByName(@RequestParam String name, @RequestParam String lang) {
+        return networkService.findNetworksByName(name, lang);
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @RequestMapping(value = "/update", method = RequestMethod.POST)
-    public void updateNetwork(@RequestBody NetworkWriteDTO network, @AuthenticationPrincipal AppUserDetails user) {
-        networkService.update(network, user);
+    public void updateNetwork(@RequestBody NetworkWriteDTO network) {
+        networkService.update(network);
     }
 
     @RequestMapping(value = "/new", method = RequestMethod.GET)
-    public NetworkWriteDTO newNetwork(@AuthenticationPrincipal AppUserDetails user) {
+    public NetworkWriteDTO newNetwork() {
+        ShibbolethAuthenticationDetails authenticationDetails = ShibbolethAuthenticationDetails.getCurrent();
+
         NetworkWriteDTO network = new NetworkWriteDTO();
-        network.setName(new LocalisedString("Uusi","New","Ny"));
-        network.setAbbreviation("new");
+        network.setName(new LocalisedString("","",""));
+        network.setAbbreviation("");
         network.setPublished(false);
         network.setId(UUID.randomUUID().toString());
 
         NetworkOrganisation ownOrganisation = new NetworkOrganisation();
-        ownOrganisation.setOrganisationTkCode(user.getOrganisation());
+        ownOrganisation.setOrganisationTkCode(authenticationDetails.getOrganisation());
         ownOrganisation.setValidityInNetwork(new Validity());
         ownOrganisation.setIsCoordinator(true);
 
@@ -76,7 +77,7 @@ public class NetworksController {
     }
 
     @RequestMapping(value = "/add", method = RequestMethod.POST)
-    public void addNetwork(@AuthenticationPrincipal AppUserDetails user, @RequestBody NetworkWriteDTO network) {
-        networkService.create(network, user);
+    public void addNetwork(@RequestBody NetworkWriteDTO network) {
+        networkService.create(network);
     }
 }

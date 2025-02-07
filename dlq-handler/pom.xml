@@ -5,7 +5,7 @@
 
     <groupId>fi.uta.ristiinopiskelu.dlq-handler</groupId>
     <artifactId>dlq-handler</artifactId>
-    <version>9.0.12</version>
+    <version>9.0.23</version>
     <name>dlq-handler</name>
     <description>Module that handles ActiveMQ dead letter queue</description>
     <packaging>jar</packaging>
@@ -13,20 +13,10 @@
     <parent>
         <groupId>fi.uta.ristiinopiskelu</groupId>
         <artifactId>parent</artifactId>
-        <version>9.0.12</version>
+        <version>9.0.23</version>
         <relativePath>../</relativePath> <!-- lookup parent from repository -->
     </parent>
     <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>fi.uta.ristiinopiskelu</groupId>
             <artifactId>messaging</artifactId>
@@ -41,57 +31,54 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
+            <groupId>org.simplejavamail</groupId>
+            <artifactId>simple-java-mail</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.simplejavamail</groupId>
+            <artifactId>spring-module</artifactId>
         </dependency>
 
         <dependency>
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-spring-boot-starter</artifactId>
-            <version>${camel.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-stream-starter</artifactId>
-            <version>${camel.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-jackson-starter</artifactId>
-            <version>${camel.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>org.apache.camel</groupId>
-            <artifactId>camel-jackson</artifactId>
-            <version>${camel.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.camel</groupId>
-            <artifactId>camel-jms</artifactId>
-            <version>${camel.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.camel</groupId>
-            <artifactId>camel-mail</artifactId>
-            <version>${camel.version}</version>
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-jms-starter</artifactId>
         </dependency>
         
-
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logstash-logback-encoder.version}</version>
         </dependency>
-
+        
         <!-- TESTING -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -100,9 +87,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-email</artifactId>
-            <version>1.5</version>
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail-junit5</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

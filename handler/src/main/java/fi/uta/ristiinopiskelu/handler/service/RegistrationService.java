@@ -2,17 +2,26 @@ package fi.uta.ristiinopiskelu.handler.service;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.registration.RegistrationReadDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationStatusAmountSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationStatusAmountSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.registration.RegistrationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
+import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
+import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationResult;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
 
 public interface RegistrationService extends Service<RegistrationWriteDTO, RegistrationEntity, RegistrationReadDTO> {
+
+    List<GenericEntityModificationResult> create(RegistrationEntity entity) throws CreateFailedException;
 
     List<RegistrationEntity> findByStudentAndSelectionsReplies(StudyRecordStudent student, String selectionItemId,
                                                                String selectionItemOrganisation, String selectionItemType) throws FindFailedException;

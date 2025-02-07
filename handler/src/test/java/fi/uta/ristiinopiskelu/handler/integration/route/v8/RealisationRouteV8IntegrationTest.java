@@ -1,11 +1,28 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
-import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.CooperationNetwork;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.Organisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationRole;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.Realisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyElementReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.CompletionOptionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
-import fi.uta.ristiinopiskelu.handler.helper.*;
+import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
+import fi.uta.ristiinopiskelu.handler.helper.DtoInitializerV8;
+import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
+import fi.uta.ristiinopiskelu.handler.helper.HistoryHelper;
+import fi.uta.ristiinopiskelu.handler.helper.JmsHelper;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
@@ -16,9 +33,11 @@ import fi.uta.ristiinopiskelu.messaging.message.v8.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.v8.Status;
 import fi.uta.ristiinopiskelu.messaging.message.v8.realisation.CreateRealisationRequest;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
-import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
+import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,22 +46,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class RealisationRouteV8IntegrationTest {
@@ -58,7 +87,7 @@ public class RealisationRouteV8IntegrationTest {
     }
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchTemplate;
+    private ElasticsearchTemplate elasticsearchTemplate;
 
     @Autowired
     private NetworkService networkService;
@@ -82,7 +111,7 @@ public class RealisationRouteV8IntegrationTest {
     private RealisationRepository realisationRepository;
 
     @Autowired
-    private OrganisationRepository organisationRepository;
+    private NetworkRepository networkRepository;
 
     private int messageSchemaVersion = 8;
 
@@ -1409,7 +1438,7 @@ public class RealisationRouteV8IntegrationTest {
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(id, name, networkOrgs,
                 DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
 
-        return networkService.create(networkEntity);
+        return networkRepository.create(networkEntity);
     }
 
     private final String testRealisationJson =

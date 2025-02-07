@@ -10,9 +10,9 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.degree.DegreeReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.studymodule.StudyModuleReadDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import org.springframework.util.CollectionUtils;
 
-import javax.validation.Valid;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -133,7 +133,7 @@ public abstract class AbstractStudyElementReadDTO {
     private List<Description> organisationSpecificDescriptions = null;
     private List<StudyElementReference> parents = null;
     private StudyStatus status;
-    private MinEduGuidanceArea minEduGuidanceArea;
+    private List<MinEduGuidanceArea> minEduGuidanceArea;
 
     public Boolean getMissing() {
         return missing;
@@ -557,11 +557,11 @@ public abstract class AbstractStudyElementReadDTO {
         this.status = status;
     }
 
-    public MinEduGuidanceArea getMinEduGuidanceArea() {
+    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
         return minEduGuidanceArea;
     }
 
-    public void setMinEduGuidanceArea(MinEduGuidanceArea minEduGuidanceArea) {
+    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
         this.minEduGuidanceArea = minEduGuidanceArea;
     }
 

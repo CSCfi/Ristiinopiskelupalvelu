@@ -3,7 +3,7 @@ package fi.uta.ristiinopiskelu.handler.config;
 import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springdoc.core.GroupedOpenApi;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -30,7 +30,7 @@ public class SpringDocConfig {
             .displayName(versionString)
             .packagesToScan(String.format("fi.uta.ristiinopiskelu.handler.controller.%s", versionString))
             .pathsToExclude("/error.*")
-            .addOpenApiCustomiser(openApi -> {
+            .addOpenApiCustomizer(openApi -> {
                 Server server = new Server();
                 server.setUrl("https://risti-lb.csc.fi/handler/");
                 openApi.setServers(Collections.singletonList(server));
@@ -38,6 +38,6 @@ public class SpringDocConfig {
                     .title("Ristiinopiskelupalvelun rajapintadokumentaatio")
                     .version(versionString));
             })
-            .build();
+            .build();         
     }
 }

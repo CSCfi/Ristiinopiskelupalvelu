@@ -5,7 +5,7 @@
 
 	<groupId>fi.uta.ristiinopiskelu</groupId>
 	<artifactId>handler</artifactId>
-	<version>9.0.12</version>
+	<version>9.0.23</version>
 	<packaging>jar</packaging>
 
 	<name>handler</name>
@@ -14,7 +14,7 @@
 	<parent>
 		<groupId>fi.uta.ristiinopiskelu</groupId>
 		<artifactId>parent</artifactId>
-		<version>9.0.12</version>
+		<version>9.0.23</version>
 		<relativePath>../</relativePath> <!-- lookup parent from repository -->
 	</parent>
 
@@ -37,16 +37,6 @@
 	
 	<dependencies>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
-		
-		<dependency>
 			<groupId>fi.uta.ristiinopiskelu</groupId>
 			<artifactId>messaging</artifactId>
 			<version>${project.version}</version>
@@ -60,88 +50,104 @@
 
 		<dependency>
 			<groupId>fi.uta.ristiinopiskelu</groupId>
-			<artifactId>tracker-plugin</artifactId>
+			<artifactId>tracker</artifactId>
 			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.camel.springboot</groupId>
 			<artifactId>camel-spring-boot-starter</artifactId>
-			<version>${camel.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.camel.springboot</groupId>
 			<artifactId>camel-stream-starter</artifactId>
-			<version>${camel.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.camel.springboot</groupId>
 			<artifactId>camel-micrometer-starter</artifactId>
-			<version>${camel.version}</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>io.micrometer</groupId>
-			<artifactId>micrometer-registry-prometheus</artifactId>
-			<version>${micrometer.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.camel.springboot</groupId>
 			<artifactId>camel-jackson-starter</artifactId>
-			<version>${camel.version}</version>
 		</dependency>
 
 		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-jackson</artifactId>
-			<version>${camel.version}</version>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-jms-starter</artifactId>
 		</dependency>
 
 		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-jms</artifactId>
-			<version>${camel.version}</version>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-bean-validator-starter</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-json-validator-starter</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
 		</dependency>
 
 		<dependency>
 			<groupId>org.springdoc</groupId>
-			<artifactId>springdoc-openapi-ui</artifactId>
-			<version>${springdoc.version}</version>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 		</dependency>
 
-		<!-- https://mvnrepository.com/artifact/javax.servlet/javax.servlet-api -->
 		<dependency>
-			<groupId>javax.servlet</groupId>
-			<artifactId>javax.servlet-api</artifactId>
-			<version>${javax-servlet-api.version}</version>
+			<groupId>jakarta.servlet</groupId>
+			<artifactId>jakarta.servlet-api</artifactId>
 			<scope>provided</scope>
-		</dependency>
-		
-		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-bean-validator</artifactId>
-			<version>${camel.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-json-validator</artifactId>
-			<version>${camel.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>com.flipkart.zjsonpatch</groupId>
 			<artifactId>zjsonpatch</artifactId>
-			<version>${zjsonpatch.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>com.opencsv</groupId>
 			<artifactId>opencsv</artifactId>
-			<version>${opencsv.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>net.logstash.logback</groupId>
+			<artifactId>logstash-logback-encoder</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>io.github.springwolf</groupId>
+			<artifactId>springwolf-core</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>io.github.springwolf</groupId>
+			<artifactId>springwolf-ui</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.github.mpolla</groupId>
+			<artifactId>fin-id-utils</artifactId>
 		</dependency>
 		
         <!-- TEST -->
@@ -153,36 +159,25 @@
 
 		<dependency>
 			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-test-junit5</artifactId>
-			<version>${camel.version}</version>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-test-spring-junit5</artifactId>
-			<version>${camel.version}</version>
 			<scope>test</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>elasticsearch</artifactId>
-			<version>${testcontainers.version}</version>
 			<scope>test</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.activemq</groupId>
 			<artifactId>artemis-junit</artifactId>
-			<version>${activemq.version}</version>
 			<scope>test</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.activemq</groupId>
 			<artifactId>artemis-jms-server</artifactId>
-			<version>${activemq.version}</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -190,18 +185,6 @@
 			<groupId>com.fasterxml.jackson.module</groupId>
 			<artifactId>jackson-module-jsonSchema</artifactId>
 			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>${guava.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>net.logstash.logback</groupId>
-			<artifactId>logstash-logback-encoder</artifactId>
-			<version>${logstash-logback-encoder.version}</version>
 		</dependency>
 	</dependencies>
 
@@ -241,7 +224,7 @@
 				</executions>
 			</plugin>
 
-			<plugin>
+			<!--<plugin>
 				<groupId>com.github.kongchen</groupId>
 				<artifactId>swagger-maven-plugin</artifactId>
 				<version>${swagger-maven-plugin.version}</version>
@@ -331,7 +314,7 @@
 					</execution>
 				</executions>
 			</plugin>
-
+                -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-resources-plugin</artifactId>

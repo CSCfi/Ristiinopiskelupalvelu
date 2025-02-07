@@ -5,7 +5,7 @@
 
 	<groupId>fi.uta.ristiinopiskelu</groupId>
 	<artifactId>parent</artifactId>
-	<version>9.0.12</version>
+	<version>9.0.23</version>
 	<packaging>pom</packaging>
 
 	<name>parent</name>
@@ -16,35 +16,41 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>17</java.version>
 
-		<jacoco.version>0.8.8</jacoco.version>
-		<spring-boot.version>2.7.0</spring-boot.version>
-		<modelmapper.version>3.1.0</modelmapper.version>
-		<activemq.version>2.19.1</activemq.version>
-		<pooled-jms.version>3.0.0</pooled-jms.version>
-		<camel.version>3.17.0</camel.version>                     
-		<javax-servlet-api.version>4.0.1</javax-servlet-api.version>
-		<testcontainers.version>1.17.1</testcontainers.version>
-		<springdoc.version>1.6.8</springdoc.version>
-		<guava.version>31.1-jre</guava.version>
-		<logstash-logback-encoder.version>7.1.1</logstash-logback-encoder.version>
-		<flyway.version>8.5.10</flyway.version>
-		<commons-io.version>2.11.0</commons-io.version>
-		<jsoup.version>1.14.3</jsoup.version>
-		<zjsonpatch.version>0.4.12</zjsonpatch.version>
-		<opencsv.version>5.6</opencsv.version>
-		<h2.version>2.1.212</h2.version>
+		<jacoco.version>0.8.10</jacoco.version>
+		<spring-boot.version>3.1.3</spring-boot.version>
+		<modelmapper.version>3.1.1</modelmapper.version>
+		<activemq.version>2.28.0</activemq.version>
+		<pooled-jms.version>3.1.2</pooled-jms.version>
+		<camel.version>4.0.0</camel.version>
+		<jakarta-servlet-api.version>6.0.0</jakarta-servlet-api.version>
+		<testcontainers.version>1.19.0</testcontainers.version>
+		<springdoc.version>2.2.0</springdoc.version>
+		<guava.version>32.1.2-jre</guava.version>
+		<logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
+		<flyway.version>9.21.1</flyway.version>
+		<commons-io.version>2.13.0</commons-io.version>
+		<jsoup.version>1.16.1</jsoup.version>
+		<zjsonpatch.version>0.4.14</zjsonpatch.version>
+		<opencsv.version>5.8</opencsv.version>
+		<h2.version>2.2.222</h2.version>
 		<commons-beanutils.version>1.9.4</commons-beanutils.version>
-		<jakarta-servlet-jsp-jstl.version>1.2.6</jakarta-servlet-jsp-jstl.version>
-		<groovy-jsr223.version>3.0.10</groovy-jsr223.version>
-		<micrometer.version>1.9.1</micrometer.version>
+		<jakarta-servlet-jsp-jstl.version>3.0.0</jakarta-servlet-jsp-jstl.version>
+		<tiles.version>3.0.8</tiles.version>
+		<groovy-jsr223.version>4.0.14</groovy-jsr223.version>
+		<micrometer.version>1.11.3</micrometer.version>
+		<springwolf.version>1.3.0</springwolf.version>
+		<fin-id-utils.version>0.3</fin-id-utils.version>
+        <simplejavamail.version>8.1.3</simplejavamail.version>
+        <greenmail.version>2.0.0</greenmail.version>
+		<lombok.version>1.18.34</lombok.version>
 
 		<swagger-maven-plugin.version>3.1.8</swagger-maven-plugin.version>
-		<openapi-generator-maven-plugin.version>5.4.0</openapi-generator-maven-plugin.version>
-		<maven-resources-plugin.version>3.2.0</maven-resources-plugin.version>
-		<maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
-		<maven-surefire-plugin.version>3.0.0-M6</maven-surefire-plugin.version>
-		<maven-failsafe-plugin.version>3.0.0-M6</maven-failsafe-plugin.version>
-		<maven-dependency-plugin.version>3.3.0</maven-dependency-plugin.version>
+		<openapi-generator-maven-plugin.version>6.6.0</openapi-generator-maven-plugin.version>
+		<maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
+		<maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+		<maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
+		<maven-failsafe-plugin.version>3.1.2</maven-failsafe-plugin.version>
+		<maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
 	</properties>
 
 	<modules>
@@ -53,10 +59,11 @@
 		<module>messaging</module>
 		<module>handler</module>
 		<module>dlq-handler</module>
-		<module>demo-ui</module>
 		<module>admin-ui</module>
-		<module>denormalizer</module>
 		<module>tracker</module>
+		<module>utils/denormalizer</module>
+		<module>utils/tester</module>
+		<module>utils/dataremover</module>
   	</modules>
 
 	<repositories>
@@ -72,7 +79,7 @@
 			</snapshots>
 		</repository>
 	</repositories>
-
+	
 	<distributionManagement>
 		<repository>
 			<id>ripa-maven</id>
@@ -93,6 +100,195 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+
+			<dependency>
+				<groupId>org.apache.camel.springboot</groupId>
+				<artifactId>camel-spring-boot-bom</artifactId>
+				<version>${camel.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.messaginghub</groupId>
+				<artifactId>pooled-jms</artifactId>
+				<version>${pooled-jms.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>io.micrometer</groupId>
+				<artifactId>micrometer-registry-prometheus</artifactId>
+				<version>${micrometer.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.springdoc</groupId>
+				<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+				<version>${springdoc.version}</version>
+			</dependency>
+
+			<!-- https://mvnrepository.com/artifact/javax.servlet/javax.servlet-api -->
+			<dependency>
+				<groupId>jakarta.servlet</groupId>
+				<artifactId>jakarta.servlet-api</artifactId>
+				<version>${jakarta-servlet-api.version}</version>
+				<scope>provided</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.modelmapper</groupId>
+				<artifactId>modelmapper</artifactId>
+				<version>${modelmapper.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.flipkart.zjsonpatch</groupId>
+				<artifactId>zjsonpatch</artifactId>
+				<version>${zjsonpatch.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.opencsv</groupId>
+				<artifactId>opencsv</artifactId>
+				<version>${opencsv.version}</version>
+				<exclusions>
+					<exclusion>
+						<groupId>commons-logging</groupId>
+						<artifactId>commons-logging</artifactId>
+					</exclusion>
+				</exclusions>
+			</dependency>
+
+			<dependency>
+				<groupId>com.google.guava</groupId>
+				<artifactId>guava</artifactId>
+				<version>${guava.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>net.logstash.logback</groupId>
+				<artifactId>logstash-logback-encoder</artifactId>
+				<version>${logstash-logback-encoder.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>commons-io</groupId>
+				<artifactId>commons-io</artifactId>
+				<version>${commons-io.version}</version>
+			</dependency>
+			
+			<dependency>
+				<groupId>org.jsoup</groupId>
+				<artifactId>jsoup</artifactId>
+				<version>${jsoup.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>commons-beanutils</groupId>
+				<artifactId>commons-beanutils</artifactId>
+				<version>${commons-beanutils.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.glassfish.web</groupId>
+				<artifactId>jakarta.servlet.jsp.jstl</artifactId>
+				<version>${jakarta-servlet-jsp-jstl.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.tiles</groupId>
+				<artifactId>tiles-jsp</artifactId>
+				<version>${tiles.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-core</artifactId>
+				<version>${flyway.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.groovy</groupId>
+				<artifactId>groovy-jsr223</artifactId>
+				<version>${groovy-jsr223.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.h2database</groupId>
+				<artifactId>h2</artifactId>
+				<version>${h2.version}</version>
+				<scope>runtime</scope>
+			</dependency>
+
+            <dependency>
+                <groupId>org.simplejavamail</groupId>
+                <artifactId>simple-java-mail</artifactId>
+                <version>${simplejavamail.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.simplejavamail</groupId>
+                <artifactId>spring-module</artifactId>
+                <version>${simplejavamail.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.github.springwolf</groupId>
+                <artifactId>springwolf-core</artifactId>
+                <version>${springwolf.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.github.springwolf</groupId>
+                <artifactId>springwolf-ui</artifactId>
+                <version>${springwolf.version}</version>
+            </dependency>
+
+			<dependency>
+				<groupId>com.github.mpolla</groupId>
+				<artifactId>fin-id-utils</artifactId>
+				<version>${fin-id-utils.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.activemq</groupId>
+				<artifactId>artemis-server</artifactId>
+				<version>${activemq.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.projectlombok</groupId>
+				<artifactId>lombok</artifactId>
+				<version>${lombok.version}</version>
+			</dependency>
+
+			<!-- TEST -->
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>elasticsearch</artifactId>
+				<version>${testcontainers.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.activemq</groupId>
+				<artifactId>artemis-jms-server</artifactId>
+				<version>${activemq.version}</version>
+				<scope>test</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.activemq</groupId>
+				<artifactId>artemis-junit</artifactId>
+				<version>${activemq.version}</version>
+				<scope>test</scope>
+			</dependency>
+
+            <dependency>
+                <groupId>com.icegreen</groupId>
+                <artifactId>greenmail-junit5</artifactId>
+                <version>${greenmail.version}</version>
+                <scope>test</scope>
+            </dependency>
 		</dependencies>
 	</dependencyManagement>
 

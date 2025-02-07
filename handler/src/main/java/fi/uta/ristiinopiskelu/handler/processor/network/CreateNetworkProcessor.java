@@ -5,6 +5,7 @@ import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
+import fi.uta.ristiinopiskelu.handler.service.result.EntityModificationResult;
 import fi.uta.ristiinopiskelu.handler.validator.network.CreateNetworkValidator;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
@@ -16,6 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class CreateNetworkProcessor extends AbstractNetworkProcessor {
@@ -39,8 +42,9 @@ public class CreateNetworkProcessor extends AbstractNetworkProcessor {
         CreateNetworkRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), CreateNetworkRequest.class);
         validator.validateRequest(request, null);
 
-        NetworkEntity createdNetwork = networkService.create(NetworkEntity.fromDto(request.getNetwork()));
-
+        List<? extends EntityModificationResult<?>> modificationResults = networkService.create(NetworkEntity.fromDto(request.getNetwork()));
+        NetworkEntity createdNetwork = (NetworkEntity) modificationResults.get(0).getCurrent();
+        
         if(createdNetwork.isPublished()) {
             sendNetworkCreatedNotification(createdNetwork);
         }

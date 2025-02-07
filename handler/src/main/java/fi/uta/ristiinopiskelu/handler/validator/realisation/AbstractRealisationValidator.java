@@ -2,7 +2,6 @@ package fi.uta.ristiinopiskelu.handler.validator.realisation;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
@@ -13,11 +12,10 @@ import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.handler.validator.AbstractObjectValidator;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
+import jakarta.validation.Validator;
 import org.modelmapper.ModelMapper;
 import org.springframework.util.CollectionUtils;
 
-import javax.validation.Validator;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -153,7 +151,7 @@ public abstract class AbstractRealisationValidator extends AbstractObjectValidat
         }
 
         for(CooperationNetwork cooperationNetwork : realisation.getCooperationNetworks())  {
-            NetworkEntity networkEntity = networkService.findValidNetworkById(cooperationNetwork.getId()).orElse(null);
+            NetworkEntity networkEntity = networkService.findNetworkById(cooperationNetwork.getId()).orElse(null);
             if(networkEntity == null) {
                 throw new UnknownCooperationNetworkValidationException("Unable to handle: " + messageType + "." +
                         " Realisation with " + getRealisationIdString(realisation) +
@@ -161,10 +159,7 @@ public abstract class AbstractRealisationValidator extends AbstractObjectValidat
             }
 
             Predicate<NetworkOrganisation> isOrganisationInNetwork = networkOrg ->
-                    networkOrg.getOrganisationTkCode().equals(organisationId)
-                    && networkOrg.getValidityInNetwork().getStart().isBefore(OffsetDateTime.now())
-                    && ((networkOrg.getValidityInNetwork().getContinuity() == Validity.ContinuityEnum.INDEFINITELY)
-                            || (networkOrg.getValidityInNetwork().getEnd() != null && networkOrg.getValidityInNetwork().getEnd().isAfter(OffsetDateTime.now())));
+                    networkOrg.getOrganisationTkCode().equals(organisationId);
 
             if(networkEntity.getOrganisations().stream().noneMatch(isOrganisationInNetwork)) {
                 throw new NotMemberOfCooperationNetworkValidationException("Unable to handle: " + messageType +

@@ -2,9 +2,11 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.write.student;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Person;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.Objects;
 
+@Schema(name = "Student")
 public class StudentWriteDTO extends Person {
 
     private String oid;

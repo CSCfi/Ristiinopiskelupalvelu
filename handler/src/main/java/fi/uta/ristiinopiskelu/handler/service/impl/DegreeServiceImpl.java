@@ -6,11 +6,14 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.De
 import fi.uta.ristiinopiskelu.datamodel.entity.DegreeEntity;
 import fi.uta.ristiinopiskelu.handler.exception.DeleteFailedException;
 import fi.uta.ristiinopiskelu.handler.service.DegreeService;
+import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
 import fi.uta.ristiinopiskelu.persistence.repository.DegreeRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyElementRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class DegreeServiceImpl extends AbstractStudyElementService<DegreeWriteDTO, DegreeEntity, DegreeReadDTO> implements DegreeService {
@@ -36,7 +39,7 @@ public class DegreeServiceImpl extends AbstractStudyElementService<DegreeWriteDT
     }
 
     @Override
-    public DegreeEntity delete(String studyElementId, String organizingOrganisationId, boolean deleteSubElements) throws DeleteFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> delete(String studyElementId, String organizingOrganisationId, boolean deleteSubElements) throws DeleteFailedException {
         return this.deleteByStudyElementIdAndOrganizingOrganisationId(studyElementId, organizingOrganisationId);
     }
 }

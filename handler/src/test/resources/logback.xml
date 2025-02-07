@@ -7,6 +7,9 @@
         </layout>
     </appender>
 
+    <logger name="org.apache.activemq" level="ERROR" />
+    <logger name="fi.uta.ristiinopiskelu.tracker.plugin" level="ERROR" />
+
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>

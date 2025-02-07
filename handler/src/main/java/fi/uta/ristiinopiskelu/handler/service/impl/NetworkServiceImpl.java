@@ -6,10 +6,12 @@ import com.fasterxml.jackson.databind.ObjectReader;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.network.NetworkReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
+import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationResult;
 import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
@@ -51,6 +53,11 @@ public class NetworkServiceImpl extends AbstractService<NetworkWriteDTO, Network
     }
 
     @Override
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
+    }
+
+    @Override
     public ModelMapper getModelMapper() {
         return modelMapper;
     }
@@ -62,13 +69,35 @@ public class NetworkServiceImpl extends AbstractService<NetworkWriteDTO, Network
     }
 
     @Override
-    public Optional<NetworkEntity> findValidNetworkById(String networkId) throws FindFailedException {
+    public Optional<NetworkEntity> findNetworkById(String networkId) throws FindFailedException {
         Assert.hasLength(networkId, "Id cannot be empty");
         try {
-            return networkRepository.findValidNetworkById(networkId);
+            return networkRepository.findNetworkById(networkId);
         } catch (Exception e) {
             throw new FindFailedException(getEntityClass(), networkId, e);
         }
+    }
+
+    @Override
+    public Optional<NetworkEntity> findValidNetworkById(String networkId) throws FindFailedException {
+        return findValidNetworkById(networkId, true, true);
+    }
+
+    @Override
+    public Optional<NetworkEntity> findValidNetworkById(String networkId, boolean validityStartValid, boolean validityEndValid) throws FindFailedException {
+        Assert.hasLength(networkId, "Id cannot be empty");
+        try {
+            return networkRepository.findValidNetworkById(networkId, validityStartValid, validityEndValid);
+        } catch (Exception e) {
+            throw new FindFailedException(getEntityClass(), networkId, e);
+        }
+    }
+
+    @Override
+    public List<GenericEntityModificationResult> create(NetworkEntity entity) throws CreateFailedException {
+        return super.create(entity).stream()
+                .map(GenericEntityModificationResult.class::cast)
+                .toList();
     }
 
     @Override

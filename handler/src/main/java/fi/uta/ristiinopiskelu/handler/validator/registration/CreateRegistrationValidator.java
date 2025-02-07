@@ -27,6 +27,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -238,43 +239,38 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
                     verifyHierarchyReferences(selection, selectedCourseUnitEntity, selectedRealisationEntity);
                 }
 
-                List<String> registrationSubGroupSelections = selection.getSubGroupSelections();
+                List<String> registrationSubGroupSelections = selection.getSubGroupSelections() != null ? selection.getSubGroupSelections() : Collections.emptyList();
+                List<Selection> selectedRealisationEntityGroupSelections =
+                    selectedRealisationEntity.getGroupSelections() != null ? selectedRealisationEntity.getGroupSelections() : Collections.emptyList();
 
-                // No need to validate if no sub groups were given in registration
-                if(!CollectionUtils.isEmpty(registrationSubGroupSelections)) {
-                    List<Selection> selectedRealisationEntityGroupSelections = selectedRealisationEntity.getGroupSelections();
-
-                    // make sure that all of the selected sub groups actually exist
-                    for(String regSubGroupSelection : registrationSubGroupSelections) {
-                        boolean subGroupExists = selectedRealisationEntityGroupSelections.stream()
-                                .anyMatch(sel -> sel.getSelectionValues().stream().anyMatch(sv -> regSubGroupSelection.equals(sv.getId())));
-                        if(!subGroupExists) {
-                            throw new RegistrationSelectionSubGroupDoesNotExistException("Unable to process registration request." +
-                                    " Subgroup selection does not exist: " + regSubGroupSelection + "." +
-                                    " Failed realisation selection: " + getSelectionIdString(selection));
-                        }
+                // make sure that all of the selected sub groups actually exist
+                for(String regSubGroupSelection : registrationSubGroupSelections) {
+                    boolean subGroupExists = selectedRealisationEntityGroupSelections.stream()
+                            .anyMatch(sel -> sel.getSelectionValues().stream().anyMatch(sv -> regSubGroupSelection.equals(sv.getId())));
+                    if(!subGroupExists) {
+                        throw new RegistrationSelectionSubGroupDoesNotExistException("Unable to process registration request." +
+                                " Subgroup selection does not exist: " + regSubGroupSelection + "." +
+                                " Failed realisation selection: " + getSelectionIdString(selection));
                     }
+                }
 
-                    // finally check if selection amounts match the selection type rules
-                    for(Selection sel : selectedRealisationEntityGroupSelections) {
+                // finally check if sub group selection amounts match the selection type rules (not required if aborting)
+                if (selection.getSelectionItemStatus() != RegistrationSelectionItemStatus.ABORTED_BY_STUDENT) {
+                    for (Selection sel : selectedRealisationEntityGroupSelections) {
                         String[] selectionsInThisSelection = sel.getSelectionValues().stream()
-                                .filter(sv -> registrationSubGroupSelections.stream().anyMatch(sgs -> sgs.equals(sv.getId())))
-                                .map(sv -> sv.getId()).toArray(String[]::new);
+                            .filter(sv -> registrationSubGroupSelections.stream().anyMatch(sgs -> sgs.equals(sv.getId())))
+                            .map(sv -> sv.getId()).toArray(String[]::new);
 
-                        if(sel.getType() == SelectionType.CHOOSE_ONE) {
-                            if (selectionsInThisSelection.length != 1) {
-                                throw new RegistrationSelectionSubGroupSelectionAmountMismatchValidationException("Unable to process registration request." +
-                                        " Subgroup selection amount mismatch, selection [" + sel.getTitle().toString() + "] has rule " + sel.getType() + " and has " +
-                                        selectionsInThisSelection.length + " selections made, selections [" + StringUtils.arrayToCommaDelimitedString(selectionsInThisSelection) + "]." +
-                                        " Failed realisation selection: " + getSelectionIdString(selection));
-                            }
-                        } else if(sel.getType() == SelectionType.CHOOSE_MANY) {
+                        if (sel.getType() == SelectionType.CHOOSE_ONE) {
+                            // Currently 1-N is allowed
                             if (selectionsInThisSelection.length < 1) {
                                 throw new RegistrationSelectionSubGroupSelectionAmountMismatchValidationException("Unable to process registration request." +
-                                        " Subgroup selection amount mismatch, selection [" + sel.getTitle().toString() + "] has rule " + sel.getType() + " and only has " +
-                                        selectionsInThisSelection.length + " selections made, selections [" + StringUtils.arrayToCommaDelimitedString(selectionsInThisSelection) + "]." +
-                                        " Failed realisation selection: " + getSelectionIdString(selection));
+                                    " Subgroup selection amount mismatch, selection [" + sel.getTitle().toString() + "] has rule " + sel.getType() + " and has " +
+                                    selectionsInThisSelection.length + " selections made, selections [" + StringUtils.arrayToCommaDelimitedString(selectionsInThisSelection) + "]." +
+                                    " Failed realisation selection: " + getSelectionIdString(selection));
                             }
+                        } else if (sel.getType() == SelectionType.CHOOSE_MANY) {
+                            // Currently anything (0-N) is allowed
                         }
                     }
                 }

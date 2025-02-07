@@ -65,7 +65,7 @@ public class StudyRecordControllerV9 {
     public StudyRecordAmountRestSearchResults findStudyRecordAmounts(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordAmountSearchParameters searchParams) {
         StudyRecordAmountSearchResults results = studyRecordService.searchAmounts(SSL_CLIENT_S_DN_O, searchParams);
-        return new StudyRecordAmountRestSearchResults(results.getTotalHits(), AggregationUtils.mapAggregations(results.getAggregations()));
+        return new StudyRecordAmountRestSearchResults(results.getTotalHits(), AggregationUtils.mapAggregates(AggregationUtils.toAggregateMap(results.getAggregations())));
     }
 
     @Operation(summary = "Hae opintosuoritusten lukumääriä CSV-muodossa", description = "Operaatio hakee opintosuoritusten lukumääriä CSV-muodossa annetuilla hakuehdoilla.", tags = "studyrecords")

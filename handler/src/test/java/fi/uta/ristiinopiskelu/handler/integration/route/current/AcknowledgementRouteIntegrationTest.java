@@ -30,6 +30,8 @@ import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RegistrationRepository;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,8 +44,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -51,8 +51,10 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class AcknowledgementRouteIntegrationTest {
@@ -79,7 +81,7 @@ public class AcknowledgementRouteIntegrationTest {
     @Autowired
     private RegistrationRepository registrationRepository;
 
-    @Value("${general.messageSchema.version}")
+    @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
     private NetworkEntity testNetwork;

@@ -45,7 +45,7 @@ public class RealisationReadDTO {
     private BigDecimal creditsMin;
     private BigDecimal creditsMax;
     private List<String> teachingLanguage;
-    private MinEduGuidanceArea minEduGuidanceArea;
+    private List<MinEduGuidanceArea> minEduGuidanceArea;
     private boolean enrollmentClosed = false;
 
     /**
@@ -315,11 +315,11 @@ public class RealisationReadDTO {
         this.teachingLanguage = teachingLanguage;
     }
 
-    public MinEduGuidanceArea getMinEduGuidanceArea() {
+    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
         return minEduGuidanceArea;
     }
 
-    public void setMinEduGuidanceArea(MinEduGuidanceArea minEduGuidanceArea) {
+    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
         this.minEduGuidanceArea = minEduGuidanceArea;
     }
 

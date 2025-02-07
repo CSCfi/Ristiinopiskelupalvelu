@@ -1,5 +1,7 @@
 package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
+import co.elastic.clients.elasticsearch._types.aggregations.*;
+import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.GradeCode;
@@ -7,32 +9,20 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.*;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyRecordRepositoryExtended;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
-import org.apache.lucene.search.join.ScoreMode;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.ShardSearchFailure;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.aggregations.AggregationBuilder;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.bucket.range.DateRangeAggregationBuilder;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
 import org.springframework.data.elasticsearch.core.SearchHit;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.util.StringUtils;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryExtended {
 
     @Autowired
-    protected ElasticsearchRestTemplate elasticsearchTemplate;
+    protected ElasticsearchTemplate elasticsearchTemplate;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -40,26 +30,36 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
     @Override
     public List<StudyRecordEntity> findAllByParams(StudyRecordSearchParameters searchParameters) {
 
-        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        BoolQuery.Builder query = new BoolQuery.Builder();
 
         if(StringUtils.hasText(searchParameters.getSendingOrganisation())) {
-            query.must(QueryBuilders.termQuery("sendingOrganisation", searchParameters.getSendingOrganisation()));
+            query.must(new Query.Builder().term(tq -> tq
+                .field("sendingOrganisation")
+                .value(searchParameters.getSendingOrganisation())).build());
         }
 
         if(StringUtils.hasText(searchParameters.getReceivingOrganisation())) {
-            query.must(QueryBuilders.termQuery("receivingOrganisation", searchParameters.getReceivingOrganisation()));
+            query.must(new Query.Builder().term(tq -> tq
+                .field("receivingOrganisation")
+                .value(searchParameters.getReceivingOrganisation())).build());
         }
 
         if(searchParameters.getCompletedCreditTargetType() != null) {
-            query.must(QueryBuilders.nestedQuery("completedCredits",
-                QueryBuilders.termQuery("completedCredits.completedCreditTarget.completedCreditTargetType", searchParameters.getCompletedCreditTargetType().name()),
-                ScoreMode.None));
+            query.must(new Query.Builder().nested(nq -> nq
+                .path("completedCredits")
+                .query(TermQuery.of(tq -> tq
+                    .field("completedCredits.completedCreditTarget.completedCreditTargetType")
+                    .value(searchParameters.getCompletedCreditTargetType().name()))._toQuery())
+                .scoreMode(ChildScoreMode.None)).build());
         }
 
         if(StringUtils.hasText(searchParameters.getCompletedCreditTargetId())) {
-            query.must(QueryBuilders.nestedQuery("completedCredits",
-                QueryBuilders.termQuery("completedCredits.completedCreditTarget.completedCreditTargetId", searchParameters.getCompletedCreditTargetId()),
-                ScoreMode.None));
+            query.must(new Query.Builder().nested(nq -> nq
+                .path("completedCredits")
+                .query(TermQuery.of(tq -> tq
+                    .field("completedCredits.completedCreditTarget.completedCreditTargetId")
+                    .value(searchParameters.getCompletedCreditTargetId()))._toQuery())
+                .scoreMode(ChildScoreMode.None)).build());
         }
 
         if(StringUtils.hasText(searchParameters.getCompletedCreditName())) {
@@ -69,96 +69,137 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
             }
 
             String formattedQuery = String.format("*%s*", searchParameters.getCompletedCreditName());
-            query.must(QueryBuilders.nestedQuery("completedCredits",
-                QueryBuilders.wildcardQuery(String.format("completedCredits.completedCreditName.values.%s.lowercase", searchLanguage.getValue()), formattedQuery),
-                ScoreMode.None));
+            final Language finalSearchLanguage = searchLanguage;
+
+            query.must(new Query.Builder().nested(nq -> nq
+                .path("completedCredits")
+                .query(WildcardQuery.of(wq -> wq
+                    .field(String.format("completedCredits.completedCreditName.values.%s.lowercase", finalSearchLanguage.getValue()))
+                    .value(formattedQuery))._toQuery())
+                .scoreMode(ChildScoreMode.None)).build());
         }
 
         if(searchParameters.getGradeStatus() != null) {
             if(searchParameters.getGradeStatus() == GradeStatus.APPROVED) {
-                BoolQueryBuilder completedCreditsQuery = QueryBuilders.boolQuery()
-                    .must(QueryBuilders.nestedQuery("completedCredits",
-                        QueryBuilders.existsQuery("completedCredits.assessment.grade.code"), ScoreMode.None))
-                    .must(QueryBuilders.nestedQuery("completedCredits",
-                        QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("completedCredits.assessment.grade.code",
-                            GradeCode.GRADE_HYL.getCode())), ScoreMode.None));
-                query.must(completedCreditsQuery);
+                query.must(m -> new Query.Builder().bool(bq -> bq
+                    .must(nested -> new Query.Builder().nested(nq -> nq
+                        .path("completedCredits")
+                        .query(q -> new Query.Builder().exists(eq -> eq
+                            .field("completedCredits.assessment.grade.code")))
+                        .scoreMode(ChildScoreMode.None)))
+                    .must(nested -> new Query.Builder().nested(nq -> nq
+                        .path("completedCredits")
+                        .query(q -> new Query.Builder().bool(bq2 -> bq2
+                            .mustNot(mn -> new Query.Builder().term(tq -> tq
+                                .field("completedCredits.assessment.grade.code")
+                                .value(GradeCode.GRADE_HYL.getCode())))))
+                        .scoreMode(ChildScoreMode.None)))));
             } else if(searchParameters.getGradeStatus() == GradeStatus.REJECTED) {
-                BoolQueryBuilder completedCreditsQuery = QueryBuilders.boolQuery()
-                    .must(QueryBuilders.nestedQuery("completedCredits",
-                        QueryBuilders.existsQuery("completedCredits.assessment.grade.code"), ScoreMode.None))
-                    .must(QueryBuilders.nestedQuery("completedCredits",
-                        QueryBuilders.termQuery("completedCredits.assessment.grade.code", GradeCode.GRADE_HYL.getCode()), ScoreMode.None));
-                query.must(completedCreditsQuery);
+                query.must(m -> new Query.Builder().bool(bq -> bq
+                    .must(nested -> new Query.Builder().nested(nq -> nq
+                        .path("completedCredits")
+                        .query(e -> new Query.Builder().exists(eq -> eq
+                            .field("completedCredits.assessment.grade.code")))
+                        .scoreMode(ChildScoreMode.None)))
+                    .must(nested -> new Query.Builder().nested(nq -> nq
+                        .path("completedCredits")
+                        .query(q -> new Query.Builder().term(tq -> tq.field("completedCredits.assessment.grade.code")
+                            .value(GradeCode.GRADE_HYL.getCode())))
+                        .scoreMode(ChildScoreMode.None)))));                 
             } else {
-                query.mustNot(QueryBuilders.nestedQuery("completedCredits",
-                    QueryBuilders.existsQuery("completedCredits.assessment.grade.code"), ScoreMode.None));
+                query.mustNot(mn -> new Query.Builder().nested(nq -> nq
+                        .path("completedCredits")
+                        .query(q -> new Query.Builder().exists(eq -> eq
+                            .field("completedCredits.assessment.grade.code")))
+                        .scoreMode(ChildScoreMode.None)));
             }
         }
 
         if(searchParameters.getCompletionStartDate() != null) {
-            query.must(QueryBuilders.rangeQuery("completionDate").from(searchParameters.getCompletionStartDate()));
+            query.must(m -> new Query.Builder().range(rq -> rq
+                .field("completionDate")
+                .from(DateUtils.getFormatted(searchParameters.getCompletionStartDate()))));
         }
 
         if(searchParameters.getCompletionEndDate() != null) {
-            query.must(QueryBuilders.rangeQuery("completionDate").to(searchParameters.getCompletionEndDate()));
+            query.must(m -> new Query.Builder().range(rq -> rq
+                .field("completionDate")
+                .to(DateUtils.getFormatted(searchParameters.getCompletionEndDate()))));
         }
 
         if(searchParameters.getMinEduGuidanceArea() != null) {
-            query.must(QueryBuilders.termQuery("minEduGuidanceArea", searchParameters.getMinEduGuidanceArea().getCode()));
+            query.must(m -> new Query.Builder().term(tq -> tq
+                .field("minEduGuidanceArea")
+                .value(searchParameters.getMinEduGuidanceArea().getCode())));
         }
 
         if(StringUtils.hasText(searchParameters.getOrganisationResponsibleForCompletionTkCode())) {
-            query.must(QueryBuilders.termsQuery("organisationResponsibleForCompletion.organisationTkCode", searchParameters.getOrganisationResponsibleForCompletionTkCode()));
+            query.must(m -> new Query.Builder().term(tq -> tq
+                .field("organisationResponsibleForCompletion.organisationTkCode")
+                .value(searchParameters.getOrganisationResponsibleForCompletionTkCode())));
         }
 
-        NativeSearchQuery builder = new NativeSearchQueryBuilder()
-                .withQuery(query)
-                .withPageable(searchParameters.getPageRequest())
-                .build();
+        NativeQuery nativeQuery = new NativeQueryBuilder()
+            .withQuery(query.build()._toQuery())
+            .withPageable(searchParameters.getPageRequest())
+            .build();
 
-        return elasticsearchTemplate.search(builder, StudyRecordEntity.class).get().map(SearchHit::getContent).collect(Collectors.toList());
+        return elasticsearchTemplate.search(nativeQuery, StudyRecordEntity.class).get()
+                .map(SearchHit::getContent)
+                .toList();
     }
 
     @Override
-    public SearchResponse findAmounts(StudyRecordAmountSearchParameters searchParams) {
+    public SearchHits<StudyRecordEntity> findAmounts(StudyRecordAmountSearchParameters searchParams) {
 
-        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        BoolQuery.Builder query = new BoolQuery.Builder();
 
         if(StringUtils.hasText(searchParams.getSendingOrganisation())) {
-            query.must(QueryBuilders.termQuery("sendingOrganisation", searchParams.getSendingOrganisation()));
+            query.must(q -> new Query.Builder().term(tq -> tq
+                .field("sendingOrganisation")
+                .value(searchParams.getSendingOrganisation())));
         }
 
         if(StringUtils.hasText(searchParams.getReceivingOrganisation())) {
-            query.must(QueryBuilders.termQuery("receivingOrganisation", searchParams.getReceivingOrganisation()));
+            query.must(q -> new Query.Builder().term(tq -> tq
+                .field("receivingOrganisation")
+                .value(searchParams.getReceivingOrganisation())));
         }
 
         if(searchParams.getCompletionDateStart() != null) {
-            query.must(QueryBuilders.nestedQuery("completedCredits",
-                QueryBuilders.rangeQuery("completedCredits.completionDate").from(searchParams.getCompletionDateStart()),
-                ScoreMode.None));
+            query.must(q -> new Query.Builder().nested(nq -> nq
+                .path("completedCredits")
+                .query(q2 -> new Query.Builder().range(rq -> rq
+                    .field("completedCredits.completionDate")
+                    .from(DateUtils.getFormatter().format(searchParams.getCompletionDateStart()))))
+                .scoreMode(ChildScoreMode.None)));
         }
 
         if(searchParams.getCompletionDateEnd() != null) {
-            query.must(QueryBuilders.nestedQuery("completedCredits",
-                QueryBuilders.rangeQuery("completedCredits.completionDate").to(searchParams.getCompletionDateEnd()),
-                ScoreMode.None));
+            query.must(q -> new Query.Builder().nested(nq -> nq
+                .path("completedCredits")
+                .query(q2 -> new Query.Builder().range(rq -> rq
+                    .field("completedCredits.completionDate")
+                    .to(DateUtils.getFormatter().format(searchParams.getCompletionDateEnd()))))
+                .scoreMode(ChildScoreMode.None)));
         }
 
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
-            .size(0)
-            .query(query);
+        NativeQueryBuilder nativeQueryBuilder = new NativeQueryBuilder()
+            .withMaxResults(0)
+            .withQuery(query.build()._toQuery());
 
-        AggregationBuilder groupByAggregation = null;
+        Aggregation.Builder.ContainerBuilder groupByAggregation = null;
 
         if(searchParams.getGroupBy() == StudyRecordGrouping.SENDING_ORGANISATION) {
-            groupByAggregation = AggregationBuilders.terms("organisation").field("sendingOrganisation");
+            groupByAggregation = new Aggregation.Builder().terms(ta -> ta
+                    .field("sendingOrganisation"));
         } else if(searchParams.getGroupBy() == StudyRecordGrouping.RECEIVING_ORGANISATION) {
-            groupByAggregation = AggregationBuilders.terms("organisation").field("receivingOrganisation");
+            groupByAggregation = new Aggregation.Builder().terms(ta -> ta
+                    .field("receivingOrganisation"));
         } else if(searchParams.getGroupBy() == StudyRecordGrouping.DATES) {
             String datePattern = "uuuu-MM-dd";
 
-            DateRangeAggregationBuilder dateRangeAgg = AggregationBuilders.dateRange("dateRanges")
+            DateRangeAggregation.Builder dateRangeAggBuilder = new DateRangeAggregation.Builder()
                 .field("completedCredits.completionDate")
                 .keyed(true)
                 .format(datePattern);
@@ -167,57 +208,86 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
                 String formattedStart = DateUtils.getFormatted(datePattern, dates.getStart());
                 String formattedEnd = DateUtils.getFormatted(datePattern, dates.getEnd());
                 String rangeKey = String.format("%s:%s", formattedStart, formattedEnd);
-                dateRangeAgg.addRange(rangeKey, formattedStart, formattedEnd);
+                dateRangeAggBuilder.ranges(DateRangeExpression.of(dre -> dre
+                    .key(rangeKey)
+                    .from(from -> from.expr(formattedStart))
+                    .to(to -> to.expr(formattedEnd))));
             }
 
-            searchSourceBuilder.aggregation(AggregationBuilders.nested("dates", "completedCredits")
-                .subAggregation(dateRangeAgg));
+            nativeQueryBuilder.withAggregation("dates", new Aggregation.Builder().nested(NestedAggregation.of(na -> na
+                            .path("completedCredits")))
+                    .aggregations("dateRanges", dateRangeAggBuilder.build()._toAggregation())
+                    .build());
         } else if(searchParams.getGroupBy() == StudyRecordGrouping.STUDYELEMENT_IDENTIFIER_CODE) {
-            searchSourceBuilder.aggregation(AggregationBuilders.nested("completedCredits", "completedCredits")
-                .subAggregation(AggregationBuilders.terms("studyElementIdentifierCodes")
-                    .field("completedCredits.completedCreditTarget.completedCreditTargetIdentifierCode")));
+            nativeQueryBuilder.withAggregation("completedCredits",
+                    new Aggregation.Builder().nested(NestedAggregation.of(na -> na
+                                    .path("completedCredits")))
+                            .aggregations("studyElementIdentifierCodes", TermsAggregation.of(ta -> ta
+                                    .field("completedCredits.completedCreditTarget.completedCreditTargetIdentifierCode"))._toAggregation())
+                            .build());
         }
 
         if(groupByAggregation != null) {
             if (searchParams.getDivideBy() == StudyRecordDividing.GRADING) {
-                searchSourceBuilder.aggregation(groupByAggregation
-                    .subAggregation(AggregationBuilders.nested("approved", "completedCredits")
-                        .subAggregation(AggregationBuilders.filter("approvedFilter", QueryBuilders.boolQuery()
-                            .must(QueryBuilders.existsQuery("completedCredits.assessment.grade.code"))
-                            .must(QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("completedCredits.assessment.grade.code", "HYL"))))))
-                    .subAggregation(AggregationBuilders.nested("rejected", "completedCredits")
-                        .subAggregation(AggregationBuilders.filter("rejectedFilter", QueryBuilders.boolQuery()
-                            .must(QueryBuilders.existsQuery("completedCredits.assessment.grade.code"))
-                            .must(QueryBuilders.termQuery("completedCredits.assessment.grade.code", "HYL")))))
-                    .subAggregation(AggregationBuilders.nested("ungraded", "completedCredits")
-                        .subAggregation(AggregationBuilders.filter("ungradedFilter", QueryBuilders.boolQuery()
-                            .mustNot(QueryBuilders.existsQuery("completedCredits.assessment.grade.code"))))));
+                Aggregation approvedAggregation = new Aggregation.Builder().nested(na -> na
+                        .path("completedCredits"))
+                    .aggregations("approvedFilter", AggregationBuilders.filter(fa -> fa
+                            .bool(bq1 -> bq1
+                                .must(q -> q
+                                    .exists(eq -> eq
+                                        .field("completedCredits.assessment.grade.code")))
+                                .must(q -> q
+                                    .bool(bq -> bq.mustNot(QueryBuilders.term(tq -> tq
+                                        .field("completedCredits.assessment.grade.code")
+                                        .value("HYL"))))))))
+                    .build();
+
+                Aggregation rejectedAggregation = new Aggregation.Builder().nested(na -> na
+                        .path("completedCredits"))
+                    .aggregations("rejectedFilter", AggregationBuilders.filter(fa -> fa
+                        .bool(bq1 -> bq1
+                            .must(q -> q
+                                .exists(eq -> eq
+                                    .field("completedCredits.assessment.grade.code")))
+                            .must(q -> q
+                                .term(tq -> tq
+                                    .field("completedCredits.assessment.grade.code")
+                                    .value("HYL"))))))
+                    .build();
+
+                Aggregation ungradedAggregation = new Aggregation.Builder().nested(na -> na                     
+                        .path("completedCredits"))
+                    .aggregations("ungradedFilter", AggregationBuilders.filter(fa -> fa
+                        .bool(bq1 -> bq1
+                            .mustNot(q -> q
+                                .exists(eq -> eq
+                                    .field("completedCredits.assessment.grade.code"))))))
+                    .build();
+                
+                groupByAggregation.aggregations("approved", approvedAggregation);
+                groupByAggregation.aggregations("rejected", rejectedAggregation);
+                groupByAggregation.aggregations("ungraded", ungradedAggregation);
+
+                nativeQueryBuilder.withAggregation("organisation", groupByAggregation.build());
             } else if (searchParams.getDivideBy() == StudyRecordDividing.MIN_EDU_GUIDANCE_AREA) {
-                searchSourceBuilder.aggregation(groupByAggregation
-                    .subAggregation(AggregationBuilders.nested("minEduGuidanceArea", "completedCredits")
-                        .subAggregation(AggregationBuilders.terms("code")
-                            .field("completedCredits.minEduGuidanceArea"))));
+                groupByAggregation.aggregations("minEduGuidanceArea", new Aggregation.Builder().nested(na -> na
+                        .path("completedCredits"))
+                    .aggregations("code", AggregationBuilders.terms(ta -> ta
+                        .field("completedCredits.minEduGuidanceArea")))
+                    .build());
+
+                nativeQueryBuilder.withAggregation("organisation", groupByAggregation.build());
             } else if (searchParams.getDivideBy() == StudyRecordDividing.ORGANISATION_RESPONSIBLE_FOR_COMPLETION) {
-                searchSourceBuilder.aggregation(groupByAggregation
-                    .subAggregation(AggregationBuilders.nested("organisationResponsibleForCompletion", "completedCredits")
-                        .subAggregation(AggregationBuilders.terms("organisationTkCode")
-                            .field("completedCredits.organisationResponsibleForCompletion.organisationTkCode"))));
+                groupByAggregation.aggregations("organisationResponsibleForCompletion", new Aggregation.Builder().nested(na -> na
+                        .path("completedCredits"))
+                    .aggregations("organisationTkCode", AggregationBuilders.terms(ta -> ta
+                        .field("completedCredits.organisationResponsibleForCompletion.organisationTkCode")))
+                    .build());
+
+                nativeQueryBuilder.withAggregation("organisation", groupByAggregation.build());
             }
         }
 
-        SearchRequest searchRequest = new SearchRequest(Arrays.asList("opintosuoritukset").toArray(new String[0]), searchSourceBuilder);
-
-        return this.elasticsearchTemplate.execute(client -> {
-            SearchResponse response = client.search(searchRequest, RequestOptions.DEFAULT);
-
-            // check if something failed. funny that the query might seem to have been successful even though there might have been shard errors, ain't it? ":D"
-            if(response.getFailedShards() > 0) {
-                for(ShardSearchFailure failure : response.getShardFailures()) {
-                    throw new IllegalStateException("Error while searching study record amounts", failure.getCause());
-                }
-            }
-
-            return response;
-        });
+        return elasticsearchTemplate.search(nativeQueryBuilder.build(), StudyRecordEntity.class);
     }
 }

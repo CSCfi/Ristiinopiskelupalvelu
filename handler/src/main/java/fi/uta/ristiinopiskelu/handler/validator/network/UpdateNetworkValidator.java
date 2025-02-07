@@ -14,7 +14,7 @@ import fi.uta.ristiinopiskelu.handler.validator.JsonRequestValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.validation.Validator;
+import jakarta.validation.Validator;
 
 @Component
 public class UpdateNetworkValidator extends AbstractNetworkValidator implements JsonRequestValidator<NetworkEntity> {

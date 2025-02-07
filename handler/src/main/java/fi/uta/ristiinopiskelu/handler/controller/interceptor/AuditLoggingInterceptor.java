@@ -2,23 +2,23 @@ package fi.uta.ristiinopiskelu.handler.controller.interceptor;
 
 import com.google.common.base.Joiner;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
+import org.springframework.web.servlet.HandlerInterceptor;
 
-import javax.servlet.DispatcherType;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import static net.logstash.logback.marker.Markers.append;
 
-public class AuditLoggingInterceptor extends HandlerInterceptorAdapter {
+public class AuditLoggingInterceptor implements HandlerInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditLoggingInterceptor.class);
 

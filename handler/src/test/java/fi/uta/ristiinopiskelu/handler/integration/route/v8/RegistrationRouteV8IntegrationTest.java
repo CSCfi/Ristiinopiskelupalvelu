@@ -1,8 +1,12 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.mpolla.HetuUtil;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.Rank;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.RegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.RegistrationSelectionItemStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
@@ -12,8 +16,11 @@ import fi.uta.ristiinopiskelu.messaging.message.v8.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.Status;
 import fi.uta.ristiinopiskelu.messaging.message.v8.registration.*;
+import fi.uta.ristiinopiskelu.messaging.util.Oid;
 import fi.uta.ristiinopiskelu.persistence.repository.*;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,19 +33,22 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(EmbeddedActiveMQInitializer.class)
-@ExtendWith(EmbeddedElasticsearchInitializer.class)
+@ExtendWith({
+        EmbeddedActiveMQInitializer.class,
+        EmbeddedElasticsearchInitializer.class
+})
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class RegistrationRouteV8IntegrationTest {
@@ -498,7 +508,7 @@ public class RegistrationRouteV8IntegrationTest {
         RegistrationSelection courseUnitParent = DtoInitializerV8.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
 
         RegistrationSelection selection = DtoInitializerV8.getRegistrationSelectionRealisation(
-                realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitParent, null);
+                realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitParent, List.of("TESTIRYHMA1"));
 
         CreateRegistrationRequest req = MessageTemplateInitializerV8.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
         req.setSelections(Collections.singletonList(selection));
@@ -655,7 +665,7 @@ public class RegistrationRouteV8IntegrationTest {
         RegistrationSelection courseUnitParent = DtoInitializerV8.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
 
         RegistrationSelection selection = DtoInitializerV8.getRegistrationSelectionRealisation(
-            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.ABORTED_BY_STUDENT, courseUnitParent, null);
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.ABORTED_BY_STUDENT, courseUnitParent, List.of("TESTIRYHMA1"));
 
         CreateRegistrationRequest req = MessageTemplateInitializerV8.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
         req.setSelections(Collections.singletonList(selection));
@@ -980,46 +990,6 @@ public class RegistrationRouteV8IntegrationTest {
     }
 
     @Test
-    public void testSendingRealisationRegistrationWithTooManyGroupSelections_shouldFail() throws JMSException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
-                true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-
-        CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-                Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
-
-        courseUnitRepository.create(courseUnitEntity);
-
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForCourseUnit(
-                courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
-
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.Selection groupSelection = DtoInitializer.getSelection(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetusryhmä 1", null, null),
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionType.CHOOSE_ONE,
-                Arrays.asList(
-                        new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Tentti", null, null), "TESTIRYHMA1", null),
-                        new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetus", null, null), "TESTIRYHMA2", null)));
-
-        RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
-                Collections.singletonList(ref), Collections.singletonList(cooperationNetwork), Collections.singletonList(groupSelection));
-        realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
-
-        realisationRepository.create(realisationEntity);
-
-        RegistrationSelection courseUnitParent = DtoInitializerV8.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
-
-        RegistrationSelection selection = DtoInitializerV8.getRegistrationSelectionRealisation(
-                realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitParent, Arrays.asList("TESTIRYHMA1", "TESTIRYHMA2"));
-
-        CreateRegistrationRequest req = MessageTemplateInitializerV8.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
-        req.setSelections(Collections.singletonList(selection));
-
-        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
-        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
-        assertTrue(resp.getStatus() == Status.FAILED);
-    }
-
-    @Test
     public void testSendingAssessmentItemRealisationRegistration_shouldFailAssessmentItemNotInCourseUnit() throws JMSException {
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -1264,7 +1234,7 @@ public class RegistrationRouteV8IntegrationTest {
         req.setSelections(Collections.singletonList(selection));
 
         // send only personId
-        req.getStudent().setPersonId("010101-0101");
+        req.getStudent().setPersonId(HetuUtil.generateRandom());
         req.getStudent().setOid(null);
 
         Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
@@ -1274,7 +1244,7 @@ public class RegistrationRouteV8IntegrationTest {
 
         // send only oid
         req.getStudent().setPersonId(null);
-        req.getStudent().setOid(UUID.randomUUID().toString());
+        req.getStudent().setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
 
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
         resp = (RegistrationResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);

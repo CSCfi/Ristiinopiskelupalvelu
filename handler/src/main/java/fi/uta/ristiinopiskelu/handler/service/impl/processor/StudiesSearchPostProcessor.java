@@ -1,28 +1,23 @@
 package fi.uta.ristiinopiskelu.handler.service.impl.processor;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import co.elastic.clients.elasticsearch._types.aggregations.*;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
+import co.elastic.clients.elasticsearch.core.search.InnerHitsResult;
+import co.elastic.clients.json.JsonData;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.TeachingLanguage;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.InternalStudiesSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchResults;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.deprecated.SimpleAggregationDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.deprecated.SimpleBucketDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.deprecated.SimpleMultiBucketAggregationDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.AggregationDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.BucketDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.MultiBucketAggregationDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.SingleBucketAggregationDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.service.StudiesService;
 import fi.uta.ristiinopiskelu.handler.utils.AggregationUtils;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.aggregations.Aggregation;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.elasticsearch.search.aggregations.bucket.SingleBucketAggregation;
-import org.elasticsearch.search.aggregations.bucket.filter.Filter;
-import org.elasticsearch.search.aggregations.bucket.nested.Nested;
-import org.elasticsearch.search.aggregations.bucket.nested.ReverseNested;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
@@ -36,19 +31,16 @@ public class StudiesSearchPostProcessor {
     private static final Logger logger = LoggerFactory.getLogger(StudiesSearchPostProcessor.class);
 
     private StudiesService studiesService;
-    private ObjectMapper objectMapper;
 
-    public StudiesSearchPostProcessor(StudiesService studiesService, ObjectMapper objectMapper) {
+    public StudiesSearchPostProcessor(StudiesService studiesService) {
         this.studiesService = studiesService;
-        this.objectMapper = objectMapper;
     }
 
-    public StudiesSearchResults postProcess(SearchHits searchHits, Aggregations aggregations, StudiesSearchParameters searchParams) {
-        List<StudyElementEntity> results = Arrays.stream(searchHits.getHits())
+    public InternalStudiesSearchResults postProcess(HitsMetadata<StudyElementEntity> searchHits, Map<String, Aggregate> aggregations, StudiesSearchParameters searchParams) {
+        List<StudyElementEntity> results = searchHits.hits().stream()
             .map(h -> {
-                StudyElementEntity entity = objectMapper.convertValue(h.getSourceAsMap(), StudyElementEntity.class);
-
-                Map<String, SearchHits> innerHits = h.getInnerHits();
+                StudyElementEntity entity = h.source();
+                Map<String, InnerHitsResult> innerHits = h.innerHits();
 
                 List<CourseUnitRealisationEntity> assessmentItemRealisationsWithTeachingLanguagesQueryHits = new ArrayList<>();
                 List<CourseUnitRealisationEntity> assessmentItemRealisationsWithoutTeachingLanguagesQueryHits = new ArrayList<>();
@@ -68,14 +60,12 @@ public class StudiesSearchPostProcessor {
 
                     if(innerHits.containsKey("assessmentItemRealisationsWithTeachingLanguagesQuery")) {
                         assessmentItemRealisationsWithTeachingLanguagesQueryHits.addAll(
-                            mapAssessmentItemRealisations("assessmentItemRealisationsWithTeachingLanguagesQuery",
-                                innerHits));
+                            mapCourseUnitRealisations(innerHits.get("assessmentItemRealisationsWithTeachingLanguagesQuery")));
                     }
 
                     if(innerHits.containsKey("assessmentItemRealisationsWithoutTeachingLanguagesQuery")) {
                         assessmentItemRealisationsWithoutTeachingLanguagesQueryHits.addAll(
-                            mapAssessmentItemRealisations("assessmentItemRealisationsWithoutTeachingLanguagesQuery",
-                                innerHits));
+                                mapCourseUnitRealisations(innerHits.get("assessmentItemRealisationsWithoutTeachingLanguagesQuery")));
                     }
                 }
 
@@ -129,12 +119,12 @@ public class StudiesSearchPostProcessor {
                 }
 
                 return entity;
-            }).collect(Collectors.toList());
+            }).toList();
 
-        StudiesSearchResults studiesSearchResults = new StudiesSearchResults();
+        InternalStudiesSearchResults studiesSearchResults = new InternalStudiesSearchResults();
         studiesSearchResults.setResults(results.stream().map(studiesService::toRestDTO).collect(Collectors.toList()));
         studiesSearchResults.setAggregations(convertAggregations(aggregations));
-        studiesSearchResults.setTotalHits(searchHits.getTotalHits().value);
+        studiesSearchResults.setTotalHits(searchHits.total().value());
         return studiesSearchResults;
     }
 
@@ -188,85 +178,39 @@ public class StudiesSearchPostProcessor {
             return statuses.contains(courseUnitRealisationEntity.getStatus());
         };
     }
+    
+    private List<CourseUnitRealisationEntity> mapCourseUnitRealisations(InnerHitsResult innerHits) {
 
-    private List<CourseUnitRealisationEntity> mapAssessmentItemRealisations(String innerHitName, Map<String, SearchHits> innerHits) {
-
-        if(CollectionUtils.isEmpty(innerHits) || !innerHits.containsKey(innerHitName) ||
-            (innerHits.get(innerHitName) == null ||
-                (innerHits.get(innerHitName).getTotalHits() != null && innerHits.get(innerHitName).getTotalHits().value == 0))) {
-            return Collections.emptyList();
-        }
-
-        SearchHits completionOptionHits = innerHits.get(innerHitName);
-
-        List<CourseUnitRealisationEntity> mapped = new ArrayList<>();
-
-        // :P
-        if(completionOptionHits != null && (completionOptionHits.getTotalHits() != null && completionOptionHits.getTotalHits().value > 0)) {
-            SearchHit[] actualCompletionOptionHits = completionOptionHits.getHits();
-            for(SearchHit actualCompletionOptionHit : actualCompletionOptionHits) {
-                if(!CollectionUtils.isEmpty(actualCompletionOptionHit.getInnerHits())) {
-                    if (actualCompletionOptionHit.getInnerHits().containsKey(innerHitName + "_assessmentItems")) {
-                        SearchHits assessmentItemHits = actualCompletionOptionHit.getInnerHits().get(innerHitName + "_assessmentItems");
-                        if (assessmentItemHits != null && (assessmentItemHits.getTotalHits() != null && assessmentItemHits.getTotalHits().value > 0)) {
-                            SearchHit[] actualAssessmentItemHits = assessmentItemHits.getHits();
-                            if (actualAssessmentItemHits != null && actualAssessmentItemHits.length > 0) {
-                                for (SearchHit actualAssessmentItemHit : actualAssessmentItemHits) {
-                                    if (!CollectionUtils.isEmpty(actualAssessmentItemHit.getInnerHits())) {
-                                        if (actualAssessmentItemHit.getInnerHits().containsKey(innerHitName + "_realisations")) {
-                                            mapped.addAll(mapCourseUnitRealisations(actualAssessmentItemHit.getInnerHits().get(innerHitName + "_realisations")));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return mapped;
-    }
-
-    private List<CourseUnitRealisationEntity> mapCourseUnitRealisations(SearchHits... innerHits) {
-
-        if(innerHits == null || innerHits.length == 0) {
+        if(innerHits == null || innerHits.hits() == null || CollectionUtils.isEmpty(innerHits.hits().hits())) {
             return Collections.emptyList();
         }
 
         List<CourseUnitRealisationEntity> mapped = new ArrayList<>();
 
-        for(SearchHits innerHit : innerHits) {
-
-            if(innerHit == null || (innerHit.getTotalHits() != null && innerHit.getTotalHits().value == 0)) {
-                continue;
-            }
-
-            mapped.addAll(Arrays.stream(innerHit.getHits())
-                .map(air -> objectMapper.convertValue(air.getSourceAsMap(), CourseUnitRealisationEntity.class))
-                .collect(Collectors.toList()));
+        for(Hit<JsonData> innerHit : innerHits.hits().hits()) {
+            mapped.add(innerHit.source().to(CourseUnitRealisationEntity.class));
         }
 
         return mapped;
     }
 
-    private List<SimpleAggregationDTO> convertAggregations(Aggregations aggregations) {
-        List<SimpleAggregationDTO> convertedAggregations = new ArrayList<>();
+    private List<AggregationDTO> convertAggregations(Map<String, Aggregate> aggregations) {
+        List<AggregationDTO> convertedAggregations = new ArrayList<>();
 
-        if (aggregations != null) {
-            convertedAggregations.add(mapTeachingLanguageAggregation(aggregations, "teachingLanguages"));
+        if (!CollectionUtils.isEmpty(aggregations)) {
+            convertedAggregations.add(mapTeachingLanguageAggregation("teachingLanguages", aggregations.get("teachingLanguages")));
             // deprecated since v9.0.0 in favor of "studyElementsByRealisationTeachingLanguages"
             convertedAggregations.add(mapRealisationTeachingLanguageAggregation(aggregations,
                 "realisationTeachingLanguages",
                 "assessmentItemRealisationTeachingLanguages"));
 
-            SimpleAggregationDTO networksAggregation = mapNetworkAggregation(aggregations, "networks");
+            AggregationDTO networksAggregation = mapNetworkAggregation("networks", aggregations.get("networks"));
             if(networksAggregation != null) {
                 convertedAggregations.add(networksAggregation);
             }
             
-            convertedAggregations.add(mapOrganisationAggregation(aggregations, "organisations"));
-            convertedAggregations.add(mapTypeAggregation(aggregations, "types"));
+            convertedAggregations.add(mapOrganisationAggregation("organisations", aggregations.get("organisations")));
+            convertedAggregations.add(mapTypeAggregation("types", aggregations.get("types")));
 
             convertedAggregations.add(mapRealisationAggregation(aggregations,
                 "enrollableRealisations",
@@ -291,43 +235,46 @@ public class StudiesSearchPostProcessor {
         return convertedAggregations;
     }
 
-    private SimpleAggregationDTO mapTeachingLanguageAggregation(Aggregations aggregations, String name) {
-        Terms languages = aggregations.get(name);
+    private MultiBucketAggregationDTO mapTeachingLanguageAggregation(String name, Aggregate aggregate) {
+        StringTermsAggregate languages = aggregate.sterms();
 
-        List<SimpleBucketDTO> languageBuckets = mapBuckets(languages.getBuckets());
-        return new SimpleMultiBucketAggregationDTO(name, languageBuckets);
+        List<BucketDTO> languageBuckets = AggregationUtils.mapBuckets(languages.buckets());
+
+        return new MultiBucketAggregationDTO(name, languageBuckets);
     }
 
-    private SimpleAggregationDTO mapNetworkAggregation(Aggregations aggregations, String name) {
-        Nested networks = aggregations.get(name);
-
-        if(networks == null) {
+    private AggregationDTO mapNetworkAggregation(String name, Aggregate aggregate) {
+        if(aggregate == null) {
             return null;
         }
 
-        Terms networkIds = networks.getAggregations().get("id");
+        NestedAggregate networks = aggregate.nested();
+        StringTermsAggregate networkIds = networks.aggregations().get("id").sterms();
+        List<BucketDTO> networkBuckets = AggregationUtils.mapBuckets(networkIds.buckets());
 
-        List<SimpleBucketDTO> networkBuckets = mapBuckets(networkIds.getBuckets());
-        return new SimpleMultiBucketAggregationDTO(name, networkBuckets);
+        return new MultiBucketAggregationDTO(name, networkBuckets);
     }
 
-    private SimpleAggregationDTO mapOrganisationAggregation(Aggregations aggregations, String name) {
-        Terms organisations = aggregations.get(name);
+    private AggregationDTO mapOrganisationAggregation(String name, Aggregate aggregate) {
+        StringTermsAggregate organisations = aggregate.sterms();
 
-        List<SimpleBucketDTO> organisationBuckets = mapBuckets(organisations.getBuckets());
-        return new SimpleMultiBucketAggregationDTO(name, organisationBuckets);
+        List<BucketDTO> organisationBuckets = AggregationUtils.mapBuckets(organisations.buckets());
+        return new MultiBucketAggregationDTO(name, organisationBuckets);
     }
+    
 
-    private SimpleAggregationDTO mapTypeAggregation(Aggregations aggregations, String name) {
-        Terms types = aggregations.get(name);
 
-        List<SimpleBucketDTO> typeBuckets = mapBuckets(types.getBuckets());
-        return new SimpleMultiBucketAggregationDTO(name, typeBuckets);
+    private AggregationDTO mapTypeAggregation(String name, Aggregate aggregate) {
+        StringTermsAggregate types = aggregate.sterms();
+
+        List<BucketDTO> typeBuckets = AggregationUtils.mapBuckets(types.buckets());
+        return new MultiBucketAggregationDTO(name, typeBuckets);
     }
-
-    private SimpleAggregationDTO mapRealisationTeachingLanguagesByStudyElementAggregation(String finalName, Aggregations aggregations, String realisationTeachingLanguageAggregationName,
-                                                                           String assessmentItemRealisationTeachingLanguageAggregationName) {
-        if(aggregations == null) {
+    
+    private AggregationDTO mapRealisationTeachingLanguagesByStudyElementAggregation(String finalName, Map<String, Aggregate> aggregations,
+                                                                                    String realisationTeachingLanguageAggregationName,
+                                                                                    String assessmentItemRealisationTeachingLanguageAggregationName) {
+        if(CollectionUtils.isEmpty(aggregations)) {
             return null;
         }
 
@@ -354,43 +301,43 @@ public class StudiesSearchPostProcessor {
             }
         }
 
-        List<SimpleBucketDTO> mappedBuckets = studyElementCountByLang.entrySet().stream()
-            .map(entry -> new SimpleBucketDTO(entry.getKey(), entry.getValue())).collect(Collectors.toList());
+        List<BucketDTO> mappedBuckets = studyElementCountByLang.entrySet().stream()
+            .map(entry -> new BucketDTO(entry.getKey(), entry.getValue())).collect(Collectors.toList());
 
-        SimpleMultiBucketAggregationDTO multiBucketAggregationDTO = new SimpleMultiBucketAggregationDTO();
+        MultiBucketAggregationDTO multiBucketAggregationDTO = new MultiBucketAggregationDTO();
         multiBucketAggregationDTO.setName(finalName);
         multiBucketAggregationDTO.setBuckets(mappedBuckets);
 
         return multiBucketAggregationDTO;
     }
 
-    private void extractRealisationTeachingLanguagesByStudyElementAggregationBuckets(Map<String, Map<String, Long>> languagesCount, Aggregation aggregation) {
+    private void extractRealisationTeachingLanguagesByStudyElementAggregationBuckets(Map<String, Map<String, Long>> languagesCount, Aggregate aggregation) {
         if(aggregation == null) {
             return;
         }
 
-        Terms statuses = (Terms) AggregationUtils.findSubAggregation("status", aggregation);
-        if(statuses != null && !CollectionUtils.isEmpty(statuses.getBuckets())) {
-            for(Terms.Bucket statusBucket : statuses.getBuckets()) {
-                Terms teachingLanguages = statusBucket.getAggregations().get("teachingLanguages");
-                if (teachingLanguages != null && !CollectionUtils.isEmpty(teachingLanguages.getBuckets())) {
-                    for (Terms.Bucket teachingLanguageBucket : teachingLanguages.getBuckets()) {
-                        ReverseNested studyElements = teachingLanguageBucket.getAggregations().get("studyElements");
-                        if(studyElements != null) {
-                            Terms idAggregation = studyElements.getAggregations().get("id");
-                            if (idAggregation != null) {
-                                for (MultiBucketsAggregation.Bucket idBucket : idAggregation.getBuckets()) {
-                                    Map<String, Long> existing = languagesCount.get(idBucket.getKeyAsString());
+        Aggregate statuses = AggregationUtils.findSubAggregation("status", aggregation);
+        if(statuses != null && statuses.isSterms() && statuses.sterms().buckets() != null) {
+            for(StringTermsBucket statusBucket : statuses.sterms().buckets().array()) {
+                Aggregate teachingLanguages = statusBucket.aggregations().get("teachingLanguages");
+                if (teachingLanguages != null && teachingLanguages.isSterms() && teachingLanguages.sterms().buckets() != null) {
+                    for (StringTermsBucket teachingLanguageBucket : teachingLanguages.sterms().buckets().array()) {
+                        Aggregate studyElements = teachingLanguageBucket.aggregations().get("studyElements");
+                        if(studyElements != null && studyElements.isReverseNested() && !CollectionUtils.isEmpty(studyElements.reverseNested().aggregations())) {
+                            Aggregate idAggregation = studyElements.reverseNested().aggregations().get("id");
+                            if (idAggregation != null && idAggregation.isSterms() && idAggregation.sterms().buckets() != null) {
+                                for (StringTermsBucket idBucket : idAggregation.sterms().buckets().array()) {
+                                    Map<String, Long> existing = languagesCount.get(idBucket.key().stringValue());
                                     if (existing == null) {
                                         Map<String, Long> map = new HashMap<>();
-                                        map.put(teachingLanguageBucket.getKeyAsString(), idBucket.getDocCount());
-                                        languagesCount.put(idBucket.getKeyAsString(), map);
+                                        map.put(teachingLanguageBucket.key().stringValue(), idBucket.docCount());
+                                        languagesCount.put(idBucket.key().stringValue(), map);
                                     } else {
-                                        Long existingCount = existing.get(teachingLanguageBucket.getKeyAsString());
+                                        Long existingCount = existing.get(teachingLanguageBucket.key().stringValue());
                                         if (existingCount == null) {
-                                            existing.put(teachingLanguageBucket.getKeyAsString(), idBucket.getDocCount());
+                                            existing.put(teachingLanguageBucket.key().stringValue(), idBucket.docCount());
                                         } else {
-                                            existing.put(teachingLanguageBucket.getKeyAsString(), idBucket.getDocCount() + existingCount);
+                                            existing.put(teachingLanguageBucket.key().stringValue(), idBucket.docCount() + existingCount);
                                         }
                                     }
                                 }
@@ -403,108 +350,71 @@ public class StudiesSearchPostProcessor {
     }
 
     @Deprecated
-    private SimpleAggregationDTO mapRealisationTeachingLanguageAggregation(Aggregations aggregations, String realisationTeachingLanguageAggregationName,
+    private AggregationDTO mapRealisationTeachingLanguageAggregation(Map<String, Aggregate> aggregations, String realisationTeachingLanguageAggregationName,
                                                                            String assessmentItemRealisationTeachingLanguageAggregationName) {
         if(aggregations == null) {
             return null;
         }
 
         Map<String, Map<String, Long>> languagesCount = new HashMap<>();
+        extractRealisationTeachingLanguageAggregationBuckets(realisationTeachingLanguageAggregationName, aggregations, languagesCount);
+        extractRealisationTeachingLanguageAggregationBuckets(assessmentItemRealisationTeachingLanguageAggregationName, aggregations, languagesCount);
 
-        Aggregation realisationTeachingLanguagesAggregation = aggregations.get(realisationTeachingLanguageAggregationName);
-        if(realisationTeachingLanguagesAggregation != null) {
-            if (realisationTeachingLanguagesAggregation instanceof Filter) {
-                Filter realisationTeachingLanguagesAggregationFilter = (Filter) realisationTeachingLanguagesAggregation;
-                if (realisationTeachingLanguagesAggregationFilter != null && realisationTeachingLanguagesAggregationFilter.getAggregations() != null) {
-                    Nested realisations = realisationTeachingLanguagesAggregationFilter.getAggregations().get("realisations");
-                    if (realisations != null && realisations.getAggregations() != null) {
-                        extractRealisationTeachingLanguageAggregationBuckets(languagesCount, realisations);
-                    }
-                }
-            } else {
-                Nested realisations = (Nested) realisationTeachingLanguagesAggregation;
-                if (realisations != null && realisations.getAggregations() != null) {
-                    extractRealisationTeachingLanguageAggregationBuckets(languagesCount, realisations);
-                }
-            }
-        }
-
-        Aggregation assessmentItemRealisationTeachingLanguagesAggregation = aggregations.get(assessmentItemRealisationTeachingLanguageAggregationName);
-        if(assessmentItemRealisationTeachingLanguagesAggregation != null) {
-            if(assessmentItemRealisationTeachingLanguagesAggregation instanceof Filter) {
-                Filter assessmentItemRealisationTeachingLanguagesAggregationFilter = (Filter) assessmentItemRealisationTeachingLanguagesAggregation;
-                if(assessmentItemRealisationTeachingLanguagesAggregationFilter != null && assessmentItemRealisationTeachingLanguagesAggregationFilter.getAggregations() != null) {
-                    Nested completionOptions = assessmentItemRealisationTeachingLanguagesAggregationFilter.getAggregations().get("completionOptions");
-                    if(completionOptions != null && completionOptions.getAggregations() != null) {
-                        Nested assessmentItems = completionOptions.getAggregations().get("assessmentItems");
-                        if(assessmentItems != null && assessmentItems.getAggregations() != null) {
-                            Nested realisations = assessmentItems.getAggregations().get("realisations");
-                            if(realisations != null && realisations.getAggregations() != null) {
-                                extractRealisationTeachingLanguageAggregationBuckets(languagesCount, realisations);
-                            }
-                        }
-                    }
-                }
-            } else {
-                Nested completionOptions = (Nested) assessmentItemRealisationTeachingLanguagesAggregation;
-                if(completionOptions != null && completionOptions.getAggregations() != null) {
-                    Nested assessmentItems = completionOptions.getAggregations().get("assessmentItems");
-                    if(assessmentItems != null && assessmentItems.getAggregations() != null) {
-                        Nested realisations = assessmentItems.getAggregations().get("realisations");
-                        if(realisations != null && realisations.getAggregations() != null) {
-                            extractRealisationTeachingLanguageAggregationBuckets(languagesCount, realisations);
-                        }
-                    }
-                }
-            }
-        }
-
-        List<SimpleBucketDTO> mappedBuckets = new ArrayList<>();
+        List<AggregationDTO> mappedAggs = new ArrayList<>();
         for(Map.Entry<String, Map<String, Long>> entry : languagesCount.entrySet()) {
-            List<SimpleBucketDTO> langs = entry.getValue().entrySet().stream().map(e -> new SimpleBucketDTO(e.getKey(), e.getValue()))
+
+            List<BucketDTO> langs = entry.getValue().entrySet().stream().map(e -> new BucketDTO(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
 
-            SimpleBucketDTO byStatusBucket = new SimpleBucketDTO(entry.getKey(), langs.size());
-            byStatusBucket.setBuckets(langs);
-            mappedBuckets.add(byStatusBucket);
+            MultiBucketAggregationDTO aggregationDTO = new MultiBucketAggregationDTO();
+            aggregationDTO.setName(entry.getKey());
+            aggregationDTO.setBuckets(langs);
+
+            mappedAggs.add(aggregationDTO);
         }
 
-        SimpleMultiBucketAggregationDTO multiBucketAggregationDTO = new SimpleMultiBucketAggregationDTO();
-        multiBucketAggregationDTO.setName(realisationTeachingLanguageAggregationName);
-        multiBucketAggregationDTO.setBuckets(mappedBuckets);
+        SingleBucketAggregationDTO singleBucketAggregationDTO = new SingleBucketAggregationDTO();
+        singleBucketAggregationDTO.setName(realisationTeachingLanguageAggregationName);
+        singleBucketAggregationDTO.setCount(mappedAggs.size());
+        singleBucketAggregationDTO.setAggregations(mappedAggs);
 
-        return multiBucketAggregationDTO;
+        return singleBucketAggregationDTO;
     }
 
+
     @Deprecated
-    private void extractRealisationTeachingLanguageAggregationBuckets(Map<String, Map<String, Long>> languagesCount, SingleBucketAggregation realisations) {
-        if(realisations != null && realisations.getAggregations() != null) {
-            Filter realisationsFilter = realisations.getAggregations().get("realisationFilter");
-            if(realisationsFilter != null && realisationsFilter.getAggregations() != null) {
-                Terms status = realisationsFilter.getAggregations().get("status");
-                if(status != null && !CollectionUtils.isEmpty(status.getBuckets())) {
-                    for(Terms.Bucket statusBucket : status.getBuckets()) {
+    private void extractRealisationTeachingLanguageAggregationBuckets(String aggregationName, Map<String, Aggregate> aggregations,
+                                                                      Map<String, Map<String, Long>> languagesCount) {
+
+        Aggregate realisationTeachingLanguagesAggregation = aggregations.get(aggregationName);
+        if(realisationTeachingLanguagesAggregation != null) {
+            Aggregate realisations = AggregationUtils.findSubAggregation("realisationFilter", realisationTeachingLanguagesAggregation);
+            if(realisations != null && realisations.isFilter() && !CollectionUtils.isEmpty(realisations.filter().aggregations())) {
+                Aggregate status = AggregationUtils.findSubAggregation("status", realisations);
+
+                if (status != null && status.isSterms() && status.sterms().buckets() != null) {
+                    for (StringTermsBucket statusBucket : status.sterms().buckets().array()) {
                         Map<String, Long> languages = new HashMap<>();
 
-                        if(statusBucket.getAggregations() != null) {
-                            Terms teachingLanguages = statusBucket.getAggregations().get("teachingLanguages");
+                        if (!CollectionUtils.isEmpty(statusBucket.aggregations())) {
+                            StringTermsAggregate teachingLanguages = statusBucket.aggregations().get("teachingLanguages").sterms();
 
-                            if (teachingLanguages != null && !CollectionUtils.isEmpty(teachingLanguages.getBuckets())) {
-                                for (Terms.Bucket bucket : teachingLanguages.getBuckets()) {
-                                    if(!languages.containsKey(bucket.getKeyAsString())) {
+                            if (teachingLanguages != null && teachingLanguages.buckets() != null) {
+                                for (StringTermsBucket bucket : teachingLanguages.buckets().array()) {
+                                    if (!languages.containsKey(bucket.key().stringValue())) {
                                         // "language X appears in search result realisations at least once" for now. fix later.
-                                        languages.put(bucket.getKeyAsString(), 1L);
+                                        languages.put(bucket.key().stringValue(), 1L);
                                     }
                                 }
                             }
                         }
 
-                        if(!languagesCount.containsKey(statusBucket.getKeyAsString())) {
-                            languagesCount.put(statusBucket.getKeyAsString(), languages);
+                        if (!languagesCount.containsKey(statusBucket.key().stringValue())) {
+                            languagesCount.put(statusBucket.key().stringValue(), languages);
                         } else {
-                            Map<String, Long> existingLangs = languagesCount.get(statusBucket.getKeyAsString());
-                            for(Map.Entry<String, Long> entry : languages.entrySet()) {
-                                if(!existingLangs.containsKey(entry.getKey())) {
+                            Map<String, Long> existingLangs = languagesCount.get(statusBucket.key().stringValue());
+                            for (Map.Entry<String, Long> entry : languages.entrySet()) {
+                                if (!existingLangs.containsKey(entry.getKey())) {
                                     existingLangs.put(entry.getKey(), entry.getValue());
                                 }
                             }
@@ -514,34 +424,18 @@ public class StudiesSearchPostProcessor {
             }
         }
     }
-
-    private SimpleAggregationDTO mapRealisationAggregation(Aggregations aggregations, String realisationAggregationName,
+    
+    private AggregationDTO mapRealisationAggregation(Map<String, Aggregate> aggregations, String realisationAggregationName,
                                                            String assessmentItemRealisationAggregationName) {
-        if(aggregations == null) {
+        if(CollectionUtils.isEmpty(aggregations)) {
             return null;
         }
-
-        Nested realisationsAggregation = aggregations.get(realisationAggregationName);
-        Nested completionOptionsAggregation = aggregations.get(assessmentItemRealisationAggregationName);
 
         Map<String, Map<String, Long>> allExtractedRealisationBuckets = new HashMap<>();
         Map<String, Map<String, Long>> extractedAssessmentItemRealisationBuckets = new HashMap<>();
 
-        if(realisationsAggregation != null && realisationsAggregation.getAggregations() != null) {
-            Filter realisationsFilter = realisationsAggregation.getAggregations().get("realisationsFilter");
-            allExtractedRealisationBuckets.putAll(extractRealisationAggregationBuckets(realisationsFilter));
-        }
-
-        if(completionOptionsAggregation != null && completionOptionsAggregation.getAggregations() != null) {
-            Nested assessmentItems = completionOptionsAggregation.getAggregations().get("assessmentItems");
-            if(assessmentItems != null && assessmentItems.getAggregations() != null) {
-                Nested realisations = assessmentItems.getAggregations().get("realisations");
-                if(realisations != null && realisations.getAggregations() != null) {
-                    Filter realisationsFilter = realisations.getAggregations().get("realisationsFilter");
-                    extractedAssessmentItemRealisationBuckets.putAll(extractRealisationAggregationBuckets(realisationsFilter));
-                }
-            }
-        }
+        allExtractedRealisationBuckets.putAll(extractRealisationAggregationBuckets(realisationAggregationName, aggregations));
+        extractedAssessmentItemRealisationBuckets.putAll(extractRealisationAggregationBuckets(assessmentItemRealisationAggregationName, aggregations));
 
         for(Map.Entry<String, Map<String, Long>> entry : extractedAssessmentItemRealisationBuckets.entrySet()) {
             if(allExtractedRealisationBuckets.containsKey(entry.getKey())) {
@@ -559,58 +453,58 @@ public class StudiesSearchPostProcessor {
             }
         }
 
-        return new SimpleMultiBucketAggregationDTO(realisationAggregationName, mapExtractedBucketsToDTO(allExtractedRealisationBuckets));
+        List<AggregationDTO> mappedBuckets = mapExtractedBucketsToDTO(allExtractedRealisationBuckets);
+
+        SingleBucketAggregationDTO singleBucketAggregationDTO = new SingleBucketAggregationDTO(realisationAggregationName, mappedBuckets.size());
+        singleBucketAggregationDTO.setAggregations(mappedBuckets);
+        return singleBucketAggregationDTO;
     }
 
-    private List<SimpleBucketDTO> mapExtractedBucketsToDTO(Map<String, Map<String, Long>> extracted) {
+    private List<AggregationDTO> mapExtractedBucketsToDTO(Map<String, Map<String, Long>> extracted) {
         return extracted.entrySet().stream()
             .map(e -> {
-                SimpleBucketDTO bucketDTO = new SimpleBucketDTO(e.getKey(), 0);
-                bucketDTO.setBuckets(e.getValue().entrySet().stream()
-                    .map(e2 -> new SimpleBucketDTO(e2.getKey(), e2.getValue()))
+                MultiBucketAggregationDTO multiBucketAggregationDTO = new MultiBucketAggregationDTO();
+                multiBucketAggregationDTO.setBuckets(e.getValue().entrySet().stream()
+                    .map(e2 -> new BucketDTO(e2.getKey(), e2.getValue()))
                     .collect(Collectors.toList()));
-                bucketDTO.setCount(e.getValue().keySet().size());
-                return bucketDTO;
+                multiBucketAggregationDTO.setName(e.getKey());
+                return multiBucketAggregationDTO;
             }).collect(Collectors.toList());
     }
 
-    private Map<String, Map<String, Long>> extractRealisationAggregationBuckets(Filter realisationFilter) {
+    private Map<String, Map<String, Long>> extractRealisationAggregationBuckets(String aggregationName, Map<String, Aggregate> aggregations) {
+
         Map<String, Map<String, Long>> extractedBuckets = new HashMap<>();
+        Aggregate realisationsAggregation = aggregations.get(aggregationName);
 
-        if(realisationFilter != null && realisationFilter.getAggregations() != null) {
-            ReverseNested byOrganizingOrganisationId = realisationFilter.getAggregations().get("byOrganizingOrganisationId");
-            if (byOrganizingOrganisationId != null && byOrganizingOrganisationId.getAggregations() != null) {
-                Terms organizingOrganisationId = byOrganizingOrganisationId.getAggregations().get("organizingOrganisationId");
-                if (organizingOrganisationId != null && !CollectionUtils.isEmpty(organizingOrganisationId.getBuckets())) {
+        if(realisationsAggregation != null && realisationsAggregation.isNested() && !CollectionUtils.isEmpty(realisationsAggregation.nested().aggregations())) {
+            Aggregate realisationsFilter = AggregationUtils.findSubAggregation("realisationsFilter", realisationsAggregation);
 
-                    for (Terms.Bucket organizingOrganisationIdBucket : organizingOrganisationId.getBuckets()) {
-                        Map<String, Long> studyElementBuckets = new HashMap<>();
+            if(realisationsFilter != null && realisationsFilter.isFilter() && !CollectionUtils.isEmpty(realisationsFilter.filter().aggregations())) {
+                ReverseNestedAggregate byOrganizingOrganisationId = realisationsFilter.filter().aggregations().get("byOrganizingOrganisationId").reverseNested();
+                if (byOrganizingOrganisationId != null && !CollectionUtils.isEmpty(byOrganizingOrganisationId.aggregations())) {
+                    StringTermsAggregate organizingOrganisationId = byOrganizingOrganisationId.aggregations().get("organizingOrganisationId").sterms();
+                    if (organizingOrganisationId != null && organizingOrganisationId.buckets() != null) {
 
-                        if (organizingOrganisationIdBucket != null && organizingOrganisationIdBucket.getAggregations() != null) {
-                            Terms studyElementId = organizingOrganisationIdBucket.getAggregations().get("studyElementId");
-                            if (studyElementId != null && !CollectionUtils.isEmpty(studyElementId.getBuckets())) {
-                                for (Terms.Bucket studyElementIdBucket : studyElementId.getBuckets()) {
-                                    studyElementBuckets.put(studyElementIdBucket.getKeyAsString(), studyElementIdBucket.getDocCount());
+                        for (StringTermsBucket organizingOrganisationIdBucket : organizingOrganisationId.buckets().array()) {
+                            Map<String, Long> studyElementBuckets = new HashMap<>();
+
+                            if (organizingOrganisationIdBucket != null && !CollectionUtils.isEmpty(organizingOrganisationIdBucket.aggregations())) {
+                                StringTermsAggregate studyElementId = organizingOrganisationIdBucket.aggregations().get("studyElementId").sterms();
+                                if (studyElementId != null && studyElementId.buckets() != null) {
+                                    for (StringTermsBucket studyElementIdBucket : studyElementId.buckets().array()) {
+                                        studyElementBuckets.put(studyElementIdBucket.key().stringValue(), studyElementIdBucket.docCount());
+                                    }
                                 }
                             }
-                        }
 
-                        extractedBuckets.put(organizingOrganisationIdBucket.getKeyAsString(), studyElementBuckets);
+                            extractedBuckets.put(organizingOrganisationIdBucket.key().stringValue(), studyElementBuckets);
+                        }
                     }
                 }
             }
         }
 
         return extractedBuckets;
-    }
-
-    private List<SimpleBucketDTO> mapBuckets(List<? extends Terms.Bucket> buckets) {
-        if(CollectionUtils.isEmpty(buckets)) {
-            return Collections.emptyList();
-        }
-
-        return buckets.stream()
-            .map(bucket -> new SimpleBucketDTO(bucket.getKeyAsString(), bucket.getDocCount()))
-            .collect(Collectors.toList());
     }
 }

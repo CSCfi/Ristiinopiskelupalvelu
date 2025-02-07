@@ -6,6 +6,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
 import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.handler.service.CompositeIdentifiedService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
@@ -15,7 +16,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 
-public abstract class AbstractCompositeIdentifiedService<W, T extends CompositeIdentifiedEntity, R> extends AbstractService<W, T, R> {
+public abstract class AbstractCompositeIdentifiedService<W, T extends CompositeIdentifiedEntity, R> extends AbstractService<W, T, R> implements CompositeIdentifiedService<W, T, R> {
 
     @Autowired
     private NetworkService networkService;

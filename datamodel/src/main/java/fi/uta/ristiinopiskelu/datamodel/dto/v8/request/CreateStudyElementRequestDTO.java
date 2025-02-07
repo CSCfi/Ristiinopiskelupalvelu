@@ -62,7 +62,7 @@ public abstract class CreateStudyElementRequestDTO {
     private List<Description> organisationSpecificDescriptions = null;
     private List<StudyElementReference> parents = null;
     private StudyStatus status;
-    private MinEduGuidanceArea minEduGuidanceArea;
+    private List<MinEduGuidanceArea> minEduGuidanceArea;
 
     public Boolean getMissing() {
         return missing;
@@ -320,11 +320,11 @@ public abstract class CreateStudyElementRequestDTO {
         this.status = status;
     }
 
-    public MinEduGuidanceArea getMinEduGuidanceArea() {
+    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
         return minEduGuidanceArea;
     }
 
-    public void setMinEduGuidanceArea(MinEduGuidanceArea minEduGuidanceArea) {
+    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
         this.minEduGuidanceArea = minEduGuidanceArea;
     }
 }

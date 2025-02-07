@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.helper;
 
+import com.github.mpolla.HetuUtil;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.CompletedCredit;
@@ -7,13 +8,13 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.RoutingTy
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.CreateRegistrationRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.CreateStudyRecordRequest;
+import fi.uta.ristiinopiskelu.messaging.util.Oid;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 public class MessageTemplateInitializer {
     public static CreateRegistrationRequest getCreateRegistrationRequestTemplate(String sendingOrganisationId, String receivingOrganisationId, String networkId) {
@@ -37,8 +38,8 @@ public class MessageTemplateInitializer {
         studyRight.setKeywords(Collections.singletonList(keyword));
 
         ExtendedStudent student = new ExtendedStudent();
-        student.setPersonId("010101-0101");
-        student.setOid(UUID.randomUUID().toString());
+        student.setPersonId(HetuUtil.generateRandom());
+        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
         student.setFirstNames("Matti");
         student.setSurName("Nykänen");
         student.setGivenName("Matti");

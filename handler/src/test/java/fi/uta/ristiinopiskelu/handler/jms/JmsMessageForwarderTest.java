@@ -1,6 +1,5 @@
 package fi.uta.ristiinopiskelu.handler.jms;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
@@ -19,9 +18,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -45,25 +44,27 @@ public class JmsMessageForwarderTest {
     }
 
     @Test
-    public void testForwardRequestToOrganisation_shouldSuccess() throws JsonProcessingException {
+    public void testForwardRequestToOrganisation_shouldSuccess() {
         OrganisationEntity organisationToForwardTo = EntityInitializer.getOrganisationEntity(
-            "ORG1", "queue", new LocalisedString("Organisaatio", null, null), 7);
+            "ORG1", "queue", new LocalisedString("Organisaatio", null, null), 8);
 
         // Initialize message, does not really matter for this test case which message is initialized here
         ForwardedCreateRegistrationRequest forwardedCreateRegistrationRequest = new ForwardedCreateRegistrationRequest();
         forwardedCreateRegistrationRequest.setRegistrationRequestId("REG-1");
 
-        when(messageSchemaService.getCurrentSchemaVersion()).thenReturn(7);
+        when(messageSchemaService.getSupportedSchemaVersions()).thenReturn(List.of(8, 9));
+        when(messageSchemaService.getCurrentSchemaVersion()).thenReturn(9);
+        when(messageSchemaService.getMessageTypeForVersion(eq(MessageType.FORWARDED_CREATE_REGISTRATION_REQUEST.name()), eq(8))).thenReturn(MessageType.FORWARDED_CREATE_STUDYRECORD_REQUEST);
 
         jmsMessageForwarder.forwardRequestToOrganisation(forwardedCreateRegistrationRequest.getRegistrationRequestId(), forwardedCreateRegistrationRequest,
                 MessageType.FORWARDED_CREATE_REGISTRATION_REQUEST, null, organisationToForwardTo);
 
         verify(producerTemplate, times(1)).sendBodyAndHeaders(anyString(), any(), any());
-        verify(messageSchemaService, times(2)).getCurrentSchemaVersion();
+        verify(messageSchemaService, times(1)).getCurrentSchemaVersion();
     }
 
     @Test
-    public void testForwardRequestToOrganisation_messageSchemaMissing_shouldThrowMessageForwardingFailedException() throws JsonProcessingException {
+    public void testForwardRequestToOrganisation_messageSchemaMissing_shouldThrowMessageForwardingFailedException() {
         OrganisationEntity organisationToForwardTo = EntityInitializer.getOrganisationEntity(
             "ORG1", "queue", new LocalisedString("Organisaatio", null, null), 7);
 
@@ -84,14 +85,15 @@ public class JmsMessageForwarderTest {
     }
 
     @Test
-    public void testForwardRequestToOrganisation_messageForwardingFails_shouldThrowMessageForwardingFailedException() throws JsonProcessingException {
+    public void testForwardRequestToOrganisation_messageForwardingFails_shouldThrowMessageForwardingFailedException() {
         OrganisationEntity organisationToForwardTo = EntityInitializer.getOrganisationEntity(
-            "ORG1", "queue", new LocalisedString("Organisaatio", null, null), 7);
+            "ORG1", "queue", new LocalisedString("Organisaatio", null, null), 9);
 
         // Initialize message, does not really matter for this test case which message is initialized here
         ForwardedCreateRegistrationRequest forwardedCreateRegistrationRequest = new ForwardedCreateRegistrationRequest();
         forwardedCreateRegistrationRequest.setRegistrationRequestId("REG-1");
 
+        when(messageSchemaService.getSupportedSchemaVersions()).thenReturn(List.of(8, 9));
         when(messageSchemaService.getCurrentSchemaVersion()).thenReturn(organisationToForwardTo.getSchemaVersion());
 
         // producerTemplate.sendBodyAndHeaders will throw exception since procuder template context is not started

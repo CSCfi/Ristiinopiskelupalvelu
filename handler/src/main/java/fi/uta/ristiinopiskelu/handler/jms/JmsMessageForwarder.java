@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,11 +58,10 @@ public class JmsMessageForwarder {
     public void forwardRequestToOrganisation(Message message, MessageType messageType, String correlationId,
                                              OrganisationEntity organisation, Map<String, String> customHeaders) throws Exception {
 
-        if(organisation.getSchemaVersion() != messageSchemaService.getCurrentSchemaVersion()
-            && organisation.getSchemaVersion() != messageSchemaService.getPreviousSchemaVersion()) {
-            throw new InvalidMessageSchemaVersionException(String.format("Organisation %s has outdated schema version in use; must be either current (%s) or " +
-                    "previous (%s), organisation has schema version %s specified in organisation info", organisation.getId(),
-                messageSchemaService.getCurrentSchemaVersion(), messageSchemaService.getPreviousSchemaVersion(), organisation.getSchemaVersion()));
+        if(!messageSchemaService.getSupportedSchemaVersions().contains(organisation.getSchemaVersion())) {
+            throw new InvalidMessageSchemaVersionException(String.format("Organisation %s has outdated schema version in use; must be one of (%s), " +
+                    "organisation has schema version %s specified in organisation info", organisation.getId(),
+                StringUtils.collectionToCommaDelimitedString(messageSchemaService.getSupportedSchemaVersions()), organisation.getSchemaVersion()));
         }
 
         String forwardedMessageType = messageType.name();

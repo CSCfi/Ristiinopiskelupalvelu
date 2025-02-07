@@ -7,6 +7,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.studymodule.StudyModuleReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.courseunit.CourseUnitSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.InternalStudiesSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studymodule.StudyModuleSearchParameters;
@@ -14,6 +15,7 @@ import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.handler.service.StudiesService;
 import fi.uta.ristiinopiskelu.handler.service.StudyModuleService;
+import fi.uta.ristiinopiskelu.handler.service.impl.processor.StudiesSearchResultsConverter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -137,8 +139,10 @@ public class StudiesControllerV9 {
     @RequestMapping(value = "/search", method = RequestMethod.POST)
     public StudiesSearchResults search(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
                                                @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudiesSearchParameters searchParams) {
-        StudiesSearchResults results = studiesService.search(SSL_CLIENT_S_DN_O, searchParams);
+        InternalStudiesSearchResults results = studiesService.search(SSL_CLIENT_S_DN_O, searchParams);
         results.getAggregations().removeIf(aggregation -> aggregation.getName().equals("realisationTeachingLanguages"));
-        return results;
+
+        // convert aggs to deprecated Simple* aggregation classes for now, in order to maintain API compatability
+        return new StudiesSearchResultsConverter().convert(results);
     }
 }

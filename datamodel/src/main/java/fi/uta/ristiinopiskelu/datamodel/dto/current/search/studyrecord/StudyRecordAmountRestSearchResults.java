@@ -11,6 +11,9 @@ public class StudyRecordAmountRestSearchResults {
     private long totalHits;
     private List<AggregationDTO> aggregations;
 
+    public StudyRecordAmountRestSearchResults() {
+    }
+
     public StudyRecordAmountRestSearchResults(long totalHits, List<AggregationDTO> aggregations) {
         this.totalHits = totalHits;
         this.aggregations = aggregations;

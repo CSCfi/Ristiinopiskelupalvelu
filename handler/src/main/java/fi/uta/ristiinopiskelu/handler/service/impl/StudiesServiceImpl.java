@@ -1,6 +1,13 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import co.elastic.clients.elasticsearch._types.ShardFailure;
+import co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
@@ -9,9 +16,9 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractSt
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.degree.DegreeReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.studymodule.StudyModuleReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.InternalStudiesSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchRealisationQueries;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchSortField;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
@@ -23,12 +30,6 @@ import fi.uta.ristiinopiskelu.handler.service.impl.processor.StudiesSearchPostPr
 import fi.uta.ristiinopiskelu.persistence.querybuilder.CourseUnitRealisationQueryBuilder;
 import fi.uta.ristiinopiskelu.persistence.querybuilder.StudiesQueryBuilder;
 import fi.uta.ristiinopiskelu.persistence.repository.StudiesRepository;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.ShardSearchFailure;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.aggregations.Aggregations;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,7 @@ import org.springframework.util.StringUtils;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,9 +57,6 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
     private ModelMapper modelMapper;
 
     @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
     private StudiesRepository studiesRepository;
 
     @Autowired
@@ -67,28 +66,24 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
 
     @Override
     public List<StudyElementEntity> findAllStudiesByParentReferences(String referenceIdentifier, String referenceOrganizer) throws FindFailedException {
-        SearchResponse response = studiesRepository.findAllStudiesByParentReferences(referenceIdentifier, referenceOrganizer);
-
-        SearchHits hits = response.getHits();
+        SearchResponse<StudyElementEntity> response = studiesRepository.findAllStudiesByParentReferences(referenceIdentifier, referenceOrganizer);
 
         // check for failures
-        if(response.getFailedShards() > 0) {
-            for(ShardSearchFailure failure : response.getShardFailures()) {
-                throw new IllegalStateException("Error while searching studies by parent references", failure.getCause());
+        if(response.shards().failed().intValue() > 0) {
+            for(ShardFailure failure : response.shards().failures()) {
+                throw new IllegalStateException("Error while searching studies by parent references: %s".formatted(failure.status()));
             }
         }
 
-        if(hits == null || (hits.getHits() == null || (hits.getTotalHits() != null && hits.getTotalHits().value == 0))) {
+        if(response.hits() == null || response.hits().total() == null || response.hits().total().value() == 0) {
             return Collections.emptyList();
         }
 
-        return Arrays.stream(hits.getHits())
-            .map(hit -> objectMapper.convertValue(hit.getSourceAsMap(), StudyElementEntity.class))
-            .collect(Collectors.toList());
+        return response.hits().hits().stream().map(Hit::source).collect(Collectors.toList());
     }
 
     @Override
-    public StudiesSearchResults search(String organisationId, StudiesSearchParameters searchParams) throws FindFailedException {
+    public InternalStudiesSearchResults search(String organisationId, StudiesSearchParameters searchParams) throws FindFailedException {
         List<NetworkEntity> organisationNetworks;
 
         if(!searchParams.isIncludeInactive()) {
@@ -118,53 +113,50 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
             searchParams.setOrganisationAmount(1);
         }
 
-        StudiesQueryBuilder studiesQueryWithLanguages = new StudiesQueryBuilder();
-        StudiesQueryBuilder studiesQueryWithoutLanguages = new StudiesQueryBuilder();
+        StudiesQueryBuilder studiesQueryWithLanguagesBuilder = new StudiesQueryBuilder();
+        StudiesQueryBuilder studiesQueryWithoutLanguagesBuilder = new StudiesQueryBuilder();
 
         // Find by name
         if(StringUtils.hasText(searchParams.getQuery())) {
-            studiesQueryWithLanguages.filterByName(searchParams.getQuery(), searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI);
-            studiesQueryWithoutLanguages.filterByName(searchParams.getQuery(), searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI);
+            studiesQueryWithLanguagesBuilder.filterByName(searchParams.getQuery(), searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI);
+            studiesQueryWithoutLanguagesBuilder.filterByName(searchParams.getQuery(), searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI);
         }
 
         // Filter to return only study elements for requesting organisations networks
-        studiesQueryWithLanguages.filterByCooperationNetworks(organisationId, organisationNetworks,
+        studiesQueryWithLanguagesBuilder.filterByCooperationNetworks(organisationId, organisationNetworks,
             searchParams.getNetworkIdentifiers(), searchParams.isIncludeInactive(), searchParams.isIncludeOwn());
 
         if(!CollectionUtils.isEmpty(searchParams.getOrganizingOrganisationIdentifiers())) {
-            studiesQueryWithLanguages.filterByOrganizingOrganisationIds(searchParams.getOrganizingOrganisationIdentifiers());
+            studiesQueryWithLanguagesBuilder.filterByOrganizingOrganisationIds(searchParams.getOrganizingOrganisationIdentifiers());
         }
 
-        studiesQueryWithoutLanguages.filterByCooperationNetworks(organisationId, organisationNetworks,
+        studiesQueryWithoutLanguagesBuilder.filterByCooperationNetworks(organisationId, organisationNetworks,
             searchParams.getNetworkIdentifiers(), searchParams.isIncludeInactive(), searchParams.isIncludeOwn());
 
         if(!CollectionUtils.isEmpty(searchParams.getOrganizingOrganisationIdentifiers())) {
-            studiesQueryWithoutLanguages.filterByOrganizingOrganisationIds(searchParams.getOrganizingOrganisationIdentifiers());
+            studiesQueryWithoutLanguagesBuilder.filterByOrganizingOrganisationIds(searchParams.getOrganizingOrganisationIdentifiers());
         }
 
         // filter out inactive study elements
         if(!searchParams.isIncludeInactive()) {
-            studiesQueryWithLanguages.filterOnlyValid();
-            studiesQueryWithoutLanguages.filterOnlyValid();
+            studiesQueryWithLanguagesBuilder.filterOnlyValid();
+            studiesQueryWithoutLanguagesBuilder.filterOnlyValid();
         }
 
         if(!CollectionUtils.isEmpty(searchParams.getStatuses())) {
-            studiesQueryWithLanguages.filterByStatuses(searchParams.getStatuses());
-            studiesQueryWithoutLanguages.filterByStatuses(searchParams.getStatuses());
+            studiesQueryWithLanguagesBuilder.filterByStatuses(searchParams.getStatuses());
+            studiesQueryWithoutLanguagesBuilder.filterByStatuses(searchParams.getStatuses());
+        }
+
+        if(!CollectionUtils.isEmpty(searchParams.getMinEduGuidanceAreas())) {
+            studiesQueryWithLanguagesBuilder.filterByMinEduGuidanceAreas(searchParams.getMinEduGuidanceAreas());
+            studiesQueryWithoutLanguagesBuilder.filterByMinEduGuidanceAreas(searchParams.getMinEduGuidanceAreas());
         }
 
         // filter by teaching languages
-        studiesQueryWithLanguages.filterByTeachingLanguages(searchParams.getTeachingLanguages());
+        studiesQueryWithLanguagesBuilder.filterByTeachingLanguages(searchParams.getTeachingLanguages());
 
-        // Elasticsearch 6.x does not support _index query by alias so we have to get index name by course unit alias first
-        // this should be fixed in 7.x https://github.com/elastic/elasticsearch/pull/46640
-        String courseUnitIndexName;
-        try {
-            courseUnitIndexName = studiesRepository.findIndexNameByAlias(((Document) CourseUnitEntity.class.getAnnotations()[0]).indexName());
-        } catch (Exception e) {
-            logger.error("Unable to find alias name for index: " + ((Document) CourseUnitEntity.class.getAnnotations()[0]).indexName());
-            throw new FindFailedException(StudyElementEntity.class, e);
-        }
+        String courseUnitIndexName = ((Document) CourseUnitEntity.class.getAnnotations()[0]).indexName();
 
         StudiesSearchRealisationQueries realisationQueriesWithTeachingLanguages = getRealisationQueries(searchParams, true,
             "realisationsWithTeachingLanguagesQuery",
@@ -173,51 +165,53 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
             "realisationsWithoutTeachingLanguagesQuery",
             "assessmentItemRealisationsWithoutTeachingLanguagesQuery", courseUnitIndexName);
 
-        BoolQueryBuilder noActiveRealisationsExistQuery = getNoActiveRealisationsExistQuery(searchParams, courseUnitIndexName);
+        Query noActiveRealisationsExistQuery = getNoActiveRealisationsExistQuery(searchParams, courseUnitIndexName);
+        Query studiesQueryWithLanguages = studiesQueryWithLanguagesBuilder.build()._toQuery();
+        Query studiesQueryWithoutLanguages = studiesQueryWithoutLanguagesBuilder.build()._toQuery();
 
-        BoolQueryBuilder mainQuery = QueryBuilders.boolQuery();
+        BoolQuery.Builder mainQuery = new BoolQuery.Builder();
 
         // finally add realisation queries
         if(!CollectionUtils.isEmpty(searchParams.getTeachingLanguages()) && !CollectionUtils.isEmpty(searchParams.getRealisationTeachingLanguages())) {
             if(searchParams.getTeachingLanguages().contains(TeachingLanguage.UNSPECIFIED.getValue()) &&
                 searchParams.getRealisationTeachingLanguages().contains(TeachingLanguage.UNSPECIFIED.getValue())) {
                 mainQuery.must(studiesQueryWithLanguages);
-                mainQuery.must(QueryBuilders.boolQuery()
+                mainQuery.must(q -> q.bool(bq -> bq
                     .should(realisationQueriesWithTeachingLanguages.getFinalQuery())
-                    .should(noActiveRealisationsExistQuery));
+                    .should(noActiveRealisationsExistQuery)));
             } else {
-                mainQuery.should(QueryBuilders.boolQuery()
+                mainQuery.should(q -> q.bool(bq -> bq
                     .must(studiesQueryWithLanguages)
-                    .must(realisationQueriesWithoutTeachingLanguages.getFinalQuery()));
+                    .must(realisationQueriesWithoutTeachingLanguages.getFinalQuery())));
 
-                mainQuery.should(QueryBuilders.boolQuery()
+                mainQuery.should(q -> q.bool(bq -> bq
                     .must(studiesQueryWithoutLanguages)
-                    .must(realisationQueriesWithTeachingLanguages.getFinalQuery()));
+                    .must(realisationQueriesWithTeachingLanguages.getFinalQuery())));
 
-                mainQuery.should(QueryBuilders.boolQuery()
+                mainQuery.should(q -> q.bool(bq -> bq
                     .must(studiesQueryWithLanguages)
-                    .must(noActiveRealisationsExistQuery));
+                    .must(noActiveRealisationsExistQuery)));
             }
         } else if(!CollectionUtils.isEmpty(searchParams.getTeachingLanguages()) && CollectionUtils.isEmpty(searchParams.getRealisationTeachingLanguages())) {
             if(realisationQueriesWithoutTeachingLanguages != null) {
                 mainQuery.must(studiesQueryWithLanguages);
-                mainQuery.must(QueryBuilders.boolQuery()
+                mainQuery.must(q -> q.bool(bq -> bq
                     .should(realisationQueriesWithoutTeachingLanguages.getFinalQuery())
-                    .should(noActiveRealisationsExistQuery));
+                    .should(noActiveRealisationsExistQuery)));
             } else {
                 mainQuery.must(studiesQueryWithLanguages);
             }
         } else if(CollectionUtils.isEmpty(searchParams.getTeachingLanguages()) && !CollectionUtils.isEmpty(searchParams.getRealisationTeachingLanguages())) {
             mainQuery.must(studiesQueryWithoutLanguages);
-            mainQuery.must(QueryBuilders.boolQuery()
+            mainQuery.must(q -> q.bool(bq -> bq
                 .should(realisationQueriesWithTeachingLanguages.getFinalQuery())
-                .should(noActiveRealisationsExistQuery));
+                .should(noActiveRealisationsExistQuery)));
         } else {
             if(realisationQueriesWithoutTeachingLanguages != null) {
                 mainQuery.must(studiesQueryWithoutLanguages);
-                mainQuery.must(QueryBuilders.boolQuery()
+                mainQuery.must(q -> q.bool(bq -> bq
                     .should(realisationQueriesWithoutTeachingLanguages.getFinalQuery())
-                    .should(noActiveRealisationsExistQuery));
+                    .should(noActiveRealisationsExistQuery)));
             } else {
                 mainQuery.must(studiesQueryWithoutLanguages);
             }
@@ -263,23 +257,23 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
         }
 
         try {
-            SearchResponse response = studiesRepository.findAllStudies(mainQuery,
+            SearchResponse<StudyElementEntity> response = studiesRepository.findAllStudies(mainQuery,
                 realisationQueriesWithTeachingLanguages,
                 realisationQueriesWithoutTeachingLanguages,
                 indices, searchParams.getPageRequest(sort), searchParams);
 
-            SearchHits hits = response.getHits();
-            Aggregations aggs = response.getAggregations();
+            HitsMetadata<StudyElementEntity> hits = response.hits();
+            Map<String, Aggregate> aggs = response.aggregations();
 
             // check for failures
-            if(response.getFailedShards() > 0) {
-                for(ShardSearchFailure failure : response.getShardFailures()) {
-                    throw new IllegalStateException("Error while searching studies by parent references", failure.getCause());
+            if(response.shards().failed().intValue() > 0) {
+                for(ShardFailure failure : response.shards().failures()) {
+                    throw new IllegalStateException("Error while searching studies by parent references: " + failure.reason().reason());
                 }
             }
 
-            if(hits == null || (hits.getHits() == null || (hits.getTotalHits() != null && hits.getTotalHits().value == 0))) {
-                return new StudiesSearchResults();
+            if(hits.total().value() == 0) {
+                return new InternalStudiesSearchResults();
             }
 
             return studiesSearchPostProcessor.postProcess(hits, aggs, searchParams);
@@ -301,23 +295,36 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
         }
     }
 
-    private BoolQueryBuilder getNoActiveRealisationsExistQuery(StudiesSearchParameters searchParams, String courseUnitIndexName) {
-        BoolQueryBuilder noActiveRealisationsExistQuery;
+    private Query getNoActiveRealisationsExistQuery(StudiesSearchParameters searchParams, String courseUnitIndexName) {
+        BoolQuery.Builder noActiveRealisationsExistQuery;
 
         if(searchParams.isIncludeCourseUnitsWithoutActiveRealisations()) {
             CourseUnitRealisationQueryBuilder realisationQueryBuilder = new CourseUnitRealisationQueryBuilder();
 
-            noActiveRealisationsExistQuery = QueryBuilders.boolQuery()
-                .should(QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("_index", courseUnitIndexName)))
-                .should(QueryBuilders.boolQuery()
+            noActiveRealisationsExistQuery = new BoolQuery.Builder()
+                .should(q -> q
+                    .bool(bq -> bq
+                        .mustNot(q2 -> q2
+                            .term(tq -> tq.field("_index")
+                                .value(courseUnitIndexName)))))
+                .should(q -> q.bool(bq -> bq
                     .mustNot(realisationQueryBuilder.generateRealisationQuery(
-                        QueryBuilders.termQuery("realisations.status", StudyStatus.ACTIVE.name()), null))
+                        new TermQuery.Builder()
+                            .field("realisations.status")
+                            .value(StudyStatus.ACTIVE.name()).build()._toQuery(), null))
                     .mustNot(realisationQueryBuilder.generateAssessmentItemRealisationQuery(
-                        QueryBuilders.termQuery("completionOptions.assessmentItems.realisations.status", StudyStatus.ACTIVE.name()), null)));
+                        new TermQuery.Builder()
+                            .field("completionOptions.assessmentItems.realisations.status")
+                            .value(StudyStatus.ACTIVE.name()).build()._toQuery(), null))));
         } else {
-            noActiveRealisationsExistQuery = QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("_index", courseUnitIndexName));
+            noActiveRealisationsExistQuery = new BoolQuery.Builder()
+                .mustNot(q -> q
+                    .term(tq -> tq
+                        .field("_index")
+                        .value(courseUnitIndexName)));
         }
-        return noActiveRealisationsExistQuery;
+
+        return noActiveRealisationsExistQuery.build()._toQuery();
     }
 
     private StudiesSearchRealisationQueries getRealisationQueries(StudiesSearchParameters searchParams, boolean useLanguageSearch,
@@ -330,12 +337,12 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
             || enrollmentPeriodParametersGiven || StringUtils.hasText(searchParams.getRealisationQuery()) || searchParams.isOnlyEnrollable()
             || !CollectionUtils.isEmpty(searchParams.getRealisationTeachingLanguages()) || !CollectionUtils.isEmpty(searchParams.getRealisationStatuses())) {
 
-            BoolQueryBuilder mainRealisationQuery = QueryBuilders.boolQuery();
-            BoolQueryBuilder mainAssessmentItemRealisationQuery = QueryBuilders.boolQuery();
+            BoolQuery.Builder mainRealisationQuery = new BoolQuery.Builder();
+            BoolQuery.Builder mainAssessmentItemRealisationQuery = new BoolQuery.Builder();
 
             // these need to be created separately since they are modified later
-            BoolQueryBuilder aggregationRealisationQuery = QueryBuilders.boolQuery();
-            BoolQueryBuilder aggregationAssessmentItemRealisationQuery = QueryBuilders.boolQuery();
+            BoolQuery.Builder aggregationRealisationQuery = new BoolQuery.Builder();
+            BoolQuery.Builder aggregationAssessmentItemRealisationQuery = new BoolQuery.Builder();
 
             CourseUnitRealisationQueryBuilder courseUnitRealisationQueryBuilder = new CourseUnitRealisationQueryBuilder();
 
@@ -393,14 +400,25 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
                     searchParams.getRealisationStatuses());
             }
 
-            BoolQueryBuilder finalQuery = QueryBuilders.boolQuery()
-                .must(QueryBuilders.boolQuery()
-                    .must(QueryBuilders.termQuery("_index", courseUnitIndexName))
-                    .must(QueryBuilders.boolQuery()
-                        .should(courseUnitRealisationQueryBuilder.generateAssessmentItemRealisationQuery(
-                            mainAssessmentItemRealisationQuery, assessmentitemRealisationsInnerHitsName))
-                        .should(courseUnitRealisationQueryBuilder.generateRealisationQuery(
-                            mainRealisationQuery, realisationsInnerHitsName))));
+            if(!CollectionUtils.isEmpty(searchParams.getRealisationMinEduGuidanceAreas())) {
+                courseUnitRealisationQueryBuilder.filterByMinEduGuidanceAreas(mainRealisationQuery, mainAssessmentItemRealisationQuery,
+                    searchParams.getRealisationMinEduGuidanceAreas());
+
+                courseUnitRealisationQueryBuilder.filterByMinEduGuidanceAreas(aggregationRealisationQuery, aggregationAssessmentItemRealisationQuery,
+                    searchParams.getRealisationMinEduGuidanceAreas());
+            }
+
+            Query finalQuery = new Query.Builder().bool(q -> q
+                .must(tq -> tq
+                    .term(tq2 -> tq2
+                        .field("_index")
+                        .value(courseUnitIndexName)))
+                .must(bq4 -> bq4.bool(bq5 -> bq5
+                    .should(courseUnitRealisationQueryBuilder.generateAssessmentItemRealisationQuery(
+                        mainAssessmentItemRealisationQuery.build()._toQuery(), assessmentitemRealisationsInnerHitsName))
+                    .should(courseUnitRealisationQueryBuilder.generateRealisationQuery(
+                        mainRealisationQuery.build()._toQuery(), realisationsInnerHitsName)))))
+                .build();
 
             return new StudiesSearchRealisationQueries(finalQuery, aggregationRealisationQuery,
                 aggregationAssessmentItemRealisationQuery);
@@ -436,6 +454,6 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        this.studiesSearchPostProcessor = new StudiesSearchPostProcessor(this, objectMapper);
+        this.studiesSearchPostProcessor = new StudiesSearchPostProcessor(this);
     }
 }

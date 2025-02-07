@@ -1,14 +1,16 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement;
 
 import com.fasterxml.jackson.annotation.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.ExternalCodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.validation.CodeSetConstraint;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.DegreeWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.studymodule.StudyModuleWriteDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
@@ -18,7 +20,14 @@ import java.util.List;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", visible=true)
+@Schema(name = "StudyElement",
+    subTypes = { CourseUnitWriteDTO.class, StudyModuleWriteDTO.class, DegreeWriteDTO.class },
+    discriminatorMapping = {
+        @DiscriminatorMapping(value = "COURSE_UNIT", schema = CourseUnitWriteDTO.class),
+        @DiscriminatorMapping(value = "STUDY_MODULE", schema = StudyModuleWriteDTO.class),
+        @DiscriminatorMapping(value = "DEGREE", schema = DegreeWriteDTO.class),
+    }, discriminatorProperty = "type")
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", visible = true)
 @JsonSubTypes({ @JsonSubTypes.Type(value = StudyModuleWriteDTO.class, name = "STUDY_MODULE"),
     @JsonSubTypes.Type(value = CourseUnitWriteDTO.class, name = "COURSE_UNIT"),
     @JsonSubTypes.Type(value = DegreeWriteDTO.class, name = "DEGREE")
@@ -63,7 +72,7 @@ public abstract class AbstractStudyElementWriteDTO {
     private List<Description> organisationSpecificDescriptions = null;
     private List<StudyElementReference> parents = null;
     private StudyStatus status;
-    private MinEduGuidanceArea minEduGuidanceArea;
+    private List<MinEduGuidanceArea> minEduGuidanceArea;
 
     public Boolean getMissing() {
         return missing;
@@ -321,11 +330,11 @@ public abstract class AbstractStudyElementWriteDTO {
         this.status = status;
     }
 
-    public MinEduGuidanceArea getMinEduGuidanceArea() {
+    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
         return minEduGuidanceArea;
     }
 
-    public void setMinEduGuidanceArea(MinEduGuidanceArea minEduGuidanceArea) {
+    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
         this.minEduGuidanceArea = minEduGuidanceArea;
     }
 

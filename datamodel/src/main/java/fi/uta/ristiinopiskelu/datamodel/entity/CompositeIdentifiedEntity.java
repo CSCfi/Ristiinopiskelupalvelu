@@ -4,6 +4,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEn
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public abstract class CompositeIdentifiedEntity extends GenericEntity {
@@ -19,4 +20,6 @@ public abstract class CompositeIdentifiedEntity extends GenericEntity {
     public abstract List<CooperationNetwork> getCooperationNetworks();
 
     public abstract List<OrganisationReference> getOrganisationReferences();
+
+    public abstract OffsetDateTime getUpdateTime();
 }

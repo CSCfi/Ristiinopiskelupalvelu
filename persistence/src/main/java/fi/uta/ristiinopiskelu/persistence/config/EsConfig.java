@@ -1,5 +1,9 @@
 package fi.uta.ristiinopiskelu.persistence.config;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.*;
@@ -7,9 +11,10 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fi.uta.ristiinopiskelu.datamodel.converter.current.RistiinopiskeluEnumConverters;
+import fi.uta.ristiinopiskelu.persistence.aspect.UncategorizedElasticsearchExceptionAspect;
 import fi.uta.ristiinopiskelu.persistence.repository.impl.ExtendedRepositoryImpl;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
-import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,13 +24,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
-import org.springframework.data.elasticsearch.client.RestClients;
-import org.springframework.data.elasticsearch.config.ElasticsearchConfigurationSupport;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchConfiguration;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.RefreshPolicy;
 import org.springframework.data.elasticsearch.core.convert.ElasticsearchConverter;
 import org.springframework.data.elasticsearch.core.convert.ElasticsearchCustomConversions;
-import org.springframework.data.elasticsearch.core.mapping.SimpleElasticsearchMappingContext;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -50,7 +53,7 @@ import java.util.List;
 @Configuration
 @EnableElasticsearchRepositories(basePackages = "fi.uta.ristiinopiskelu.persistence.repository", repositoryBaseClass = ExtendedRepositoryImpl.class)
 @ComponentScan(basePackages = "fi.uta.ristiinopiskelu.persistence.repository.impl")
-public class EsConfig extends ElasticsearchConfigurationSupport {
+public class EsConfig extends ElasticsearchConfiguration {
 
     private static final Logger logger = LoggerFactory.getLogger(EsConfig.class);
 
@@ -69,8 +72,36 @@ public class EsConfig extends ElasticsearchConfigurationSupport {
     @Value("${general.elasticsearch.caCertificatePath}")
     private String caCertificatePath;
 
-    @Bean
-    public RestHighLevelClient client() {
+    @Override
+    public ElasticsearchClient elasticsearchClient(RestClient restClient) {
+        ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(objectMapper(javaTimeModule(), jdk8Module())));
+        return new ElasticsearchClient(transport);
+    }
+
+    @Override
+    protected RefreshPolicy refreshPolicy() {
+        return RefreshPolicy.IMMEDIATE;
+    }
+
+    @Override
+    protected boolean writeTypeHints() {
+        return false;
+    }
+
+    @Override
+    public ElasticsearchCustomConversions elasticsearchCustomConversions() {
+
+        List<Converter<?, ?>> allConverters = new ArrayList<>();
+        List<Converter<?, ?>> currentVersionConverters = RistiinopiskeluEnumConverters.getConverters();
+        List<Converter<?, ?>> previousVersionConverters = fi.uta.ristiinopiskelu.datamodel.converter.v8.RistiinopiskeluEnumConverters.getConverters();
+        allConverters.addAll(currentVersionConverters);
+        allConverters.addAll(previousVersionConverters);
+
+        return new ElasticsearchCustomConversions(allConverters);
+    }
+
+    @Override
+    public ClientConfiguration clientConfiguration() {
         Assert.hasText(hosts, "ElasticSearch hosts cannot be empty");
 
         boolean haveCredentials = StringUtils.hasText(username) && StringUtils.hasText(password);
@@ -95,7 +126,19 @@ public class EsConfig extends ElasticsearchConfigurationSupport {
                 .connectedTo(StringUtils.commaDelimitedListToStringArray(hosts.trim()))
                 .build();
         }
-        return RestClients.create(clientConfiguration).rest();
+
+        return clientConfiguration;
+    }
+
+    @Override
+    public ElasticsearchTemplate elasticsearchOperations(ElasticsearchConverter elasticsearchConverter, ElasticsearchClient elasticsearchClient) {
+        return (ElasticsearchTemplate) super.elasticsearchOperations(elasticsearchConverter, elasticsearchClient);
+    }
+
+    // aspect for wrapping all UncategorizedElasticsearchExceptions thrown from repositories with an implementation that produces more verbose exception messages
+    @Bean
+    public UncategorizedElasticsearchExceptionAspect uncategorizedElasticsearchExceptionAspect() {
+        return new UncategorizedElasticsearchExceptionAspect();
     }
 
     // Jackson modules
@@ -138,35 +181,7 @@ public class EsConfig extends ElasticsearchConfigurationSupport {
         return objectMapper;
     }
 
-    @Bean
-    public ElasticsearchRestTemplate elasticsearchTemplate(RestHighLevelClient client, ElasticsearchConverter elasticsearchConverter) {
-        ElasticsearchRestTemplate elasticsearchRestTemplate = new ElasticsearchRestTemplate(client, elasticsearchConverter);
-        elasticsearchRestTemplate.setRefreshPolicy(RefreshPolicy.IMMEDIATE);
-        return elasticsearchRestTemplate;
-    }
-
-    @Bean
-    @Override
-    public SimpleElasticsearchMappingContext elasticsearchMappingContext(ElasticsearchCustomConversions elasticsearchCustomConversions) {
-        SimpleElasticsearchMappingContext mappingContext = super.elasticsearchMappingContext(elasticsearchCustomConversions);
-        mappingContext.setWriteTypeHints(false);
-        return mappingContext;
-    }
-
-    @Bean
-    @Override
-    public ElasticsearchCustomConversions elasticsearchCustomConversions() {
-
-        List<Converter<?, ?>> allConverters = new ArrayList<>();
-        List<Converter<?, ?>> currentVersionConverters = RistiinopiskeluEnumConverters.getConverters();
-        List<Converter<?, ?>> previousVersionConverters = fi.uta.ristiinopiskelu.datamodel.converter.v8.RistiinopiskeluEnumConverters.getConverters();
-        allConverters.addAll(currentVersionConverters);
-        allConverters.addAll(previousVersionConverters);
-
-        return new ElasticsearchCustomConversions(allConverters);
-    }
-
-    private SSLContext getSSLContext () throws CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException, KeyManagementException {
+    private SSLContext getSSLContext() throws CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException, KeyManagementException {
         InputStream caCertStream = new FileInputStream(caCertificatePath);
 
         CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
@@ -181,6 +196,5 @@ public class EsConfig extends ElasticsearchConfigurationSupport {
         SSLContext context  = SSLContext.getInstance("TLS");
         context.init(null, trustManagerFactory.getTrustManagers(),null);
         return context;
-
     }
 }

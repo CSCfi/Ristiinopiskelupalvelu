@@ -7,7 +7,6 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundExcepti
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.handler.service.StudentService;
-import fi.uta.ristiinopiskelu.handler.utils.StudentProcessorHelper;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
@@ -15,6 +14,10 @@ import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.StudentMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.ForwardedUpdateStudentStudyRightReplyRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.UpdateStudentStudyRightReplyRequest;
+import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
+import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
+import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
+import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.modelmapper.ModelMapper;
@@ -46,6 +49,21 @@ public class UpdateStudentStudyRightReplyProcessor implements Processor {
         this.modelMapper = modelMapper;
     }
 
+    @AsyncListener(operation = @AsyncOperation(
+            channelName = "handler",
+            description = "Replies to a student study right update request",
+            servers = {"production", "staging"},
+            message = @AsyncMessage(
+                    description = "Replies to a student study right update request"
+            ),
+            payloadType = UpdateStudentStudyRightReplyRequest.class
+    ))
+    @AsyncPublisher(operation = @AsyncOperation(
+            channelName = "<ORGANISATION_QUEUE>",
+            description = "Forwarded student study right update reply",
+            servers = {"production", "staging"},
+            payloadType = ForwardedUpdateStudentStudyRightReplyRequest.class
+    ))
     @Override
     public void process(Exchange exchange) throws Exception {
         UpdateStudentStudyRightReplyRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), UpdateStudentStudyRightReplyRequest.class);
@@ -57,16 +75,12 @@ public class UpdateStudentStudyRightReplyProcessor implements Processor {
         OrganisationEntity homeOrganisation = organisationService.findById(entity.getHomeOrganisationTkCode())
                 .orElseThrow(() -> new EntityNotFoundException(OrganisationEntity.class, entity.getHomeOrganisationTkCode()));
 
-        entity.setStatuses(StudentProcessorHelper.getUpdateStatuses(entity, organisationId, request));
-
-        studentService.update(entity);
-
         ForwardedUpdateStudentStudyRightReplyRequest forwardedRequest = modelMapper.map(request, ForwardedUpdateStudentStudyRightReplyRequest.class);
         forwardedRequest.setSendingOrganisationTkCode(organisationId);
 
         jmsMessageForwarder.forwardRequestToOrganisation(forwardedRequest.getStudentRequestId(), forwardedRequest,
-            MessageType.FORWARDED_UPDATE_STUDENT_STUDYRIGHT_REPLY_REQUEST, correlationId, homeOrganisation,
-            Collections.singletonMap("studentRequestId", request.getStudentRequestId()));
+                MessageType.FORWARDED_UPDATE_STUDENT_STUDYRIGHT_REPLY_REQUEST, correlationId, homeOrganisation,
+                Collections.singletonMap("studentRequestId", request.getStudentRequestId()));
 
         exchange.setMessage(new StudentMessage(exchange, MessageType.DEFAULT_RESPONSE, correlationId, request.getStudentRequestId(),
                 new DefaultResponse(Status.OK, "Cancel student status -message reply processed successfully and forwarded to student's home organisation.")));

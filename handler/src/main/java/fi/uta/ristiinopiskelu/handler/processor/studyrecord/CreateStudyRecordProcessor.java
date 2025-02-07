@@ -8,6 +8,7 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundExcepti
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.handler.service.StudyRecordService;
+import fi.uta.ristiinopiskelu.handler.service.result.EntityModificationResult;
 import fi.uta.ristiinopiskelu.handler.validator.studyrecord.CreateStudyRecordValidator;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
@@ -16,6 +17,10 @@ import fi.uta.ristiinopiskelu.messaging.message.current.StudyRecordMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.CreateStudyRecordRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.ForwardedCreateStudyRecordRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.StudyRecordResponse;
+import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
+import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
+import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
+import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.modelmapper.ModelMapper;
@@ -24,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.List;
 
 @Component
 public class CreateStudyRecordProcessor implements Processor {
@@ -47,6 +53,21 @@ public class CreateStudyRecordProcessor implements Processor {
         this.modelMapper = modelMapper;
     }
 
+    @AsyncListener(operation = @AsyncOperation(
+            channelName = "handler",
+            description = "Creates a study record",
+            servers = {"production", "staging"},
+            message = @AsyncMessage(
+                    description = "Creates a study record"
+            ),
+            payloadType = CreateStudyRecordRequest.class
+    ))
+    @AsyncPublisher(operation = @AsyncOperation(
+            channelName = "<ORGANISATION_QUEUE>",
+            description = "Forwarded study record request",
+            servers = {"production", "staging"},
+            payloadType = ForwardedCreateStudyRecordRequest.class
+    ))
     @Override
     public void process(Exchange exchange) throws Exception {
         CreateStudyRecordRequest req = objectMapper.readValue(exchange.getIn().getBody(String.class), CreateStudyRecordRequest.class);
@@ -55,7 +76,7 @@ public class CreateStudyRecordProcessor implements Processor {
 
         logger.info("Handling study record request");
 
-        if(req.getRoutingType() == RoutingType.CROSS_STUDY) {
+        if (req.getRoutingType() == RoutingType.CROSS_STUDY) {
             // only cross studies need to be validated here
             validator.validateRequest(req, organisationId);
         }
@@ -64,7 +85,8 @@ public class CreateStudyRecordProcessor implements Processor {
                 .orElseThrow(() -> new EntityNotFoundException(OrganisationEntity.class, req.getReceivingOrganisation()));
 
         // Persist the record
-        StudyRecordEntity studyRecordEntity = studyRecordService.create(modelMapper.map(req, StudyRecordEntity.class));
+        List<? extends EntityModificationResult<?>> modificationResults = studyRecordService.create(modelMapper.map(req, StudyRecordEntity.class));
+        StudyRecordEntity studyRecordEntity = (StudyRecordEntity) modificationResults.get(0).getCurrent();
 
         // Add generated id for study record
         ForwardedCreateStudyRecordRequest forwardedRequest = modelMapper.map(req, ForwardedCreateStudyRecordRequest.class);
@@ -72,8 +94,8 @@ public class CreateStudyRecordProcessor implements Processor {
 
         // send to correct organisations
         jmsMessageForwarder.forwardRequestToOrganisation(studyRecordEntity.getId(), forwardedRequest,
-            MessageType.FORWARDED_CREATE_STUDYRECORD_REQUEST, correlationId, organisation,
-            Collections.singletonMap("studyRecordRequestId", forwardedRequest.getStudyRecordRequestId()));
+                MessageType.FORWARDED_CREATE_STUDYRECORD_REQUEST, correlationId, organisation,
+                Collections.singletonMap("studyRecordRequestId", forwardedRequest.getStudyRecordRequestId()));
 
         exchange.setMessage(new StudyRecordMessage(exchange, MessageType.STUDYRECORD_RESPONSE, correlationId, forwardedRequest.getStudyRecordRequestId(),
                 new StudyRecordResponse(Status.OK, "Study record requests processed successfully and forwarded to recipient organisations",

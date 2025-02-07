@@ -5,11 +5,13 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Optionality;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyModuleType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+@Schema(name = "StudyModule", allOf = { AbstractStudyElementWriteDTO.class })
 @JsonInclude(NON_NULL)
 public class StudyModuleWriteDTO extends AbstractStudyElementWriteDTO {
 

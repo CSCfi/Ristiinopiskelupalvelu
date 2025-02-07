@@ -58,9 +58,7 @@ public class RealisationEntity extends CompositeIdentifiedEntity implements Seri
     private BigDecimal creditsMin;
     private BigDecimal creditsMax;
     private List<String> teachingLanguage;
-
-    @Field(type = FieldType.Integer)
-    private MinEduGuidanceArea minEduGuidanceArea;
+    private List<MinEduGuidanceArea> minEduGuidanceArea;
     
     private boolean enrollmentClosed = false;
 
@@ -328,11 +326,11 @@ public class RealisationEntity extends CompositeIdentifiedEntity implements Seri
         this.teachingLanguage = teachingLanguage;
     }
 
-    public MinEduGuidanceArea getMinEduGuidanceArea() {
+    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
         return minEduGuidanceArea;
     }
 
-    public void setMinEduGuidanceArea(MinEduGuidanceArea minEduGuidanceArea) {
+    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
         this.minEduGuidanceArea = minEduGuidanceArea;
     }
 

@@ -21,15 +21,24 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractS
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.DegreeWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.studymodule.StudyModuleWriteDTO;
-import fi.uta.ristiinopiskelu.datamodel.entity.*;
-import fi.uta.ristiinopiskelu.handler.exception.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.DegreeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
+import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
+import fi.uta.ristiinopiskelu.handler.exception.DeleteFailedException;
+import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
+import fi.uta.ristiinopiskelu.handler.exception.InvalidSearchParametersException;
+import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.StudyElementEntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.StudiesService;
 import fi.uta.ristiinopiskelu.handler.service.StudyElementService;
 import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
-import fi.uta.ristiinopiskelu.handler.service.result.DefaultCompositeIdentifiedEntityModificationResult;
+import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.persistence.querybuilder.StudiesQueryBuilder;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyElementRepository;
 import org.modelmapper.ModelMapper;
@@ -48,7 +57,10 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -84,6 +96,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
         return studyElementType;
     }
 
+    @Override
     protected ObjectMapper getObjectMapper() {
         return objectMapper;
     }
@@ -112,7 +125,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
     }
 
     @Override
-    public T create(T entity) throws CreateFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> create(T entity) throws CreateFailedException {
         Assert.notNull(entity, "Entity cannot be null");
 
         if(isValidateId()) {
@@ -126,30 +139,31 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
         entity = super.setUniqueId(entity);
 
         try {
-            return (T) this.getRepositoryForEntityClass(entity.getClass()).create(entity, IndexQuery.OpType.CREATE);
+            entity = (T) this.getRepositoryForEntityClass(entity.getClass()).create(entity, IndexQuery.OpType.CREATE);
+            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.CREATE, entity.getType(), null, entity));
         } catch(Exception e) {
             throw new CreateFailedException(getEntityClass(), e);
         }
     }
 
     @Override
-    public List<T> createAll(List<T> entities) throws CreateFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> createAll(List<T> entities) throws CreateFailedException {
         Assert.notEmpty(entities, "Entities cannot be null or empty");
 
-        List<T> createdEntities = new ArrayList<>();
+        List<CompositeIdentifiedEntityModificationResult> createdEntities = new ArrayList<>();
 
         for (T entity : entities) {
             try {
-                createdEntities.add(this.create(entity));
+                createdEntities.addAll(this.create(entity));
             } catch (Exception e) {
                 logger.error("Error while persisting entity {}, attempting to delete {} already persisted from index", entity, createdEntities.size(), e);
 
-                for (T created : createdEntities) {
+                for (CompositeIdentifiedEntityModificationResult created : createdEntities) {
                     try {
-                        getRepository().deleteById(created.getId());
-                        logger.info("Successfully deleted entity with id {}", created.getId());
+                        getRepository().deleteById(created.getCurrent().getId());
+                        logger.info("Successfully deleted entity with id {}", created.getCurrent().getId());
                     } catch (Exception e1) {
-                        logger.error("Error while deleting already persisted entity {}", created.getId(), e1);
+                        logger.error("Error while deleting already persisted entity {}", created.getCurrent().getId(), e1);
                     }
                 }
 
@@ -161,7 +175,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
     }
 
     @Override
-    public T update(JsonNode json, String organisationId) throws UpdateFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> update(JsonNode json, String organisationId) throws UpdateFailedException {
         Assert.notNull(json, "Json cannot be null");
         Assert.notNull(json.get("studyElementId"), "Json must have studyElementId field");
         Assert.hasText(organisationId, "Missing organisation JMS header");
@@ -176,33 +190,37 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
         }
 
         try {
-            T original = this.getRepository().findByStudyElementIdAndOrganizingOrganisationId(id, organisationId)
+            T updated = this.getRepository().findByStudyElementIdAndOrganizingOrganisationId(id, organisationId)
                     .orElseThrow(() -> new StudyElementEntityNotFoundException(getEntityClass(), id, organisationId));
+            T original = (T) copy(updated, updated.getClass());
 
             this.getRepository().saveHistory(original, this.getEntityClass());
 
-            ObjectReader reader = objectMapper.readerForUpdating(original);
-            T updatedEntity = reader.readValue(json);
+            ObjectReader reader = objectMapper.readerForUpdating(updated);
+            updated = reader.readValue(json);
 
             // reset organizing organisation id if it was updated
             if(!StringUtils.isEmpty(organizingOrganisationId) && !organizingOrganisationId.equals(original.getOrganizingOrganisationId())) {
-                updatedEntity.setOrganizingOrganisationId(original.getOrganizingOrganisationId());
+                updated.setOrganizingOrganisationId(original.getOrganizingOrganisationId());
             }
 
-            if(updatedEntity.getStatus() == null) {
-                updatedEntity.setStatus(original.getStatus());
+            if(updated.getStatus() == null) {
+                updated.setStatus(original.getStatus());
             }
 
-            super.setCooperationNetworkData(updatedEntity);
-            super.fillMissingOrganisationInfo(updatedEntity);
-            return this.getRepository().update(updatedEntity);
+            super.setCooperationNetworkData(updated);
+            super.fillMissingOrganisationInfo(updated);
+
+            updated = this.getRepository().update(updated);
+
+            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE, original.getType(), original, updated));
         } catch (Exception e) {
             throw new UpdateFailedException(getEntityClass(), id, e);
         }
     }
 
     @Override
-    public T deleteByStudyElementIdAndOrganizingOrganisationId(String studyElementId, String organizingOrganisationId) throws DeleteFailedException {
+    public List<CompositeIdentifiedEntityModificationResult> deleteByStudyElementIdAndOrganizingOrganisationId(String studyElementId, String organizingOrganisationId) throws DeleteFailedException {
         Assert.hasText(studyElementId, "studyElementId cannot be empty");
         Assert.hasText(organizingOrganisationId, "Missing organisation JMS header");
 
@@ -210,7 +228,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
             T original = this.getRepository().findByStudyElementIdAndOrganizingOrganisationId(studyElementId, organizingOrganisationId)
                 .orElseThrow(() -> new EntityNotFoundException(this.getEntityClass(), studyElementId));
             getRepository().deleteById(original.getId());
-            return original;
+            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.DELETE, original.getType(), original, null));
         } catch(Exception e) {
             throw new DeleteFailedException(getEntityClass(), e);
         }
@@ -311,9 +329,8 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
      * @return
      */
     @Override
-    public CompositeIdentifiedEntityModificationResult createAll(List<D> studyElements, String organisationId) throws CreateFailedException {
-        List<StudyElementEntity> created = new ArrayList<>();
-        HashMap<OffsetDateTime, StudyElementEntity> updated = new HashMap<>();
+    public List<CompositeIdentifiedEntityModificationResult> createAll(List<D> studyElements, String organisationId) throws CreateFailedException {
+        List<CompositeIdentifiedEntityModificationResult> modificationResults = new ArrayList<>();
 
         try {
             for (D studyElement : studyElements) {
@@ -326,20 +343,20 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
 
                 if(!CollectionUtils.isEmpty(studyElement.getSubElements())) {
                     logger.debug("Create or update {} subElements", studyElement.getSubElements().size());
-                    createOrUpdateSubElements(studyElement, studyElement.getSubElements(), organisationId, created, updated);
+                    modificationResults.addAll(createOrUpdateSubElements(studyElement, studyElement.getSubElements(), organisationId));
                 }
 
                 T entity = modelMapper.map(studyElement, getEntityClass());
+                modificationResults.addAll(this.create(entity));
 
-                created.add(this.create(entity));
                 logger.debug("Created {} with id {}", entity.getClass().getSimpleName(), entity.getId());
             }
         } catch(Exception e) {
-            rollback(created, updated);
+            rollback(modificationResults);
             throw new CreateFailedException(getEntityClass(), e);
         }
 
-        return new DefaultCompositeIdentifiedEntityModificationResult(created, new ArrayList<>(updated.values()));
+        return modificationResults;
     }
 
     @Override
@@ -370,7 +387,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
         studiesQueryBuilder.filterByCooperationNetworks(organisationId, organisationNetworks, null,
             searchParameters.isIncludeInactive(), true);
 
-        List<R> results = getRepository().search(studiesQueryBuilder, searchParameters.getPageRequest())
+        List<R> results = getRepository().search(studiesQueryBuilder.build()._toQuery(), searchParameters.getPageRequest())
             .stream()
             .map(this::toReadDTO)
             .collect(Collectors.toList());
@@ -478,22 +495,24 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
      * @param created
      * @param updated
      */
-    private void createOrUpdateSubElements(AbstractStudyElementWriteDTO parent, List<AbstractStudyElementWriteDTO> subElements, String organisationId,
-                                           List<StudyElementEntity> created, HashMap<OffsetDateTime, StudyElementEntity> updated) {
+    private List<CompositeIdentifiedEntityModificationResult> createOrUpdateSubElements(AbstractStudyElementWriteDTO parent, List<AbstractStudyElementWriteDTO> subElements, String organisationId) {
+        List<CompositeIdentifiedEntityModificationResult> modificationResults = new ArrayList<>();
 
         if (!CollectionUtils.isEmpty(subElements)) {
             for (AbstractStudyElementWriteDTO subElement : subElements) {
                 StudyElementReference parentReference = getParentReference(parent.getStudyElementId(), organisationId, parent.getType(), subElement);
 
-                StudyElementEntity existing = getRepositoryForStudyElementWriteDTO(subElement).findByStudyElementIdAndOrganizingOrganisationId(
+                StudyElementEntity updated = getRepositoryForStudyElementWriteDTO(subElement).findByStudyElementIdAndOrganizingOrganisationId(
                         subElement.getStudyElementId(), organisationId).orElse(null);
 
                 // check if reference is okay on the realisation, if not, add it.
-                if (existing != null) {
-                    getRepositoryForStudyElementWriteDTO(subElement).saveHistory(existing, existing.getClass());
-                    existing = checkReferences(existing, parentReference);
-                    updated.put(existing.getUpdateTime(), getRepositoryForStudyElementWriteDTO(subElement).update(existing));
-                    logger.debug("Updated existing subElement {} with id {}", existing.getClass().getSimpleName(), existing.getId());
+                if (updated != null) {
+                    StudyElementEntity original = copy(updated, updated.getClass());
+                    getRepositoryForStudyElementWriteDTO(subElement).saveHistory(updated, updated.getClass());
+                    updated = checkReferences(updated, parentReference);
+                    updated = getRepositoryForStudyElementWriteDTO(subElement).update(updated);
+                    modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE, original.getType(), original, updated));
+                    logger.debug("Updated existing subElement {} with id {}", updated.getClass().getSimpleName(), updated.getId());
                 } else {
                     StudyElementEntity entity;
 
@@ -508,14 +527,15 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
                     }
 
                     entity = checkReferences(entity, parentReference);
-
-                    created.add(this.create((T)entity));
+                    modificationResults.addAll(this.create((T)entity));
                     logger.debug("Created subElement {} with id {}", entity.getClass().getSimpleName(), entity.getId());
                 }
 
-                this.createOrUpdateSubElements(subElement, subElement.getSubElements(), organisationId, created, updated);
+                modificationResults.addAll(this.createOrUpdateSubElements(subElement, subElement.getSubElements(), organisationId));
             }
         }
+
+        return modificationResults;
     }
 
     protected StudyElementReference getParentReference(String parentId, String parentOrganisationId, StudyElementType parentType,
@@ -541,40 +561,41 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
         return entity;
     }
 
-    private void rollback(List<StudyElementEntity> created, HashMap<OffsetDateTime, StudyElementEntity>  updated) {
-        for (StudyElementEntity entity : created) {
+    private void rollback(List<CompositeIdentifiedEntityModificationResult> modificationResults) {//List<StudyElementEntity> created, HashMap<OffsetDateTime, StudyElementEntity>  updated) {
+        for (CompositeIdentifiedEntity entity : modificationResults.stream().filter(mr -> mr.getOperationType() == ModificationOperationType.CREATE).map(CompositeIdentifiedEntityModificationResult::getCurrent).toList()) {
             logger.debug("Deleting already persisted {} with id {}", entity.getClass().getSimpleName(), entity.getId());
             try {
-                getRepositoryForEntityClass(entity.getClass()).deleteById(entity.getId());
+                getRepositoryForEntityClass((Class<? extends StudyElementEntity>) entity.getClass()).deleteById(entity.getId());
             } catch(Exception e) {
                 logger.error("Error while rolling back; attempted to delete {} with id {}", entity.getClass().getSimpleName(), entity.getId(), e);
             }
         }
 
-        for(Map.Entry<OffsetDateTime, StudyElementEntity> entry : updated.entrySet()) {
-            OffsetDateTime originalUpdateTime = entry.getKey();
-            StudyElementEntity entity = entry.getValue();
-            logger.debug("Removing reference from updated {} with id {}", entity.getClass().getSimpleName(), entity.getId());
+        for(CompositeIdentifiedEntityModificationResult modificationResult : modificationResults.stream().filter(mr -> mr.getOperationType() == ModificationOperationType.UPDATE).toList()) {
+            StudyElementEntity original = (StudyElementEntity) modificationResult.getPrevious();
+            StudyElementEntity updated = (StudyElementEntity) modificationResult.getCurrent();
+            OffsetDateTime originalUpdateTime = original.getUpdateTime();
+            logger.debug("Removing reference from updated {} with id {}", updated.getClass().getSimpleName(), updated.getId());
 
-            if(CollectionUtils.isEmpty(entity.getParents())) {
+            if(CollectionUtils.isEmpty(updated.getParents())) {
                 continue;
             }
 
             try {
                 // note: this returns references other than the one that matches
-                List<StudyElementReference> validReferences = entity.getParents().stream().filter(sre -> {
-                    StudyElementEntity referenced = (StudyElementEntity) getRepositoryForEntityClass(entity.getClass()).findByStudyElementIdAndOrganizingOrganisationId(
+                List<StudyElementReference> validReferences = updated.getParents().stream().filter(sre -> {
+                    StudyElementEntity referenced = getRepositoryForEntityClass(updated.getClass()).findByStudyElementIdAndOrganizingOrganisationId(
                             sre.getReferenceIdentifier(), sre.getReferenceOrganizer()).orElse(null);
-                    return referenced == null ? true : false;
+                    return referenced == null;
                 }).collect(Collectors.toList());
 
-                entity.setUpdateTime(originalUpdateTime);
-                entity.setParents(validReferences);
+                updated.setUpdateTime(originalUpdateTime);
+                updated.setParents(validReferences);
 
-                logger.debug("Setting studyElement references to {} with id {}: {}", entity.getClass().getSimpleName(), entity.getId(), validReferences.toString());
-                getRepositoryForEntityClass(entity.getClass()).update(entity);
+                logger.debug("Setting studyElement references to {} with id {}: {}", updated.getClass().getSimpleName(), updated.getId(), validReferences);
+                getRepositoryForEntityClass(updated.getClass()).update(updated);
             } catch(Exception e) {
-                logger.error("Error while rolling back; attempted to revert references to {} with id {}", entity.getClass().getSimpleName(), entity.getId(), e);
+                logger.error("Error while rolling back; attempted to revert references to {} with id {}", updated.getClass().getSimpleName(), updated.getId(), e);
             }
         }
     }
