@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.data.elasticsearch.VersionConflictException;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,10 +55,10 @@ public class NetworkRepositoryIntegrationTest {
         NetworkEntity network2 = networkRepository.findById("NETWORK-UPDATE-1").get();
         network2.setName(name2);
 
-        DataAccessResourceFailureException exception = Assertions.assertThrows(DataAccessResourceFailureException.class,
+        VersionConflictException exception = Assertions.assertThrows(VersionConflictException.class,
             () -> networkRepository.create(network2));
-        assertTrue(exception.getCause().getCause() instanceof ResponseException);
-        ResponseException responseException = (ResponseException) exception.getCause().getCause();
+        assertTrue(exception.getCause() instanceof ResponseException);
+        ResponseException responseException = (ResponseException) exception.getCause();
         assertEquals(HttpStatus.SC_CONFLICT, responseException.getResponse().getStatusLine().getStatusCode());
     }
 

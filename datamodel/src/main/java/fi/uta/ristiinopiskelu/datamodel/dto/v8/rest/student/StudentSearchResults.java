@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.student;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.ListSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.ListSearchResults;
 
 import java.util.List;
 

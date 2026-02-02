@@ -21,17 +21,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractS
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.DegreeWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.studymodule.StudyModuleWriteDTO;
-import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.DegreeEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
-import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
-import fi.uta.ristiinopiskelu.handler.exception.DeleteFailedException;
-import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
-import fi.uta.ristiinopiskelu.handler.exception.InvalidSearchParametersException;
-import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
+import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.handler.exception.*;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.StudyElementEntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
@@ -136,7 +127,6 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
         entity = super.setOrganizingOrganisationId(entity);
         entity = super.setCooperationNetworkData(entity);
         entity = super.fillMissingOrganisationInfo(entity);
-        entity = super.setUniqueId(entity);
 
         try {
             entity = (T) this.getRepositoryForEntityClass(entity.getClass()).create(entity, IndexQuery.OpType.CREATE);

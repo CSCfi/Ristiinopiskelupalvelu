@@ -5,7 +5,7 @@
 
     <groupId>fi.uta.ristiinopiskelu.dlq-handler</groupId>
     <artifactId>dlq-handler</artifactId>
-    <version>9.0.23</version>
+    <version>9.0.28</version>
     <name>dlq-handler</name>
     <description>Module that handles ActiveMQ dead letter queue</description>
     <packaging>jar</packaging>
@@ -13,7 +13,7 @@
     <parent>
         <groupId>fi.uta.ristiinopiskelu</groupId>
         <artifactId>parent</artifactId>
-        <version>9.0.23</version>
+        <version>9.0.28</version>
         <relativePath>../</relativePath> <!-- lookup parent from repository -->
     </parent>
     <dependencies>
@@ -96,6 +96,10 @@
     <build>
         <finalName>ristiinopiskelu-dlqhandler</finalName>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

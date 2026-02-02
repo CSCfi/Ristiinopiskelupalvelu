@@ -19,8 +19,7 @@ import fi.uta.ristiinopiskelu.handler.service.impl.processor.StudiesSearchResult
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
@@ -29,12 +28,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @Tag(name = "studies", description = "Tarjonta v9")
 @RequestMapping("/api/v9/studies")
 @RestController
 public class StudiesControllerV9 {
-
-    private static final Logger logger = LoggerFactory.getLogger(StudiesControllerV9.class);
 
     @Autowired
     private CourseUnitService courseUnitService;
@@ -50,9 +48,9 @@ public class StudiesControllerV9 {
 
     @Operation(summary = "Hae opintojaksoja", description = "Operaatio hakee opintojaksoja. Jos tunnisteita ei ole annettu, palautetaan kaikki. " +
             " Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags ="studies")
-    @RequestMapping(value = "/courseunits", method = RequestMethod.GET)
+    @GetMapping(value = "/courseunits")
     public List<CourseUnitReadDTO> findCourseUnits(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                            @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                       @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
                                                    @Parameter(description = "Opintojakson tunniste") @RequestParam(value = "courseUnitId", required = false) String courseUnitId,
                                                    @Parameter(description = "Opintojakson tunnistekoodi") @RequestParam(value = "courseUnitIdentifierCode", required = false) String courseUnitIdentifierCode,
                                                    @Parameter(description = "Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
@@ -67,9 +65,9 @@ public class StudiesControllerV9 {
 
     @Operation(summary = "Hae opintojakson toteutuksia", description = "Operaatio hakee opintojakson toteutuksia opintojakson tunnisteiden perusteella." +
             " Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags ="studies")
-    @RequestMapping(value = "/courseunits/{courseUnitId}/realisations", method = RequestMethod.GET)
+    @GetMapping(value = "/courseunits/{courseUnitId}/realisations")
     public List<RealisationReadDTO> findCourseUnitRealisations(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                        @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                                   @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
                                                                @Parameter(description ="Opintojakson tunniste") @PathVariable("courseUnitId") String courseUnitId,
                                                                @Parameter(description ="Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
                                                                @Parameter(description ="Toteutusten tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
@@ -89,9 +87,9 @@ public class StudiesControllerV9 {
 
     @Operation(summary = "Hae opintokokonaisuuksia", description = "Operaatio hakee opintokokonaisuuksia. Jos tunnisteita ei ole " +
         "annettu, palautetaan kaikki. Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags = "studies")
-    @RequestMapping(value = "/studymodules", method = RequestMethod.GET)
+    @GetMapping(value = "/studymodules")
     public List<StudyModuleReadDTO> findStudyModules(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                        @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
                                                      @Parameter(description = "Opintokokonaisuuden tunniste") @RequestParam(value = "studyModuleId", required = false) String studyModuleId,
                                                      @Parameter(description = "Opintokokonaisuuden tunnistekoodi") @RequestParam(value = "studyModuleIdentifierCode", required = false) String studyModuleIdentifierCode,
                                                      @Parameter(description = "Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
@@ -108,14 +106,14 @@ public class StudiesControllerV9 {
             " Jos haettava toteutus ei ole suorittavan organisaation oma, pitää toteutuksen kuulua verkostoon, johon hakeva organisaatio kuuluu ja osallistuminen verkostoon on voimassa." +
             " Jos yhtään toteutusta ei hakuehdoilla löydy, niin palautetaan tyhjä lista." +
             " Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags ="studies")
-    @RequestMapping(value = "/realisations", method = RequestMethod.GET)
+    @GetMapping(value = "/realisations")
     public List<RealisationReadDTO> findRealisation(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
-                                                        @Parameter(description ="Toteutuksen tunniste") @RequestParam(value = "realisationId", required = false) String realisationId,
-                                                        @Parameter(description ="Toteutuksen tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
-                                                        @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
-                                                        @RequestParam(defaultValue = "0", required = false) Integer page,
-                                                        @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
+                                                    @Parameter(description ="Toteutuksen tunniste") @RequestParam(value = "realisationId", required = false) String realisationId,
+                                                    @Parameter(description ="Toteutuksen tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
+                                                    @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
+                                                    @RequestParam(defaultValue = "0", required = false) Integer page,
+                                                    @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
 
         return new ArrayList<>(realisationService.searchByIds(SSL_CLIENT_S_DN_O, realisationId, organizingOrganisationId,
                 statuses, PageRequest.of(page, pageSize)).getResults());
@@ -125,10 +123,10 @@ public class StudiesControllerV9 {
             " verkostoliitos on voimassa, verkosto on voimassa sekä organisaation liittyminen on voimassa verkostossa ja jotka eivät ole kyselyn tehneen organisaation omia toteutuksia." +
             " Jos yhtään toteutusta ei hakuehdoilla löydy, niin palautetaan tyhjä lista." +
             " Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags ="studies")
-    @RequestMapping(value = "/realisations/search", method = RequestMethod.POST)
+    @PostMapping(value = "/realisations/search")
     public List<RealisationReadDTO> findRealisations(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                              @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
-                                              @RequestBody RealisationSearchParameters searchParameters) {
+                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                     @RequestBody RealisationSearchParameters searchParameters) {
         return new ArrayList<>(realisationService.search(SSL_CLIENT_S_DN_O, searchParameters).getResults());
     }
 
@@ -136,9 +134,9 @@ public class StudiesControllerV9 {
             " Palauttaa oletuksena kaikkia elementtejä, joissa verkosto on voimassa ja organisaation liittyminen on voimassa verkostossa, jotka ovat aktiivisia ja jotka eivät ole kyselyn tehneen organisaation omia. " +
             " Jos yhtään toteutusta ei hakuehdoilla löydy, niin palautetaan tyhjä lista." +
             " Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags ="studies")
-    @RequestMapping(value = "/search", method = RequestMethod.POST)
+    @PostMapping(value = "/search")
     public StudiesSearchResults search(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                               @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudiesSearchParameters searchParams) {
+                                           @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudiesSearchParameters searchParams) {
         InternalStudiesSearchResults results = studiesService.search(SSL_CLIENT_S_DN_O, searchParams);
         results.getAggregations().removeIf(aggregation -> aggregation.getName().equals("realisationTeachingLanguages"));
 

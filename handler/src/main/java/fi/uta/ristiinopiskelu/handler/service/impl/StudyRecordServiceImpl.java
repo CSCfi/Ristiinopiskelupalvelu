@@ -2,11 +2,7 @@ package fi.uta.ristiinopiskelu.handler.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyrecord.StudyRecordReadDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordAmountSearchParameters;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordAmountSearchResults;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordGrouping;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordSearchParameters;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyrecord.StudyRecordWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
@@ -15,7 +11,6 @@ import fi.uta.ristiinopiskelu.handler.service.StudyRecordService;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyRecordRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregations;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
@@ -55,15 +50,6 @@ public class StudyRecordServiceImpl extends AbstractService<StudyRecordWriteDTO,
     @Override
     public ModelMapper getModelMapper() {
         return modelMapper;
-    }
-
-    @Override
-    public List<StudyRecordEntity> findAllByStudentOidOrStudentHomeEppn(String oid, String eppn, Pageable pageable) throws FindFailedException {
-        try {
-            return studyRecordRepository.findAllByStudentOidOrStudentHomeEppn(oid, eppn, pageable);
-        } catch (Exception e) {
-            throw new FindFailedException(getEntityClass(), e);
-        }
     }
 
     @Override

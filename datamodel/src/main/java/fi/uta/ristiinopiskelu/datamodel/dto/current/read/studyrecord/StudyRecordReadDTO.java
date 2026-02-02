@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-@Schema(name = "StudyRecord")
+@Schema(name = "StudyRecordV9", title = "StudyRecordV9")
 public class StudyRecordReadDTO {
 
     private String id;

@@ -1,18 +1,15 @@
 package fi.uta.ristiinopiskelu.handler.helper;
 
-import com.github.mpolla.HetuUtil;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.CompletedCredit;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.RoutingType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
-import fi.uta.ristiinopiskelu.messaging.util.Oid;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -56,7 +53,7 @@ public class EntityInitializer {
     public static StudyRecordEntity getStudyRecordEntity(String sendingOrganisation, String receivingOrganisation, StudyRecordStudent student, CompletedCredit... completedCredits) {
         StudyRecordEntity studyRecord = new StudyRecordEntity();
         studyRecord.setStatus(StudyRecordStatus.RECORDED);
-        studyRecord.setStudent(student);
+        studyRecord.setStudent(StudyRecordStudentEntity.from(student));
         studyRecord.setSendingTime(OffsetDateTime.now());
         studyRecord.setReceivingOrganisation(receivingOrganisation);
         studyRecord.setSendingOrganisation(sendingOrganisation);
@@ -153,21 +150,15 @@ public class EntityInitializer {
     public static RegistrationEntity getRegistrationEntity(String sendingOrganisationId, String receivingOrganisationId,
                                                            List<RegistrationSelection> selections, List<RegistrationSelection> selectionsReplies,
                                                            RegistrationStatus status, String networkIdentifier) {
-        StudyRight homeStudyRight = DtoInitializer.getStudyRight(sendingOrganisationId);
-        StudyRight hostStudyRight = DtoInitializer.getStudyRight(receivingOrganisationId);
+        StudyRightEntity homeStudyRight = StudyRightEntity.fromStudyRight(DtoInitializer.getStudyRight(sendingOrganisationId));
+        StudyRightEntity hostStudyRight = StudyRightEntity.fromStudyRight(DtoInitializer.getStudyRight(receivingOrganisationId));
 
-        ExtendedStudent student = new ExtendedStudent();
-        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
-        student.setPersonId(HetuUtil.generateRandom());
-        student.setHomeEppn("mactestington@eppn.fi");
-        student.setHomeStudentNumber("1234567");
-        student.setFirstNames("Testi");
-        student.setSurName("Mac Testington");
-        student.setGivenName("Testo");
-        student.setHostStudentNumber("1234566");
-        student.setHostEppn("testst@testi2.fi");
-        student.setHomeStudyRight(homeStudyRight);
-        student.setHostStudyRight(hostStudyRight);
+        RegistrationStudentEntity student = RegistrationStudentEntity.builder()
+            .homeStudentNumber("1234567")
+            .hostStudentNumber("1234566")
+            .homeStudyRight(homeStudyRight)
+            .hostStudyRight(hostStudyRight)
+            .build();
 
         RegistrationEntity registration = new RegistrationEntity();
         registration.setReceivingOrganisationTkCode(receivingOrganisationId);

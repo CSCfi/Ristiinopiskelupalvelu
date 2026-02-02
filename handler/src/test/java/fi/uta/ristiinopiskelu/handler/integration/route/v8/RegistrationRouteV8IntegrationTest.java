@@ -17,6 +17,7 @@ import fi.uta.ristiinopiskelu.messaging.message.v8.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.Status;
 import fi.uta.ristiinopiskelu.messaging.message.v8.registration.*;
 import fi.uta.ristiinopiskelu.messaging.util.Oid;
+import fi.uta.ristiinopiskelu.messaging.util.OidPersonNode;
 import fi.uta.ristiinopiskelu.persistence.repository.*;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
 import jakarta.jms.JMSException;
@@ -193,23 +194,20 @@ public class RegistrationRouteV8IntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
         assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
 
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() ==
             fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
@@ -281,23 +279,20 @@ public class RegistrationRouteV8IntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
         assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
 
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(),
-            reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-            reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(),
-            reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-            reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() ==
             fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
@@ -305,7 +300,6 @@ public class RegistrationRouteV8IntegrationTest {
             s.getRank().getMaxSeatsAll() == selectionRank.getMaxSeatsAll() &&
             s.getRank().getMaxSeatsCrossStudy() == selectionRank.getMaxSeatsCrossStudy() &&
             s.getRank().getRankCrossStudy() == selectionRank.getRankCrossStudy()));
-
     }
 
     @Test
@@ -560,19 +554,19 @@ public class RegistrationRouteV8IntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
-
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
         assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
         assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate());
         assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
         assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
 
         RegistrationSelection replyRealisationSelection = req.getSelections().get(0);
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regRealisationSelection = reg.getSelectionsReplies().get(0);
@@ -774,22 +768,19 @@ public class RegistrationRouteV8IntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
-
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
         assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
 
         RegistrationSelection replyRealisationSelection = req.getSelections().get(0);
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regRealisationSelection = reg.getSelectionsReplies().get(0);
@@ -822,6 +813,54 @@ public class RegistrationRouteV8IntegrationTest {
         assertNull(regCourseUnitSelection.getSelectionItemStatus());
         assertNull(regCourseUnitSelection.getSelectionItemStatusInfo());
         assertNull(regCourseUnitSelection.getParent());
+    }
+
+    @Test
+    public void testSendingAssessmentItemRealisationRegistrationAborted_withoutCompletionOptionSelectionItemId_shouldSucceed() throws JMSException {
+        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+            true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        AssessmentItemEntity assessmentItemEntity = new AssessmentItemEntity();
+        assessmentItemEntity.setAssessmentItemId("AI1");
+
+        CompletionOptionEntity completionOptionEntity = new CompletionOptionEntity();
+        completionOptionEntity.setCompletionOptionId("CO1");
+        completionOptionEntity.setAssessmentItems(Arrays.asList(assessmentItemEntity));
+
+        CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntityWithCompletionOptions("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
+            Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null),
+            Collections.singletonList(completionOptionEntity));
+
+        courseUnitRepository.create(courseUnitEntity);
+
+        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+            courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
+
+        RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
+            Collections.singletonList(ref), Collections.singletonList(cooperationNetwork));
+        realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
+
+        realisationRepository.create(realisationEntity);
+
+        RegistrationSelection courseUnitParent = DtoInitializerV8.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
+
+        // leave the completion option id out, should pass when ABORTED_BY_STUDENT is sent
+        RegistrationSelection completionOptionParent = DtoInitializerV8.getRegistrationSelectionCompletionOption(
+            null, courseUnitParent);
+
+        RegistrationSelection assessmentItemParent = DtoInitializerV8.getRegistrationSelectionAssessmentItem(
+            assessmentItemEntity.getAssessmentItemId(), completionOptionParent);
+
+        RegistrationSelection selection = DtoInitializerV8.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.ABORTED_BY_STUDENT, assessmentItemParent, null);
+
+        CreateRegistrationRequest req = MessageTemplateInitializerV8.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
+        req.setSelections(Collections.singletonList(selection));
+
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
+        RegistrationResponse resp = (RegistrationResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(resp.getStatus() == Status.OK);
+        assertTrue(StringUtils.isNotBlank(resp.getRegistrationRequestId()));
     }
 
     @Test
@@ -905,23 +944,19 @@ public class RegistrationRouteV8IntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHomeStudyRight().getStudyRightStatus().getEndDate());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
         assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
-
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
 
         RegistrationSelection replyRealisationSelection = req.getSelections().get(0);
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regRealisationSelection = reg.getSelectionsReplies().get(0);
@@ -1244,7 +1279,7 @@ public class RegistrationRouteV8IntegrationTest {
 
         // send only oid
         req.getStudent().setPersonId(null);
-        req.getStudent().setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        req.getStudent().setOid(Oid.randomOid(OidPersonNode.PERSON));
 
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
         resp = (RegistrationResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);

@@ -2,6 +2,8 @@ package fi.uta.ristiinopiskelu.handler.validator.person;
 
 import com.github.mpolla.HetuUtil;
 import fi.uta.ristiinopiskelu.messaging.util.Oid;
+import fi.uta.ristiinopiskelu.messaging.util.OidAlgorithm;
+import fi.uta.ristiinopiskelu.messaging.util.OidPersonNode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -58,9 +60,9 @@ public class PersonIdentifierValidatorTest {
 
     @Test
     public void testValidateOid_withValidOid_shouldSucceed() {
-        String oid = Oid.randomOid(Oid.PERSON_NODE_ID);
+        String oid = Oid.randomOid(OidPersonNode.PERSON);
 
-        PersonOidValidationResult result = PersonIdentifierValidator.validateOid(oid);
+        PersonOidValidationResult result = PersonIdentifierValidator.validateOid(oid, true);
         assertTrue(result.isValid());
         assertFalse(result.isTestPerson());
     }
@@ -69,22 +71,22 @@ public class PersonIdentifierValidatorTest {
     public void testValidateOid_withInvalidOid_shouldFail() {
         String oid = "1.2.246.562.24.3234";
 
-        PersonOidValidationResult result = PersonIdentifierValidator.validateOid(oid);
+        PersonOidValidationResult result = PersonIdentifierValidator.validateOid(oid, true);
         assertFalse(result.isValid());
         assertFalse(result.isTestPerson());
     }
 
     @Test
     public void testValidateOid_withInvalidTestOid_shouldFail() {
-        String oid = "1.2.246.562.98.100033010%s".formatted(Oid.ibmChecksum("100033010"));
+        String oid = "1.2.246.562.98.100033010%s".formatted(OidAlgorithm.IBM.checksum("100033010"));
 
-        PersonOidValidationResult result = PersonIdentifierValidator.validateOid(oid);
+        PersonOidValidationResult result = PersonIdentifierValidator.validateOid(oid, true);
         assertFalse(result.isValid());
         assertFalse(result.isTestPerson());
 
-        oid = "1.2.246.562.98.10003301044444%s".formatted(Oid.ibmChecksum("10003301044444"));
+        oid = "1.2.246.562.98.10003301044444%s".formatted(OidAlgorithm.IBM.checksum("10003301044444"));
 
-        result = PersonIdentifierValidator.validateOid(oid);
+        result = PersonIdentifierValidator.validateOid(oid, true);
         assertFalse(result.isValid());
         assertFalse(result.isTestPerson());
     }
@@ -93,19 +95,34 @@ public class PersonIdentifierValidatorTest {
     public void testValidateOid_withIncompleteOid_shouldFail() {
         String testOid = "1.2.246.562";
 
-        PersonOidValidationResult result = PersonIdentifierValidator.validateOid(testOid);
+        PersonOidValidationResult result = PersonIdentifierValidator.validateOid(testOid, true);
         assertFalse(result.isTestPerson());
         assertFalse(result.isValid());
 
         testOid = "1.2.246.562.333";
 
-        result = PersonIdentifierValidator.validateOid(testOid);
+        result = PersonIdentifierValidator.validateOid(testOid, true);
         assertFalse(result.isTestPerson());
         assertFalse(result.isValid());
 
         testOid = null;
-        result = PersonIdentifierValidator.validateOid(testOid);
+        result = PersonIdentifierValidator.validateOid(testOid, true);
         assertFalse(result.isTestPerson());
         assertFalse(result.isValid());
+    }
+
+    @Test
+    public void testValidateOid_withInvalidTestOidChecksum_validateChecksumFalse_shouldSucceed() {
+        String oid = "1.2.246.562.98.1000000000x";
+
+        PersonOidValidationResult result = PersonIdentifierValidator.validateOid(oid, false);
+        assertTrue(result.isValid());
+        assertTrue(result.isTestPerson());
+
+        oid = "1.2.246.562.24.1000000000y";
+
+        result = PersonIdentifierValidator.validateOid(oid, false);
+        assertTrue(result.isValid());
+        assertFalse(result.isTestPerson());
     }
 }

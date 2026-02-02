@@ -2,7 +2,6 @@ package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
-import co.elastic.clients.json.JsonData;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepositoryExtended;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,12 +46,12 @@ public class NetworkRepositoryExtendedImpl implements NetworkRepositoryExtended 
 
         if(validityStartMustBeValid) {
             query.must(q -> q.bool(bq -> bq
-                .should(q2 -> q2.range(rq -> rq.field("validity.start").lte(JsonData.of("now/d"))))));
+                .should(q2 -> q2.range(rq -> rq.date(rq2 -> rq2.field("validity.start").lte("now/d"))))));
         }
 
         if(validityEndMustBeValid) {
             query.must(q -> q.bool(bq -> bq
-                .should(q2 -> q2.range(rq -> rq.field("validity.end").gte(JsonData.of("now/d"))))
+                .should(q2 -> q2.range(rq -> rq.date(rq2 -> rq2.field("validity.end").gte("now/d"))))
                 .should(q2 -> q2.bool(bq2 -> bq2.mustNot(q3 -> q3.exists(eq -> eq.field("validity.end")))))));
         }
 
@@ -115,7 +114,7 @@ public class NetworkRepositoryExtendedImpl implements NetworkRepositoryExtended 
                     .bool(bq -> bq
                         .must(q2 -> q2
                             .match(mq -> mq
-                                .field("_id")
+                                .field("id")
                                 .query(id)))))
                 .mustNot(q -> q
                     .term(tq -> tq

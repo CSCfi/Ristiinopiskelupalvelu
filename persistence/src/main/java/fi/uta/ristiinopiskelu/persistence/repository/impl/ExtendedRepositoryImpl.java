@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.GenericEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
@@ -68,6 +69,11 @@ public class ExtendedRepositoryImpl<T extends GenericEntity>
             ((StudyElementEntity) instance).setCreatedTime(OffsetDateTime.now());
         }
 
+        if(instance instanceof CompositeIdentifiedEntity compositeIdentifiedEntity && instance.getId() == null) {
+            String uniqueId = getCompositeIdentifiedEntityUniqueId(compositeIdentifiedEntity);
+            compositeIdentifiedEntity.setId(uniqueId);
+        }
+
         return this.save(instance, opType);
     }
 
@@ -115,11 +121,17 @@ public class ExtendedRepositoryImpl<T extends GenericEntity>
 
     private IndexQuery createIndexQuery(T entity, IndexQuery.OpType opType) {
         IndexQueryBuilder indexQueryBuilder = new IndexQueryBuilder()
-            .withId(elasticsearchRestTemplate.stringIdRepresentation(super.extractIdFromBean(entity)))
+            .withId(super.extractIdFromBean(entity))
             .withRouting(elasticsearchRestTemplate.getEntityRouting(entity))
             .withObject(entity)
             .withVersion(super.entityInformation.getVersion(entity))
             .withOpType(opType);
         return indexQueryBuilder.build();
+    }
+
+    protected String getCompositeIdentifiedEntityUniqueId(CompositeIdentifiedEntity entity) {
+        Assert.hasText(entity.getOrganizingOrganisationId(), "Entity has no organizingOrganisationId?");
+        Assert.hasText(entity.getElementId(), "Entity has no elementId?");
+        return String.format("%s-%s", entity.getOrganizingOrganisationId(), entity.getElementId());
     }
 }

@@ -2,9 +2,11 @@ package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.Objects;
 
+@Schema(name = "StudyElementReferenceV8", title = "StudyElementReferenceV8")
 public class StudyElementReference {
     private String referenceIdentifier;
     private String referenceOrganizer;

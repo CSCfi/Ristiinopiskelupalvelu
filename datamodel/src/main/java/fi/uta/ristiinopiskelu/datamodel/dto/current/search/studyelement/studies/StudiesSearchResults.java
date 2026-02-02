@@ -3,10 +3,12 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.ListSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.deprecated.SimpleAggregationDTO;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Schema(name = "StudiesSearchResultsV9", title = "StudiesSearchResultsV9")
 public class StudiesSearchResults extends ListSearchResults<AbstractStudyElementReadDTO> {
 
     private List<SimpleAggregationDTO> aggregations = new ArrayList<>();

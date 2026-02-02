@@ -15,7 +15,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 
-@Schema(name = "CourseUnitRealisation")
+@Schema(name = "CourseUnitRealisationV9", title = "CourseUnitRealisationV9")
 public class CourseUnitRealisationReadDTO {
 
     private String realisationId;

@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.util.List;
 
+@Schema(name = "StudyRecordAmountSearchParametersV9", title = "StudyRecordAmountSearchParametersV9")
 public class StudyRecordAmountSearchParameters implements SearchParameters<StudyRecordEntity> {
 
     @Schema(description = "Lähettävän organisaation tilastokeskuskoodi")

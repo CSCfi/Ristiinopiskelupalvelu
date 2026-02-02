@@ -1,11 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(name = "CompletionOption")
 public class CompletionOptionEntity {
 
     private List<AssessmentItemEntity> assessmentItems;

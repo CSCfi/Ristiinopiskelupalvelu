@@ -19,6 +19,8 @@ camel:
     stream-caching-enabled: true
 general:
   only-test-persons-allowed: false
+  oid:
+    validate-checksum: true
   message-schema:
     version:
       current: 9

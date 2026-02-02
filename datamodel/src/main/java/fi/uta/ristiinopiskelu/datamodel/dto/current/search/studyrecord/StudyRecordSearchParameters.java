@@ -5,9 +5,11 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.Completed
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.PageableSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.OffsetDateTime;
 
+@Schema(name = "StudyRecordSearchParametersV9", title = "StudyRecordSearchParametersV9")
 public class StudyRecordSearchParameters extends PageableSearchParameters<StudyRecordEntity> {
 
     private String sendingOrganisation;

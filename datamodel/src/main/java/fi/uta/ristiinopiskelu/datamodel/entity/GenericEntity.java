@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
+import org.springframework.data.elasticsearch.annotations.Field;
 
 @Data
 @AllArgsConstructor
@@ -13,6 +14,7 @@ import org.springframework.data.annotation.Version;
 public abstract class GenericEntity {
 
     @Id
+    @Field(name = "id")
     private String id;
 
     @Version
@@ -28,7 +30,7 @@ public abstract class GenericEntity {
     @JsonIgnore
     private String search_sv;
 
-    public GenericEntity(String id){
+    public GenericEntity(String id) {
         this.id = id;
     }
 }

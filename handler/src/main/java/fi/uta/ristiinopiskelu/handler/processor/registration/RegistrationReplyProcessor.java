@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyRightEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
@@ -89,8 +90,7 @@ public class RegistrationReplyProcessor implements Processor {
             registrationEntity.setSelectionsReplies(req.getSelections());
             registrationEntity.setStatus(req.getStatus());
             registrationEntity.setStatusInfo(req.getStatusInfo());
-            registrationEntity.getStudent().setHostStudyRight(req.getHostStudyRight());
-            registrationEntity.getStudent().setHostEppn(req.getHostStudentEppn());
+            registrationEntity.getStudent().setHostStudyRight(StudyRightEntity.fromStudyRight(req.getHostStudyRight()));
             registrationEntity.getStudent().setHostStudentNumber(req.getHostStudentNumber());
             registrationEntity.setRejectionReason(req.getRejectionReason());
         }

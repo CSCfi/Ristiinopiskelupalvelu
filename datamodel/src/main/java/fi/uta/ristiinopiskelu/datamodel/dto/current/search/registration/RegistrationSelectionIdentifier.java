@@ -2,9 +2,11 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.Objects;
 
+@Schema(name = "RegistrationSelectionIdentifierV9", title = "RegistrationSelectionIdentifierV9")
 public class RegistrationSelectionIdentifier {
     private String id;
     private RegistrationSelectionItemType type;

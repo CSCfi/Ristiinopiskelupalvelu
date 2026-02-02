@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.List;
 
-@Schema(name = "AssessmentItem")
+@Schema(name = "AssessmentItemV9", title = "AssessmentItemV9")
 public class AssessmentItemReadDTO {
 
     private String assessmentItemId;

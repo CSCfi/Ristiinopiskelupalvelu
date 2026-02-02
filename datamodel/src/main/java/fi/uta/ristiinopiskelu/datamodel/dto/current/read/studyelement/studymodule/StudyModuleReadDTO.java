@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-@Schema(name = "StudyModule")
+@Schema(name = "StudyModuleV9", title = "StudyModuleV9", type = "object")
 @JsonInclude(NON_NULL)
 public class StudyModuleReadDTO extends AbstractStudyElementReadDTO {
 

@@ -3,7 +3,6 @@ package fi.uta.ristiinopiskelu.persistence.querybuilder;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.json.JsonData;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import org.springframework.util.CollectionUtils;
 
@@ -44,16 +43,16 @@ public abstract class AbstractStudiesQueryBuilder extends BoolQuery.Builder {
                                 .mustNot(mn -> new Query.Builder().exists(eq -> eq
                                         .field(String.format("%s.validityEndDate", path))))))))
                 .should(s -> new Query.Builder().bool(bq3 -> bq3
-                    .must(m -> new Query.Builder().range(rq -> rq
+                    .must(m -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                             .field(String.format("%s.validityStartDate", path))
-                            .lte(JsonData.of("now/d"))))
+                            .lte("now/d"))))
                     .must(m -> new Query.Builder().bool(bq4 -> bq4
                         .should(s2 -> new Query.Builder().bool(bq5 -> bq5
                                         .mustNot(mn -> new Query.Builder().exists(eq -> eq
                                                 .field(String.format("%s.validityEndDate", path))))))
-                        .should(s2 -> new Query.Builder().range(rq -> rq
+                        .should(s2 -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                                 .field(String.format("%s.validityEndDate", path))
-                                .gte(JsonData.of("now/d"))))))))));
+                                .gte("now/d"))))))))));
         }
 
         return allQueries.build()._toQuery();

@@ -10,8 +10,7 @@ import fi.uta.ristiinopiskelu.handler.utils.AggregationUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,29 +21,27 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Tag(name = "studyrecords", description = "Opintosuoritukset v9")
 @RequestMapping("/api/v9/studyrecords")
 @RestController
 public class StudyRecordControllerV9 {
 
-    private static final Logger logger = LoggerFactory.getLogger(StudyRecordControllerV9.class);
-
     @Autowired
     private StudyRecordService studyRecordService;
 
     @Operation(summary = "Hae opintosuorituksia", description = "Operaatio hakee opintosuorituksia annetuilla hakuehdoilla.", tags = "studyrecords")
-    @RequestMapping(value = "/search", method = RequestMethod.POST)
+    @PostMapping(value = "/search")
     public List<StudyRecordReadDTO> findStudyRecords(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                              @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordSearchParameters searchParams) {
+                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordSearchParameters searchParams) {
 
         return new ArrayList<>(studyRecordService.search(SSL_CLIENT_S_DN_O, searchParams).getResults());
     }
 
-    @Operation(summary = "Hae opintosuorituksia CSV-muodossa", description = "Operaatio hakee opintosuorituksia CSV-muodossa annetuilla hakuehdoilla.",
-        tags = "studyrecords")
-    @RequestMapping(value = "/search/csv", method = RequestMethod.POST, produces = "text/csv")
+    @Operation(summary = "Hae opintosuorituksia CSV-muodossa", description = "Operaatio hakee opintosuorituksia CSV-muodossa annetuilla hakuehdoilla.", tags = "studyrecords")
+    @PostMapping(value = "/search/csv", produces = "text/csv")
     public ResponseEntity<String> findStudyRecordsAsCSV(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                     @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordSearchParameters searchParams) {
+                                                            @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordSearchParameters searchParams) {
         StudyRecordSearchResults results = studyRecordService.search(SSL_CLIENT_S_DN_O, searchParams);
 
         String content;
@@ -52,7 +49,7 @@ public class StudyRecordControllerV9 {
         try {
             content = StudyRecordCsvConverter.convertStudyRecordSearchResultsToCsv(results);
         } catch (CsvRequiredFieldEmptyException | CsvDataTypeMismatchException e) {
-            logger.error("Error while generating study record CSV file", e);
+            log.error("Error while generating study record CSV file", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
         
@@ -61,7 +58,7 @@ public class StudyRecordControllerV9 {
 
     @Operation(summary = "Hae opintosuoritusten lukumääriä", description = "Operaatio hakee opintosuoritusten lukumääriä annetuilla hakuehdoilla.",
         tags = "studyrecords")
-    @RequestMapping(value = "/search/amounts", method = RequestMethod.POST)
+    @PostMapping(value = "/search/amounts")
     public StudyRecordAmountRestSearchResults findStudyRecordAmounts(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordAmountSearchParameters searchParams) {
         StudyRecordAmountSearchResults results = studyRecordService.searchAmounts(SSL_CLIENT_S_DN_O, searchParams);
@@ -69,7 +66,7 @@ public class StudyRecordControllerV9 {
     }
 
     @Operation(summary = "Hae opintosuoritusten lukumääriä CSV-muodossa", description = "Operaatio hakee opintosuoritusten lukumääriä CSV-muodossa annetuilla hakuehdoilla.", tags = "studyrecords")
-    @RequestMapping(value = "/search/amounts/csv", method = RequestMethod.POST)
+    @PostMapping(value = "/search/amounts/csv")
     public ResponseEntity<String> findStudyRecordAmountsAsCSV(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
                                                                  @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordAmountSearchParameters searchParams) {
         StudyRecordAmountSearchResults results = studyRecordService.searchAmounts(SSL_CLIENT_S_DN_O, searchParams);
@@ -79,7 +76,7 @@ public class StudyRecordControllerV9 {
         try {
             content = StudyRecordCsvConverter.convertStudyRecordAmountSearchResultsToCsv(results, searchParams);
         } catch (CsvRequiredFieldEmptyException | CsvDataTypeMismatchException e) {
-            logger.error("Error while generating study record CSV file", e);
+            log.error("Error while generating study record CSV file", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
 

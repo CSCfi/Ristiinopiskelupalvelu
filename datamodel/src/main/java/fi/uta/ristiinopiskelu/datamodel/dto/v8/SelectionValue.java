@@ -1,7 +1,10 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.List;
 
+@Schema(name = "SelectionValueV8", title = "SelectionValueV8")
 public class SelectionValue {
 
     private Integer minSeats;

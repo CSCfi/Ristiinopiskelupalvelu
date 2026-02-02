@@ -11,7 +11,6 @@ import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
@@ -77,13 +76,6 @@ public abstract class AbstractCompositeIdentifiedService<W, T extends CompositeI
             organisationService.fillMissingValuesById(organisation, organisation.getOrganisationTkCode());
         }
 
-        return entity;
-    }
-
-    protected T setUniqueId(T entity) {
-        Assert.hasText(entity.getOrganizingOrganisationId(), "Entity has no organizingOrganisationId?");
-        Assert.hasText(entity.getElementId(), "Entity has no elementId?");
-        entity.setId(String.format("%s-%s", entity.getOrganizingOrganisationId(), entity.getElementId()));
         return entity;
     }
 }

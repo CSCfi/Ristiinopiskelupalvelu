@@ -15,8 +15,8 @@
       "minLength": 1
     },
     "selectionItemStatus": {
-      "description": "Valitun toteutuksen valinnan status. Sallitut arvot 1 = PENDING, 4 = ABORTED_BY_STUDENT.",
-      "enum": [1, 4]
+      "description": "Valitun toteutuksen valinnan status. Sallitut arvot 4 = ABORTED_BY_STUDENT.",
+      "enum": [4]
     },
     "selectionItemType": {
       "description": "Valitun elementin tyyppi, aina REALISATION",
@@ -65,15 +65,13 @@
           "description": "Valitun arviointikohteen ylemmän tason suoritusvaihtoehdon tiedot hierarkiassa",
           "type": "object",
           "required": [
-            "selectionItemId",
             "selectionItemType",
             "parent"
           ],
           "properties": {
             "selectionItemId": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Valitun suoritusvaihtoehdon tekninen tunniste"
+              "description": "Valitun suoritusvaihtoehdon tekninen tunniste",
+              "type": ["null", "string"]
             },
             "selectionItemType": {
               "description": "Valitun elementin tyyppi, aina COMPLETION_OPTION",

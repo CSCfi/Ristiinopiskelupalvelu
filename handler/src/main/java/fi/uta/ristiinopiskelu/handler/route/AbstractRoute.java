@@ -104,8 +104,9 @@ public abstract class AbstractRoute extends RouteBuilder {
         if(config.isRouteBackwardsCompatible()) {
             tryDefinition
                 .choice().when(header(MessageHeader.SCHEMA_VERSION).isNotEqualTo(String.valueOf(schemaVersionService.getCurrentSchemaVersion())))
-                    .toD("json-validator:" + schemaVersionService.getSchemaVersionPath(
-                        MessageType.getMessageGroup(config.getRequestType()), config.getMessageSchemaFilename(), "${header.%s}".formatted(MessageHeader.SCHEMA_VERSION)))
+                    .toD("json-validator:%s?disabledDeserializationFeatures=FAIL_ON_UNKNOWN_PROPERTIES".formatted(
+                        schemaVersionService.getSchemaVersionPath(MessageType.getMessageGroup(config.getRequestType()),
+                            config.getMessageSchemaFilename(), "${header.%s}".formatted(MessageHeader.SCHEMA_VERSION))))
                     .process(schemaVersionCompatabilityProcessor)
                 .endChoice();
         }

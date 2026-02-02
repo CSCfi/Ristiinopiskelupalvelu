@@ -1,5 +1,7 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.code;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * fi: Lähettäessä tarvitsee täytää vain avain-tieto, koska koodien arvot on
  * tallennettu jo valmiiksi ristiinopiskelupalveluun
@@ -9,6 +11,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.v8.code;
  *         Based on
  *         https://wiki.eduuni.fi/download/attachments/70202805/CSC6_curriculum_api_1.0.0-oas3_swagger.json?version=1&modificationDate=1531828139937&api=v2
  */
+@Schema(name = "CodeReferenceV8", title = "CodeReferenceV8")
 public class CodeReference {
 
     private String key;

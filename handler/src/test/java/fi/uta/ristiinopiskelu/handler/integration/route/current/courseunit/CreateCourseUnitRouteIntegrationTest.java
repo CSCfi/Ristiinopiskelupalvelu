@@ -1,15 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current.courseunit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
@@ -17,11 +9,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.Realisatio
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.AssessmentItemWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CompletionOptionWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -72,12 +60,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith({
         EmbeddedActiveMQInitializer.class,
@@ -343,7 +326,7 @@ public class CreateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, organisingOrganisationId);
         JsonValidationFailedResponse resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.FAILED);
-        assertTrue(resp.getErrors().stream().anyMatch( e -> e.contains(".courseUnits[0].cooperationNetworks: there must be a minimum of 1 items in the array")));
+        assertTrue(resp.getErrors().stream().anyMatch( e -> e.contains("$.courseUnits[0].cooperationNetworks: must have at least 1 items but found 0")));
 
         courseUnit = DtoInitializer.getCreateCourseUnitRequestDTO("ID1", "RAIRAI", courseUnitName,
             null, Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5.0));
@@ -356,7 +339,7 @@ public class CreateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, organisingOrganisationId);
         resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.FAILED);
-        assertTrue(resp.getErrors().stream().anyMatch(e -> e.contains(".courseUnits[0].cooperationNetworks: is missing but it is required")));
+        assertTrue(resp.getErrors().stream().anyMatch(e -> e.contains("$.courseUnits[0]: required property 'cooperationNetworks' not found")));
 
     }
 
@@ -744,13 +727,14 @@ public class CreateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         assertTrue(resp.getStatus() == Status.FAILED);
 
         // Expected errors:
-        //$.courseUnits[0].realisations: should be valid to one and only one schema, but 0 are valid
+        //$.courseUnits[0].realisations: must be valid to one and only one schema, but 0 are valid
         //$.courseUnits[0].realisations: array found, null expected
         //$.courseUnits[0].realisations[0].organisationReferences: null found, array expected
-        //$.courseUnits[0].realisations: should be valid to one and only one schema, but 0 are valid
+        //$.courseUnits[0].realisations: must be valid to one and only one schema, but 0 are valid
         //$.courseUnits[0].realisations: array found, null expected
+        //$.courseUnits[0].realisations[0].organisationReferences: null found, array expected
         //$.courseUnits[0].realisations[0].cooperationNetworks: null found, array expected.
-        assertEquals(6, resp.getErrors().size());
+        assertEquals(7, resp.getErrors().size());
     }
 
     @Test

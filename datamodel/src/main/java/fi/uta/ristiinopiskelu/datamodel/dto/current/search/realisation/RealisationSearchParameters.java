@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Arrays;
 import java.util.List;
 
+@Schema(name = "RealisationSearchParametersV9", title = "RealisationSearchParametersV9")
 public class RealisationSearchParameters extends PageableSearchParameters<RealisationEntity> {
 
     @Schema(description = "Rajaa toteutuksia tunnisteen mukaan.")
@@ -36,6 +37,9 @@ public class RealisationSearchParameters extends PageableSearchParameters<Realis
 
     @Schema(description = "Kieli, jolle sanahaku kohdistuu. Mahdolliset arvot: fi, sv, en. Oletusarvo: fi")
     private Language language = Language.FI;
+
+    @Schema(description = "Kohdistetaanko nimi-haku (query) kaikkiin kieliversioihin. Jos true, niin parametri language ei tee toteutushaussa mitään. Oletusarvo: false")
+    private boolean langIndependent = false;
 
     @Schema(description = "Haetaanko vain toteutuksia, joissa on ilmoittautuminen käynnissä. Oletusarvo: true")
     private Boolean ongoingEnrollment = true;
@@ -125,6 +129,10 @@ public class RealisationSearchParameters extends PageableSearchParameters<Realis
     public void setLanguage(Language language) {
         this.language = language;
     }
+
+    public boolean isLangIndependent() { return langIndependent; }
+
+    public void setLangIndependent(boolean langIndependent) { this.langIndependent = langIndependent; }
 
     public boolean isIncludeInactive() {
         return includeInactive;

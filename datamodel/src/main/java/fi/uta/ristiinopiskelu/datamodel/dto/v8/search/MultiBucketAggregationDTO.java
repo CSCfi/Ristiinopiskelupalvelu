@@ -1,8 +1,11 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.search;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@Schema(name = "MultiBucketAggregationV8", title = "MultiBucketAggregationV8", type = "object")
 public class MultiBucketAggregationDTO extends AggregationDTO {
 
     private String name;

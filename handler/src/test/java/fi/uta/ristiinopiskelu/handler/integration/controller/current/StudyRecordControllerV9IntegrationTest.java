@@ -16,6 +16,7 @@ import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.messaging.util.Oid;
+import fi.uta.ristiinopiskelu.messaging.util.OidPersonNode;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyRecordRepository;
 import org.junit.jupiter.api.Test;
@@ -83,7 +84,7 @@ public class StudyRecordControllerV9IntegrationTest {
         StudyRecordStudent student = new StudyRecordStudent();
         student.setFirstNames("Matti");
         student.setSurName("Testaaja");
-        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        student.setOid(Oid.randomOid(OidPersonNode.PERSON));
 
         StudyRecordEntity studyRecord = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity("UEF", "TUNI", student));
         StudyRecordEntity studyRecord2 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity("UEF", "TUNI", student));
@@ -131,7 +132,7 @@ public class StudyRecordControllerV9IntegrationTest {
         StudyRecordStudent student = new StudyRecordStudent();
         student.setFirstNames("Matti");
         student.setSurName("Testaaja");
-        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        student.setOid(Oid.randomOid(OidPersonNode.PERSON));
         
         studyRecordRepository.create(EntityInitializer.getStudyRecordEntity("JYU", "TUNI", student));
         studyRecordRepository.create(EntityInitializer.getStudyRecordEntity("LAY", "UEF", student));
@@ -178,7 +179,7 @@ public class StudyRecordControllerV9IntegrationTest {
         StudyRecordStudent student = new StudyRecordStudent();
         student.setFirstNames("Matti");
         student.setSurName("Testaaja");
-        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        student.setOid(Oid.randomOid(OidPersonNode.PERSON));
 
         CompletedCredit completedCredit = DtoInitializer.getCompletedCredit("CC1", "CU1",
             CompletedCreditTargetType.COURSE_UNIT, MinEduGuidanceArea.EDUCATION, new LocalisedString("matin opintojakso 1", null, null));
@@ -257,7 +258,7 @@ public class StudyRecordControllerV9IntegrationTest {
         StudyRecordStudent student = new StudyRecordStudent();
         student.setFirstNames("Matti");
         student.setSurName("Testaaja");
-        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        student.setOid(Oid.randomOid(OidPersonNode.PERSON));
 
         CompletedCredit completedCredit = DtoInitializer.getCompletedCredit("CC1", "CU1",
             CompletedCreditTargetType.COURSE_UNIT, MinEduGuidanceArea.EDUCATION, new LocalisedString("matin opintojakso 1", null, null));

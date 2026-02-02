@@ -1,5 +1,8 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "DegreeV8", title = "DegreeV8", type = "object")
 public class Degree extends StudyElement {
     private double duration;
 

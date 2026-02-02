@@ -1,10 +1,16 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.StudyRightType;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyRightEntity;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
 
+@Data
+@NoArgsConstructor
 public class StudyRight implements Serializable {
 
     private StudyRightIdentifier identifiers;
@@ -12,35 +18,24 @@ public class StudyRight implements Serializable {
     private StudyRightType studyRightType;
     private List<Keyword> keywords;
 
-    public StudyRightIdentifier getIdentifiers() {
-        return identifiers;
-    }
-
-    public void setIdentifiers(StudyRightIdentifier identifiers) {
+    @Builder
+    public StudyRight(StudyRightIdentifier identifiers, StudyRightStatus studyRightStatus, StudyRightType studyRightType,
+                      List<Keyword> keywords) {
         this.identifiers = identifiers;
-    }
-
-    public StudyRightStatus getStudyRightStatus() {
-        return studyRightStatus;
-    }
-
-    public void setStudyRightStatus(StudyRightStatus studyRightStatus) {
         this.studyRightStatus = studyRightStatus;
-    }
-
-    public StudyRightType getStudyRightType() {
-        return studyRightType;
-    }
-
-    public void setStudyRightType(StudyRightType studyRightType) {
         this.studyRightType = studyRightType;
-    }
-
-    public List<Keyword> getKeywords() {
-        return keywords;
-    }
-
-    public void setKeywords(List<Keyword> keywords) {
         this.keywords = keywords;
+    }
+
+    public static StudyRight from(StudyRightEntity studyRight) {
+        if(studyRight == null) {
+            return null;
+        }
+
+        return StudyRight.builder()
+            .identifiers(studyRight.getIdentifiers())
+            .studyRightStatus(studyRight.getStudyRightStatus())
+            .studyRightType(studyRight.getStudyRightType())
+            .build();
     }
 }

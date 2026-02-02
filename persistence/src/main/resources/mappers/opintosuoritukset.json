@@ -18,30 +18,6 @@
     },
     "student": {
       "properties": {
-        "homeEppn": {
-          "type": "keyword"
-        },
-        "hostEppn": {
-          "type": "keyword"
-        },
-        "sourceNumber": {
-          "type": "keyword"
-        },
-        "firstNames": {
-          "type": "text"
-        },
-        "givenName": {
-          "type": "text"
-        },
-        "surName": {
-          "type": "text"
-        },
-        "oid": {
-          "type": "keyword"
-        },
-        "personId": {
-          "type": "keyword"
-        },
         "homeStudentNumber": {
           "type": "keyword"
         },
@@ -404,14 +380,5 @@
     "search_sv": {
       "type": "text", "analyzer": "swedish"
     }
-  },
-  "dynamic_templates": [{
-    "strings": {
-      "match_mapping_type": "string",
-      "mapping": {
-        "type": "text",
-        "analyzer": "standard"
-      }
-    }
-  }]
+  }
 }

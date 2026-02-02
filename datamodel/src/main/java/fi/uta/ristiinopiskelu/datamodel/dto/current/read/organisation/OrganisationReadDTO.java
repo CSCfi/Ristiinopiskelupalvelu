@@ -14,7 +14,7 @@ import java.util.Objects;
  * Based on
  * https://wiki.eduuni.fi/download/attachments/70202805/CSC6_curriculum_api_1.0.0-oas3_swagger.json?version=1&modificationDate=1531828139937&api=v2
  */
-@Schema(name = "Organisation")
+@Schema(name = "OrganisationV9", title = "OrganisationV9")
 public class OrganisationReadDTO {
 
     @JsonProperty("organisationIdentifier")

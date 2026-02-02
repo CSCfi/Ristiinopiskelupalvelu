@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(name = "StudyRecordAmountSearchResults")
+@Schema(name = "StudyRecordAmountSearchResultsV9", title = "StudyRecordAmountSearchResultsV9")
 public class StudyRecordAmountRestSearchResults {
 
     private long totalHits;

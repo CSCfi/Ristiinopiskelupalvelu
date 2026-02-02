@@ -1,11 +1,11 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.search;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyElement;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.PageableSearchParameters;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.domain.Sort;
@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Schema(name = "StudiesSearchParametersV8", title = "StudiesSearchParametersV8")
 public class StudiesSearchParameters extends PageableSearchParameters<StudyElement> {
 
     @Schema(description = "Rajaa tarjontaa nimen tai koodin perusteella.")

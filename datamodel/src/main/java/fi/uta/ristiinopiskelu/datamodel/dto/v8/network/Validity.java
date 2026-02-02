@@ -1,11 +1,13 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.network;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.time.OffsetDateTime;
 
+@Schema(name = "ValidityV8", title = "ValidityV8")
 public class Validity {
     @JsonProperty("continuity")
     private ContinuityEnum continuity = null;

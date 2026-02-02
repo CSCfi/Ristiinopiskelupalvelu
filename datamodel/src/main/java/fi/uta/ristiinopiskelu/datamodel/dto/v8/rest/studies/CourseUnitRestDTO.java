@@ -3,9 +3,6 @@ package fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.studies;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.ScaleValue;
-import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CompletionOptionEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.annotation.Transient;
 import org.springframework.util.CollectionUtils;
@@ -13,15 +10,15 @@ import org.springframework.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.List;
 
-@Schema(name = "CourseUnit")
+@Schema(name = "CourseUnitV8", title = "CourseUnitV8", type = "object")
 public class CourseUnitRestDTO extends StudyElementRestDTO {
 
     private ScaleValue assessmentScale;
     private List<LocalisedString> learningMaterials = null;
     private Boolean examBookEnquiry = null;
     private Integer groupSize = null;
-    private List<CompletionOptionEntity> completionOptions;
-    private List<CourseUnitRealisationEntity> realisations;
+    private List<CompletionOptionRestDTO> completionOptions;
+    private List<CourseUnitRealisationRestDTO> realisations;
 
     public ScaleValue getAssessmentScale() {
         return assessmentScale;
@@ -55,28 +52,28 @@ public class CourseUnitRestDTO extends StudyElementRestDTO {
         return groupSize;
     }
 
-    public void setCompletionOptions(List<CompletionOptionEntity> completionOptions) {
+    public void setCompletionOptions(List<CompletionOptionRestDTO> completionOptions) {
         this.completionOptions = completionOptions;
     }
 
-    public List<CompletionOptionEntity> getCompletionOptions() {
+    public List<CompletionOptionRestDTO> getCompletionOptions() {
         return completionOptions;
     }
 
-    public List<CourseUnitRealisationEntity> getRealisations() {
+    public List<CourseUnitRealisationRestDTO> getRealisations() {
         return realisations;
     }
 
-    public void setRealisations(List<CourseUnitRealisationEntity> realisations) {
+    public void setRealisations(List<CourseUnitRealisationRestDTO> realisations) {
         this.realisations = realisations;
     }
 
     @JsonIgnore
     @Transient
-    public List<AssessmentItemEntity> getAssessmentItems() {
-        List<AssessmentItemEntity> assessmentItemEntities = new ArrayList<>();
+    public List<AssessmentItemRestDTO> getAssessmentItems() {
+        List<AssessmentItemRestDTO> assessmentItemEntities = new ArrayList<>();
         if(!CollectionUtils.isEmpty(completionOptions)) {
-            for(CompletionOptionEntity completionOption : completionOptions) {
+            for(CompletionOptionRestDTO completionOption : completionOptions) {
                 if (!CollectionUtils.isEmpty(completionOption.getAssessmentItems())) {
                     assessmentItemEntities.addAll(completionOption.getAssessmentItems());
                 }

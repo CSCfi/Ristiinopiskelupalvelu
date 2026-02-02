@@ -4,12 +4,12 @@ import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.json.JsonData;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.TeachingLanguage;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -39,20 +39,27 @@ public class StudiesQueryBuilder extends AbstractStudiesQueryBuilder {
         this.must(getOrganizingOrganisationIdsFilter(organizingOrganisationIds));
     }
 
-    public void filterByName(String query, Language lang) {
+    public void filterByName(String query, @Nullable Language lang) {
         // Leading wildcard queries might be slow in elasticsearch.
         // In case this query ever gets too slow, it might be because of this. Then ngram tokenizer or some other solution might be required for name field
 
+        // If lang is not given then target all valid name languages (fi, en, sv)
+        Language[] languages = lang != null ? new Language[] { lang } : Language.values();
+
         String formattedQuery = String.format("*%s*", query.toLowerCase());
-        this.must(q -> q.bool(bq -> bq
-            .should(q2 -> q2.
-                wildcard(wq -> wq
-                    .field(String.format("name.values.%s.lowercase", lang.getValue()))
-                    .value(formattedQuery)))
-            .should(q2 -> q2
+        this.must(q -> q.bool(bq -> {
+            for (Language l: languages) {
+                bq.should(q2 -> q2.
+                    wildcard(wq -> wq
+                        .field(String.format("name.values.%s.lowercase", l.getValue()))
+                        .value(formattedQuery)));
+            }
+            bq.should(q2 -> q2
                 .wildcard(wq -> wq
                     .field("studyElementIdentifierCode.lowercase")
-                    .value(formattedQuery)))));
+                    .value(formattedQuery)));
+            return bq;
+        }));
     }
 
     public void filterOnlyValid() {
@@ -61,10 +68,10 @@ public class StudiesQueryBuilder extends AbstractStudiesQueryBuilder {
                         .must(q3 -> q3.bool(bq3 -> bq3.mustNot(eq -> eq.exists(eq2 -> eq2.field("validityStartDate")))))
                         .must(q3 -> q3.bool(bq3 -> bq3.mustNot(eq -> eq.exists(eq2 -> eq2.field("validityEndDate")))))))
                 .should(q2 -> q2.bool(bq2 -> bq2
-                        .must(rq -> rq.range(rq2 -> rq2.field("validityStartDate").lte(JsonData.of("now/d"))))
+                        .must(rq -> rq.range(rq2 -> rq2.date(rq3 -> rq3.field("validityStartDate").lte("now/d"))))
                         .must(bq3 -> bq3.bool(bq4 -> bq4
                                 .should(bq5 -> bq5.bool(bq6 -> bq6.mustNot(eq -> eq.exists(eq2 -> eq2.field("validityEndDate")))))
-                                .should(rq -> rq.range(rq2 -> rq2.field("validityEndDate").gte(JsonData.of("now/d"))))))))));
+                                .should(rq -> rq.range(rq2 -> rq2.date(rq3 -> rq3.field("validityEndDate").gte("now/d"))))))))));
     }
 
     public void filterByStatuses(List<StudyStatus> statuses) {

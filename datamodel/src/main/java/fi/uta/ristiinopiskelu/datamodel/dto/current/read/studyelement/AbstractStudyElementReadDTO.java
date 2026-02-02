@@ -9,6 +9,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGui
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.degree.DegreeReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.studymodule.StudyModuleReadDTO;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import org.springframework.util.CollectionUtils;
@@ -20,7 +22,11 @@ import java.util.List;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-@Schema(name = "StudyElement")
+@Schema(name = "StudyElementV9", title = "StudyElementV9", type = "object", discriminatorProperty = "type", discriminatorMapping = {
+    @DiscriminatorMapping(value = "STUDY_MODULE", schema = StudyModuleReadDTO.class),
+    @DiscriminatorMapping(value = "COURSE_UNIT", schema = CourseUnitReadDTO.class),
+    @DiscriminatorMapping(value = "DEGREE", schema = DegreeReadDTO.class)
+}, subTypes = { StudyModuleReadDTO.class, CourseUnitReadDTO.class, DegreeReadDTO.class })
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
 @JsonSubTypes({
     @JsonSubTypes.Type(value = StudyModuleReadDTO.class, name = "STUDY_MODULE"),
@@ -124,6 +130,7 @@ public abstract class AbstractStudyElementReadDTO {
     @JsonProperty("cooperationNetworks")
     private List<CooperationNetwork> cooperationNetworks = null;
 
+    @ArraySchema(schema = @Schema(ref = "#/components/schemas/StudyElementV9"))
     @JsonProperty("subElements")
     private List<AbstractStudyElementReadDTO> subElements;
 

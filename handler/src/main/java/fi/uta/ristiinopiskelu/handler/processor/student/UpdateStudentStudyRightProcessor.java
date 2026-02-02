@@ -2,8 +2,6 @@ package fi.uta.ristiinopiskelu.handler.processor.student;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentMessageType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentStatus;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.UpdateStatus;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudentEntity;
@@ -27,8 +25,6 @@ import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.commons.collections4.MapUtils;
 import org.modelmapper.ModelMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -36,12 +32,9 @@ import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Component
 public class UpdateStudentStudyRightProcessor extends AbstractStudentProcessor {
-
-    private static final Logger logger = LoggerFactory.getLogger(UpdateStudentStudyRightProcessor.class);
 
     private RegistrationService registrationService;
     private StudentService studentService;
@@ -113,7 +106,7 @@ public class UpdateStudentStudyRightProcessor extends AbstractStudentProcessor {
                 forwardedRequest, Collections.singletonMap("studentRequestId", forwardedRequest.getStudentRequestId()));
 
         exchange.setMessage(new StudentMessage(exchange, MessageType.STUDENT_RESPONSE, correlationId, forwardedRequest.getStudentRequestId(),
-                new StudentResponse(Status.OK, "Cancel student request processed successfully and forwarded to recipient organisations",
+                new StudentResponse(Status.OK, "Update student study right request processed successfully and forwarded to recipient organisations",
                         forwardedRequest.getStudentRequestId())));
     }
 }

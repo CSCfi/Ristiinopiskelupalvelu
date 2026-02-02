@@ -1,7 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.code;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Language;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(name = "CodeValueV8", title = "CodeValueV8")
 public class CodeValue {
 
     private Language language;

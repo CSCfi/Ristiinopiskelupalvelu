@@ -6,10 +6,11 @@ import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.CodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.validation.CodeSetConstraint;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.Valid;
+
 import java.util.List;
 
+@Schema(name = "NetworkV8", title = "NetworkV8")
 public class Network {
 
     @JsonProperty("id")

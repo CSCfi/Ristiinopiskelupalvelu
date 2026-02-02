@@ -64,7 +64,7 @@ public class DevelopmentApplicationConfig extends ApplicationConfig implements A
     @Bean(destroyMethod = "stop")
     public ElasticsearchContainer embeddedElastic() throws Exception {
         ElasticsearchContainer embeddedElastic = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch")
-            .withTag("8.10.4"));
+            .withTag("8.19.5"));
         embeddedElastic.addEnv("cluster.name", "ripa-cluster");
         embeddedElastic.addEnv("xpack.security.enabled", "false");
         embeddedElastic.addEnv("indices.id_field_data.enabled", "true");

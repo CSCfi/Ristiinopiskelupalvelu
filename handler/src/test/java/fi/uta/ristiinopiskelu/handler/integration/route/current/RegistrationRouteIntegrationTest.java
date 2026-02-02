@@ -21,6 +21,7 @@ import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.*;
 import fi.uta.ristiinopiskelu.messaging.util.Oid;
+import fi.uta.ristiinopiskelu.messaging.util.OidPersonNode;
 import fi.uta.ristiinopiskelu.persistence.repository.*;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
 import jakarta.jms.JMSException;
@@ -195,23 +196,16 @@ public class RegistrationRouteIntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers(), reg.getStudent().getHomeStudyRight().getIdentifiers());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus(), reg.getStudent().getHomeStudyRight().getStudyRightStatus());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightType(), reg.getStudent().getHomeStudyRight().getStudyRightType());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers(), reg.getStudent().getHostStudyRight().getIdentifiers());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus(), reg.getStudent().getHostStudyRight().getStudyRightStatus());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightType(), reg.getStudent().getHostStudyRight().getStudyRightType());
         assertEquals(RegistrationStatus.REGISTERED, reg.getStatus());
 
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() == RegistrationSelectionItemStatus.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getRank().equals(selectionRank)));
@@ -295,6 +289,71 @@ public class RegistrationRouteIntegrationTest {
         JsonValidationFailedResponse resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.FAILED);
         assertTrue(resp.getMessage().contains("$.student.addresses[0].country: does not have a value in the enumeration"));
+    }
+
+    @Test
+    public void testSendingCourseUnitRegistrationWithInvalidAndValidMothertongues() throws JMSException {
+
+        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+            true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
+            Collections.singletonList(cooperationNetwork), new LocalisedString("Opintojakso 1", null, null));
+        courseUnitRepository.create(courseUnitEntity);
+
+        String jsonContentTemplate = """
+            {
+              "sendingOrganisationTkCode" : "TESTORG1",
+              "receivingOrganisationTkCode" : "TESTORG2",
+              "student" : {
+                "oid" : "%s",
+                "homeStudyRight" : {
+                  "identifiers" : {
+                    "organisationTkCodeReference" : "TESTORG1",
+                    "studyRightId" : "OPISKOIK1"
+                  },
+                  "studyRightStatus" : {
+                    "studyRightStatusValue" : 1,
+                    "startDate" : "2017-01-01",
+                    "endDate" : "2020-06-01"
+                  }
+                },
+                "dateOfBirth" : "1950-01-01",
+                "gender" : 1,
+                "countryOfCitizenship" : null,
+                "motherTongue" : %s
+              },
+              "networkIdentifier" : "CN-1",
+              "selections" : [ {
+                "selectionItemId" : "OJ1",
+                "selectionItemType" : "COURSE_UNIT",
+                "selectionItemStatus" : 1
+              } ],
+              "enrolmentDateTime" : "%s"
+            }
+            """;
+
+        String jsonContentNull = jsonContentTemplate.formatted(Oid.randomOid(OidPersonNode.PERSON),
+            "null", OffsetDateTime.now().toString());
+        String jsonContentEmpty = jsonContentTemplate.formatted(Oid.randomOid(OidPersonNode.PERSON),
+            "", OffsetDateTime.now().toString());
+
+        // Change these after it is decided what motherTongue should actually contain instead of free text
+        //String jsonContentValid = jsonContentTemplate.formatted("FI", OffsetDateTime.now().toString());
+        String jsonContentProbablyNotValidInFuture = jsonContentTemplate.formatted(Oid.randomOid(OidPersonNode.PERSON),
+            "\"Suomi\"", OffsetDateTime.now().toString());
+
+        Message responseMessageNull = JmsHelper.sendAndReceiveJson(jmsTemplate, jsonContentNull, MessageType.CREATE_REGISTRATION_REQUEST.name(), sendingOrganisation.getId());
+        Object respNull = jmsTemplate.getMessageConverter().fromMessage(responseMessageNull);
+        assertInstanceOf(JsonValidationFailedResponse.class, respNull);
+
+        Message responseMessageEmpty = JmsHelper.sendAndReceiveJson(jmsTemplate, jsonContentEmpty, MessageType.CREATE_REGISTRATION_REQUEST.name(), sendingOrganisation.getId());
+        Object respEmpty = jmsTemplate.getMessageConverter().fromMessage(responseMessageEmpty);
+        assertInstanceOf(JsonValidationFailedResponse.class, respEmpty);
+
+        Message responseMessageOk = JmsHelper.sendAndReceiveJson(jmsTemplate, jsonContentProbablyNotValidInFuture, MessageType.CREATE_REGISTRATION_REQUEST.name(), sendingOrganisation.getId());
+        Object respOk = jmsTemplate.getMessageConverter().fromMessage(responseMessageOk);
+        assertInstanceOf(RegistrationResponse.class, respOk);
+        assertEquals(Status.OK, ((RegistrationResponse)respOk).getStatus());
     }
 
     @Test
@@ -384,23 +443,16 @@ public class RegistrationRouteIntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers(), reg.getStudent().getHomeStudyRight().getIdentifiers());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus(), reg.getStudent().getHomeStudyRight().getStudyRightStatus());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightType(), reg.getStudent().getHomeStudyRight().getStudyRightType());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers(), reg.getStudent().getHostStudyRight().getIdentifiers());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus(), reg.getStudent().getHostStudyRight().getStudyRightStatus());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightType(), reg.getStudent().getHostStudyRight().getStudyRightType());
         assertEquals(RegistrationStatus.REGISTERED, reg.getStatus());
 
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(),
-            reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-            reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(),
-            reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-            reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() == RegistrationSelectionItemStatus.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getRank().equals(selectionRank)));
@@ -699,19 +751,15 @@ public class RegistrationRouteIntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers(), reg.getStudent().getHomeStudyRight().getIdentifiers());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus(), reg.getStudent().getHomeStudyRight().getStudyRightStatus());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightType(), reg.getStudent().getHomeStudyRight().getStudyRightType());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers(), reg.getStudent().getHostStudyRight().getIdentifiers());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus(), reg.getStudent().getHostStudyRight().getStudyRightStatus());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightType(), reg.getStudent().getHostStudyRight().getStudyRightType());
         assertEquals(RegistrationStatus.REGISTERED, reg.getStatus());
-
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(), reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
 
         RegistrationSelection replyRealisationSelection = req.getSelections().get(0);
         RegistrationSelection regRealisationSelection = reg.getSelectionsReplies().get(0);
@@ -904,22 +952,15 @@ public class RegistrationRouteIntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers(), reg.getStudent().getHomeStudyRight().getIdentifiers());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus(), reg.getStudent().getHomeStudyRight().getStudyRightStatus());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightType(), reg.getStudent().getHomeStudyRight().getStudyRightType());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers(), reg.getStudent().getHostStudyRight().getIdentifiers());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus(), reg.getStudent().getHostStudyRight().getStudyRightStatus());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightType(), reg.getStudent().getHostStudyRight().getStudyRightType());
         assertEquals(RegistrationStatus.REGISTERED, reg.getStatus());
-
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
 
         RegistrationSelection replyRealisationSelection = req.getSelections().get(0);
         RegistrationSelection regRealisationSelection = reg.getSelectionsReplies().get(0);
@@ -949,6 +990,53 @@ public class RegistrationRouteIntegrationTest {
         assertNull(regCourseUnitSelection.getSelectionItemStatus());
         assertNull(regCourseUnitSelection.getSelectionItemStatusInfo());
         assertNull(regCourseUnitSelection.getParent());
+    }
+
+    @Test
+    public void testSendingAssessmentItemRealisationRegistrationAborted_withoutCompletionOptionSelectionItemId_shouldSucceed() throws JMSException {
+        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+            true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        AssessmentItemEntity assessmentItemEntity = new AssessmentItemEntity();
+        assessmentItemEntity.setAssessmentItemId("AI1");
+
+        CompletionOptionEntity completionOptionEntity = new CompletionOptionEntity();
+        completionOptionEntity.setCompletionOptionId("CO1");
+        completionOptionEntity.setAssessmentItems(List.of(assessmentItemEntity));
+
+        CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntityWithCompletionOptions("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
+            Collections.singletonList(cooperationNetwork), new LocalisedString("Opintojakso 1", null, null), Collections.singletonList(completionOptionEntity));
+
+        courseUnitRepository.create(courseUnitEntity);
+
+        StudyElementReference ref = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+            courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
+
+        RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
+            Collections.singletonList(ref), Collections.singletonList(cooperationNetwork));
+        realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
+
+        realisationRepository.create(realisationEntity);
+
+        RegistrationSelection courseUnitParent = DtoInitializer.getRegistrationSelectionCourseUnitParent(courseUnitEntity.getStudyElementId());
+
+        // leave the completion option id out, should pass when ABORTED_BY_STUDENT is sent
+        RegistrationSelection completionOptionParent = DtoInitializer.getRegistrationSelectionCompletionOption(
+            null, courseUnitParent);
+
+        RegistrationSelection assessmentItemParent = DtoInitializer.getRegistrationSelectionAssessmentItem(
+            assessmentItemEntity.getAssessmentItemId(), completionOptionParent);
+
+        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.ABORTED_BY_STUDENT, assessmentItemParent, null);
+
+        CreateRegistrationRequest req = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), testNetwork.getId());
+        req.setSelections(Collections.singletonList(selection));
+
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
+        RegistrationResponse resp = (RegistrationResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(resp.getStatus() == Status.OK);
+        assertTrue(StringUtils.isNotBlank(resp.getRegistrationRequestId()));
     }
 
     @Test
@@ -1029,23 +1117,15 @@ public class RegistrationRouteIntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(req.getStudent().getOid(), reg.getStudent().getOid());
-        assertEquals(req.getStudent().getFirstNames(), reg.getStudent().getFirstNames());
-        assertEquals(req.getStudent().getSurName(), reg.getStudent().getSurName());
-        assertEquals(req.getStudent().getHomeEppn(), reg.getStudent().getHomeEppn());
-        assertEquals(req.getStudent().getDateOfBirth(), reg.getStudent().getDateOfBirth());
-        assertEquals(req.getStudent().getGender(), reg.getStudent().getGender());
-        assertEquals(req.getStudent().getMotherTongue(), reg.getStudent().getMotherTongue());
+        assertEquals(req.getStudent().getHomeStudentNumber(), reg.getStudent().getHomeStudentNumber());
+        assertEquals(replyRequest.getHostStudentNumber(), reg.getStudent().getHostStudentNumber());
+        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers(), reg.getStudent().getHomeStudyRight().getIdentifiers());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightStatus(), reg.getStudent().getHomeStudyRight().getStudyRightStatus());
+        assertEquals(req.getStudent().getHomeStudyRight().getStudyRightType(), reg.getStudent().getHomeStudyRight().getStudyRightType());
+        assertEquals(replyRequest.getHostStudyRight().getIdentifiers(), reg.getStudent().getHostStudyRight().getIdentifiers());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus(), reg.getStudent().getHostStudyRight().getStudyRightStatus());
+        assertEquals(replyRequest.getHostStudyRight().getStudyRightType(), reg.getStudent().getHostStudyRight().getStudyRightType());
         assertEquals(RegistrationStatus.REGISTERED, reg.getStatus());
-
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getStudyRightId(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId());
-        assertEquals(replyRequest.getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
-                reg.getStudent().getHostStudyRight().getIdentifiers().getOrganisationTkCodeReference());
 
         RegistrationSelection replyRealisationSelection = req.getSelections().get(0);
         RegistrationSelection regRealisationSelection = reg.getSelectionsReplies().get(0);
@@ -1451,7 +1531,7 @@ public class RegistrationRouteIntegrationTest {
 
         // send only oid
         req.getStudent().setPersonId(null);
-        req.getStudent().setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        req.getStudent().setOid(Oid.randomOid(OidPersonNode.PERSON));
 
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
         resp = (RegistrationResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);

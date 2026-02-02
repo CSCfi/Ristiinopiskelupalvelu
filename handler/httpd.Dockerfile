@@ -1,6 +1,6 @@
-FROM rockylinux:9.1-minimal as httpd
+FROM rockylinux:9.1-minimal AS httpd
 
-ENV MICRODNF_CMD "microdnf -y --setopt=install_weak_deps=0"
+ENV MICRODNF_CMD="microdnf -y --setopt=install_weak_deps=0"
 
 EXPOSE 8080 8443
 
@@ -18,6 +18,7 @@ COPY apache/bin/httpd-shibd-foreground /usr/local/bin/
 
 RUN openssl req -nodes -subj '/CN=localhost' -x509 -newkey rsa:4096 -keyout /etc/pki/tls/private/ripa.key -out /etc/pki/tls/certs/ripa.pem -days 365 && \
     chmod +x /usr/local/bin/httpd-shibd-foreground && \
+    mkdir /var/run/shibboleth && \
     chown apache:apache /var/{log,run}/httpd && \
     chown apache:apache /var/{log,run}/shibboleth
 

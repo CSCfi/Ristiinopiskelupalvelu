@@ -62,7 +62,7 @@ public class EmbeddedElasticsearchInitializer implements AfterEachCallback, Befo
     @Override
     public void beforeAll(ExtensionContext extensionContext) throws Exception {
         if(embeddedElastic == null) {
-            embeddedElastic = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch").withTag("8.10.4"));
+            embeddedElastic = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch").withTag("8.19.5"));
             embeddedElastic.addEnv("cluster.name", "ripa-cluster");
             embeddedElastic.addEnv("xpack.security.enabled", "false");
             embeddedElastic.addEnv("indices.id_field_data.enabled", "true");
@@ -132,7 +132,9 @@ public class EmbeddedElasticsearchInitializer implements AfterEachCallback, Befo
     private void deleteAllAndRefresh(ElasticsearchTemplate template, IndexHelper indexHelper) {
         DeleteByQueryRequest.Builder deleteByQueryRequest = new DeleteByQueryRequest.Builder()
             .index(indexHelper.indexName)
-            .query(q -> q.matchAll(ma -> ma));
+            .query(q -> q.matchAll(ma -> ma))
+            .waitForCompletion(true)
+            .refresh(true);
 
         template.execute(client -> client.deleteByQuery(deleteByQueryRequest.build()));
 

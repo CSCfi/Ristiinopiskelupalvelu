@@ -1,5 +1,7 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.HashMap;
 
 /**
@@ -9,6 +11,7 @@ import java.util.HashMap;
  *         Based on
  *         https://wiki.eduuni.fi/download/attachments/70202805/CSC6_curriculum_api_1.0.0-oas3_swagger.json?version=1&modificationDate=1531828139937&api=v2
  */
+@Schema(name = "LocalisedStringV9", title = "LocalisedStringV9")
 public class LocalisedString {
     
     /**

@@ -1,11 +1,13 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.code;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.time.LocalDate;
 
+@Schema(name = "ExternalCodeReferenceV9", title = "ExternalCodeReferenceV9")
 public class ExternalCodeReference {
 
     private String codeKey;

@@ -2,8 +2,13 @@ package fi.uta.ristiinopiskelu.messaging.message.current.registration;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+@EqualsAndHashCode(callSuper = true)
+@Data
 public class ForwardedRegistrationReplyRequest extends ForwardedCreateRegistrationRequest {
     
     private RegistrationStatus status;
@@ -19,27 +24,11 @@ public class ForwardedRegistrationReplyRequest extends ForwardedCreateRegistrati
         this.setNetworkIdentifier(entity.getNetworkIdentifier());
         this.setNetworkDescription(entity.getNetworkDescription());
         this.setEnrolmentDateTime(entity.getEnrolmentDateTime());
-        this.setStudent(entity.getStudent());
+        this.setStudent(ExtendedStudent.from(entity.getStudent()));
         //Remove personId from reply message
         this.getStudent().setPersonId(null);
         this.setSelections(entity.getSelectionsReplies());
         this.setStatus(entity.getStatus());
         this.setRejectionReason(entity.getRejectionReason());
-    }
-
-    public RegistrationStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(RegistrationStatus status) {
-        this.status = status;
-    }
-
-    public LocalisedString getRejectionReason() {
-        return rejectionReason;
-    }
-
-    public void setRejectionReason(LocalisedString rejectionReason) {
-        this.rejectionReason = rejectionReason;
     }
 }

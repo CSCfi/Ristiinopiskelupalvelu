@@ -45,15 +45,12 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
                                                                                       String selectionItemType,
                                                                                       String selectionFieldName) {
 
-        Query homeStudyRightQuery = this.getStudentStudyRightIdentifierQuery("homeStudyRight", student.getHomeStudyRightIdentifier());
-
         // note that receivingOrganisation is the organisation here that registrations are sent _to_, hence it's the organization that's actually organizing the studies
         BoolQuery.Builder query = new BoolQuery.Builder()
             .must(q -> q
                 .term(tq -> tq
                     .field("receivingOrganisationTkCode")
                     .value(organizingOrganisationId)))
-            .must(homeStudyRightQuery)
             .must(q -> q
                 .nested(nq -> nq
                     .path(selectionFieldName)
@@ -68,6 +65,11 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
                     )
                 )
             );
+
+        if (student != null) {
+            Query homeStudyRightQuery = this.getStudentStudyRightIdentifierQuery("homeStudyRight", student.getHomeStudyRightIdentifier());
+            query.must(homeStudyRightQuery);
+        }
 
         NativeQuery builder = new NativeQueryBuilder()
                 .withQuery(query.build()._toQuery())
@@ -125,11 +127,11 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
         }
 
         if(sendDateTimeStart != null) {
-            query.must(q -> q.range(rq -> rq.field("sendDateTime").from(sendDateTimeStart.toString())));
+            query.must(q -> q.range(rq -> rq.date(rq2 -> rq2.field("sendDateTime").from(sendDateTimeStart.toString()))));
         }
 
         if(sendDateTimeEnd != null) {
-            query.must(q -> q.range(rq -> rq.field("sendDateTime").to(sendDateTimeEnd.toString())));
+            query.must(q -> q.range(rq -> rq.date(rq2 -> rq2.field("sendDateTime").to(sendDateTimeEnd.toString()))));
         }
 
         if(status != null) {

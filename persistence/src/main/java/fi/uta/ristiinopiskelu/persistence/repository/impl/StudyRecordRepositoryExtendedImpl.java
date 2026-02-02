@@ -116,15 +116,15 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
         }
 
         if(searchParameters.getCompletionStartDate() != null) {
-            query.must(m -> new Query.Builder().range(rq -> rq
+            query.must(m -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                 .field("completionDate")
-                .from(DateUtils.getFormatted(searchParameters.getCompletionStartDate()))));
+                .from(DateUtils.getFormatted(searchParameters.getCompletionStartDate())))));
         }
 
         if(searchParameters.getCompletionEndDate() != null) {
-            query.must(m -> new Query.Builder().range(rq -> rq
+            query.must(m -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                 .field("completionDate")
-                .to(DateUtils.getFormatted(searchParameters.getCompletionEndDate()))));
+                .to(DateUtils.getFormatted(searchParameters.getCompletionEndDate())))));
         }
 
         if(searchParameters.getMinEduGuidanceArea() != null) {
@@ -169,18 +169,18 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
         if(searchParams.getCompletionDateStart() != null) {
             query.must(q -> new Query.Builder().nested(nq -> nq
                 .path("completedCredits")
-                .query(q2 -> new Query.Builder().range(rq -> rq
+                .query(q2 -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                     .field("completedCredits.completionDate")
-                    .from(DateUtils.getFormatter().format(searchParams.getCompletionDateStart()))))
+                    .from(DateUtils.getFormatter().format(searchParams.getCompletionDateStart())))))
                 .scoreMode(ChildScoreMode.None)));
         }
 
         if(searchParams.getCompletionDateEnd() != null) {
             query.must(q -> new Query.Builder().nested(nq -> nq
                 .path("completedCredits")
-                .query(q2 -> new Query.Builder().range(rq -> rq
+                .query(q2 -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                     .field("completedCredits.completionDate")
-                    .to(DateUtils.getFormatter().format(searchParams.getCompletionDateEnd()))))
+                    .to(DateUtils.getFormatter().format(searchParams.getCompletionDateEnd())))))
                 .scoreMode(ChildScoreMode.None)));
         }
 

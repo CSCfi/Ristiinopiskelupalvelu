@@ -14,7 +14,7 @@
     },
     "codeValue": {
       "description": "Koodin arvo.",
-      "type": "string",
+      "type": "string"
     },
     "codeStartDate": {
       "description": "Koodin voimassaolon alkamispäivämäärä.",

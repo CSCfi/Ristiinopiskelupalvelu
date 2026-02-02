@@ -1,8 +1,11 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.Map;
 
+@Schema(name = "RegistrationStatusAmountSearchResultsV9", title = "RegistrationStatusAmountSearchResultsV9")
 public class RegistrationStatusAmountSearchResults {
 
     private Map<String, Map<RegistrationSelectionItemStatus, Long>> incoming;

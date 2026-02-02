@@ -93,7 +93,8 @@
         },
         "motherTongue" : {
           "description": "Äidinkieli vapaamuotoisena tekstinä.",
-          "type" : "string"
+          "type" : "string",
+          "minLength": 1
         },
         "preferredLanguage" : {
           "description": "Asiointikieli. Pitäisikö olla suomi, ruotsi, englanti???",

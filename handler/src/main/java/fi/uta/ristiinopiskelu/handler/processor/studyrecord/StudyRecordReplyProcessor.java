@@ -29,7 +29,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 @Component
 public class StudyRecordReplyProcessor implements Processor {
@@ -77,30 +76,21 @@ public class StudyRecordReplyProcessor implements Processor {
 
         validator.validateRequest(req, organisationId);
 
-        Optional<StudyRecordEntity> studyRecordEntityOptional = studyRecordService.findById(req.getStudyRecordRequestId());
+        StudyRecordEntity studyRecord = studyRecordService.findById(req.getStudyRecordRequestId())
+            .orElseThrow(() -> new EntityNotFoundException(StudyRecordEntity.class, req.getStudyRecordRequestId()));
 
-        if (!studyRecordEntityOptional.isPresent()) {
-            throw new EntityNotFoundException(StudyRecordEntity.class, req.getStudyRecordRequestId());
-        }
-
-        StudyRecordEntity studyRecordEntity = studyRecordEntityOptional.get();
-
-        Optional<OrganisationEntity> organisationEntityOptional = organisationService.findById(studyRecordEntity.getSendingOrganisation());
-        if (!organisationEntityOptional.isPresent()) {
-            throw new EntityNotFoundException(OrganisationEntity.class, studyRecordEntity.getSendingOrganisation());
-        }
-
-        OrganisationEntity organisation = organisationEntityOptional.get();
+        OrganisationEntity organisation = organisationService.findById(studyRecord.getSendingOrganisation())
+            .orElseThrow(() -> new EntityNotFoundException(OrganisationEntity.class, studyRecord.getSendingOrganisation()));
 
         // Persist the reply.
-        studyRecordEntity.setStatus(req.getStatus());
-        studyRecordEntity.setRejectionReason(req.getRejectionReason());
+        studyRecord.setStatus(req.getStatus());
+        studyRecord.setRejectionReason(req.getRejectionReason());
 
-        List<? extends EntityModificationResult<?>> modificationResults = studyRecordService.update(studyRecordEntity);
-        studyRecordEntity = (StudyRecordEntity) modificationResults.get(0).getCurrent();
+        List<? extends EntityModificationResult<?>> modificationResults = studyRecordService.update(studyRecord);
+        StudyRecordEntity updatedStudyRecord = (StudyRecordEntity) modificationResults.get(0).getCurrent();
 
         // send to correct organisations
-        jmsMessageForwarder.forwardRequestToOrganisation(studyRecordEntity.getId(), new ForwardedStudyRecordReplyRequest(studyRecordEntity),
+        jmsMessageForwarder.forwardRequestToOrganisation(studyRecord.getId(), new ForwardedStudyRecordReplyRequest(updatedStudyRecord),
                 MessageType.FORWARDED_STUDYRECORD_REPLY_REQUEST, correlationId, organisation,
                 Collections.singletonMap("studyRecordRequestId", req.getStudyRecordRequestId()));
 

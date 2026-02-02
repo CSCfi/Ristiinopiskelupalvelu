@@ -11,7 +11,6 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.code.CodeWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.organisation.OrganisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.registration.RegistrationWriteDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.write.student.StudentWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.DegreeWriteDTO;
@@ -74,13 +73,10 @@ public class MapperConfig {
 
         // make sure that database id (get/setId()) of these entities is never mapped, field is not present on the matching DTOs
         modelMapper.createTypeMap(CodeWriteDTO.class, CodeEntity.class)
-                .addMappings(mapper -> mapper.skip(CodeEntity::setId));
+            .addMappings(mapper -> mapper.skip(CodeEntity::setId));
 
         modelMapper.createTypeMap(RegistrationWriteDTO.class, RegistrationEntity.class)
             .addMappings(mapper -> mapper.skip(RegistrationEntity::setId));
-
-        modelMapper.createTypeMap(StudentWriteDTO.class, StudentEntity.class)
-            .addMappings(mapper -> mapper.skip(StudentEntity::setId));
 
         modelMapper.createTypeMap(StudyRecordWriteDTO.class, StudyRecordEntity.class)
             .addMappings(mapper -> mapper.skip(StudyRecordEntity::setId));

@@ -1,6 +1,5 @@
 package fi.uta.ristiinopiskelu.messaging.schema;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
@@ -39,7 +38,7 @@ public class JsonPatcherUtilImpl implements JsonPatcherUtil {
 
     @Override
     public <T> JsonNode patch(JsonNode sourceJson, Class<T> targetType) throws Exception {
-        ObjectReader reader = objectMapper.readerForUpdating(targetType.getDeclaredConstructor().newInstance()).without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        ObjectReader reader = objectMapper.readerForUpdating(targetType.getDeclaredConstructor().newInstance());
         T targetObject = reader.readValue(sourceJson);
         JsonNode targetJson = this.objectMapper.valueToTree(targetObject);
 

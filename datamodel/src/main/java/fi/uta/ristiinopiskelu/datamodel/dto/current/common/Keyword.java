@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(name = "KeywordV9", title = "KeywordV9")
 public class Keyword {
 
     private String key;

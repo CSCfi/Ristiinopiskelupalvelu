@@ -1,5 +1,8 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.search;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "SingleBucketAggregationV8", title = "SingleBucketAggregationV8", type = "object")
 public class SingleBucketAggregationDTO extends AggregationDTO {
 
     private String name;

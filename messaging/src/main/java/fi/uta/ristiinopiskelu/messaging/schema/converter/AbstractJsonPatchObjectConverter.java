@@ -1,6 +1,5 @@
 package fi.uta.ristiinopiskelu.messaging.schema.converter;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.messaging.exception.ObjectConversionException;
@@ -29,7 +28,7 @@ public abstract class AbstractJsonPatchObjectConverter<S, T> implements ObjectCo
         try {
             JsonNode jsonNode = objectMapper.valueToTree(object);
             JsonNode converted = this.convertJson(jsonNode);
-            return objectMapper.reader().without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).treeToValue(converted, getTargetType());
+            return objectMapper.reader().treeToValue(converted, getTargetType());
         } catch (Exception e) {
             throw new ObjectConversionException("Unable to convert object", e);
         }

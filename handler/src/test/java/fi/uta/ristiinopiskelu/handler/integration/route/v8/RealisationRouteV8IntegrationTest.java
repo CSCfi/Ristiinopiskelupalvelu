@@ -1,28 +1,11 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.Organisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationRole;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.Realisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyStatus;
-import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CompletionOptionEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializerV8;
-import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
-import fi.uta.ristiinopiskelu.handler.helper.HistoryHelper;
-import fi.uta.ristiinopiskelu.handler.helper.JmsHelper;
+import fi.uta.ristiinopiskelu.handler.helper.*;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
@@ -54,19 +37,9 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith({
         EmbeddedActiveMQInitializer.class,
@@ -785,7 +758,7 @@ public class RealisationRouteV8IntegrationTest {
     }
 
     @Test
-    public void testSendingUpdateRealisationMessage_shouldFailHasExtraField() throws JMSException, IOException {
+    public void testSendingUpdateRealisationMessage_shouldNotFailBecauseOfExtraField() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
@@ -816,7 +789,7 @@ public class RealisationRouteV8IntegrationTest {
 
         assertTrue(updResponse instanceof DefaultResponse);
         DefaultResponse response = (DefaultResponse) updResponse;
-        assertTrue(response.getStatus() == Status.FAILED);
+        assertTrue(response.getStatus() == Status.OK);
     }
 
     @Test

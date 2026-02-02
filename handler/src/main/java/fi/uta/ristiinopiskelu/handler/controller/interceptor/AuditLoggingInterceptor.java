@@ -24,7 +24,7 @@ public class AuditLoggingInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        if(!request.getRequestURI().contains("/api/") || request.getDispatcherType() != DispatcherType.REQUEST) {
+        if(!request.getRequestURI().startsWith("%s/api/".formatted(request.getContextPath())) || request.getDispatcherType() != DispatcherType.REQUEST) {
             return true;
         }
 

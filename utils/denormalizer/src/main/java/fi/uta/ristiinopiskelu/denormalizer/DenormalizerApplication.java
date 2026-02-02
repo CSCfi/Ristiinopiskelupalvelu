@@ -1,19 +1,13 @@
 package fi.uta.ristiinopiskelu.denormalizer;
 
-import fi.uta.ristiinopiskelu.datamodel.config.MapperConfig;
-import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 
-@SpringBootApplication(scanBasePackages = {
-    "fi.uta.ristiinopiskelu.denormalizer"
-})
-@Import({EsConfig.class, MapperConfig.class})
+@SpringBootApplication
 public class DenormalizerApplication {
 
     @Autowired

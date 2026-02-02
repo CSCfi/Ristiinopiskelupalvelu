@@ -7,7 +7,6 @@ import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import co.elastic.clients.elasticsearch._types.aggregations.TermsInclude;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.json.JsonData;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.TeachingLanguage;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
@@ -243,7 +242,7 @@ public class StudiesSearchRequestBuilder {
                          .reverseNested(rn -> rn)
                          .aggregations("id", id -> id
                              .terms(t -> t
-                                 .field("_id")
+                                 .field("id")
                                  .size(pageSize))))))
              .build();
 
@@ -294,7 +293,7 @@ public class StudiesSearchRequestBuilder {
                         .reverseNested(sern -> sern)
                         .aggregations("id", id -> id
                             .terms(idt -> idt
-                                .field("_id")
+                                .field("id")
                                 .size(pageSize))))))
             .build();
 
@@ -453,9 +452,9 @@ public class StudiesSearchRequestBuilder {
                                     .build()))
                                 .build())
                         .should(new Query.Builder().bool(bq3 -> bq3
-                            .must(new Query.Builder().range(rq -> rq
+                            .must(new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                                     .field("%s.cooperationNetworks.validityStartDate".formatted(path))
-                                    .lte(JsonData.of(validityStartDateTime)))
+                                    .lte(validityStartDateTime)))
                                     .build())
                             .must(new Query.Builder().bool(bq4 -> bq4
                                 .should(new Query.Builder().bool(bq5 -> bq5
@@ -463,9 +462,9 @@ public class StudiesSearchRequestBuilder {
                                                         .field("%s.cooperationNetworks.validityEndDate".formatted(path)))
                                                 .build()))
                                         .build())
-                                .should(new Query.Builder().range(rq -> rq
+                                .should(new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                                                 .field("%s.cooperationNetworks.validityEndDate".formatted(path))
-                                                .gte(JsonData.of(validityEndDateTime)))
+                                                .gte(validityEndDateTime)))
                                         .build()))
                                     .build()))
                                 .build()))
@@ -478,26 +477,26 @@ public class StudiesSearchRequestBuilder {
 
     private Query getEnrolmentPeriodDateTimeQuery(String startField, SemesterDatePeriod semesterPeriod) {
         return new Query.Builder().bool(bq -> bq
-                        .must(new Query.Builder().range(rq -> rq
+                        .must(new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                                         .field(startField)
-                                        .gte(JsonData.of(semesterPeriod.getStartDateAsOffset().format(DateUtils.getFormatter()))))
+                                        .gte(semesterPeriod.getStartDateAsOffset().format(DateUtils.getFormatter()))))
                                 .build())
-                        .must(new Query.Builder().range(rq -> rq
+                        .must(new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                                         .field(startField)
-                                        .lte(JsonData.of(semesterPeriod.getEndDateAsOffset().format(DateUtils.getFormatter()))))
+                                        .lte(semesterPeriod.getEndDateAsOffset().format(DateUtils.getFormatter()))))
                                 .build()))
                 .build();
     }
 
     private Query getEnrollableDuringDateQuery(String startField, String endField, OffsetDateTime date) {
         return new Query.Builder().bool(bq -> bq
-            .must(new Query.Builder().range(rq -> rq
+            .must(new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                             .field(startField)
-                            .lte(JsonData.of(date.format(DateUtils.getFormatter()))))
+                            .lte(date.format(DateUtils.getFormatter()))))
                     .build())
-            .must(new Query.Builder().range(rq -> rq
+            .must(new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                             .field(endField)
-                            .gte(JsonData.of(date.format(DateUtils.getFormatter()))))
+                            .gte(date.format(DateUtils.getFormatter()))))
                     .build()))
             .build();
     }

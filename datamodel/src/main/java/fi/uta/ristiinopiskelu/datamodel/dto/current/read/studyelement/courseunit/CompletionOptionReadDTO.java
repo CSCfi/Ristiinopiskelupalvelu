@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(name = "CompletionOption")
+@Schema(name = "CompletionOptionV9", title = "CompletionOptionV9")
 public class CompletionOptionReadDTO {
 
     private List<AssessmentItemReadDTO> assessmentItems;

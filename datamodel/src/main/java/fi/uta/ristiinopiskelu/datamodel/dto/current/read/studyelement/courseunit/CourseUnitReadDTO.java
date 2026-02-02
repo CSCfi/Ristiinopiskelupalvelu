@@ -11,7 +11,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.List;
 
-@Schema(name = "CourseUnit")
+@Schema(name = "CourseUnitV9", title = "CourseUnitV9", type = "object")
 public class CourseUnitReadDTO extends AbstractStudyElementReadDTO {
 
     private ScaleValue assessmentScale;

@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // Use "BucketDTO" instead
-@Schema(name = "SimpleBucket")
+@Schema(name = "SimpleBucketV9", title = "SimpleBucketV9")
 @Deprecated(since = "9.0.0")
 public class SimpleBucketDTO {
     private String key;

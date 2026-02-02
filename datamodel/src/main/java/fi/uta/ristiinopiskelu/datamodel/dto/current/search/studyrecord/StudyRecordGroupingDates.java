@@ -1,7 +1,10 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDate;
 
+@Schema(name = "StudyRecordGroupingDatesV9", title = "StudyRecordGroupingDatesV9")
 public class StudyRecordGroupingDates {
 
     private LocalDate start;

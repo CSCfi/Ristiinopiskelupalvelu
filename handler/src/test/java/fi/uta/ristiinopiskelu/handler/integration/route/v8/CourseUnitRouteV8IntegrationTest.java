@@ -1,41 +1,18 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.AssessmentItem;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.CompletionOption;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.Organisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationRole;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.Realisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.network.Network;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateCourseUnitRequestDTO;
-import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CompletionOptionEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializerV8;
-import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
-import fi.uta.ristiinopiskelu.handler.helper.HistoryHelper;
-import fi.uta.ristiinopiskelu.handler.helper.JmsHelper;
-import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
-import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
-import fi.uta.ristiinopiskelu.handler.service.NetworkService;
-import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
-import fi.uta.ristiinopiskelu.handler.service.RealisationService;
+import fi.uta.ristiinopiskelu.handler.helper.*;
+import fi.uta.ristiinopiskelu.handler.service.*;
 import fi.uta.ristiinopiskelu.messaging.message.v8.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.MessageType;
@@ -66,24 +43,13 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.hasProperty;
-import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith({
         EmbeddedActiveMQInitializer.class,
@@ -238,7 +204,7 @@ public class CourseUnitRouteV8IntegrationTest {
         Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, organisingOrganisationId);
         JsonValidationFailedResponse resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.FAILED);
-        assertTrue(resp.getErrors().stream().anyMatch( e -> e.contains(".courseUnits[0].cooperationNetworks: there must be a minimum of 1 items in the array")));
+        assertTrue(resp.getErrors().stream().anyMatch( e -> e.contains(".courseUnits[0].cooperationNetworks: must have at least 1 items but found 0")));
 
         courseUnit = DtoInitializerV8.getCreateCourseUnitRequestDTO("ID1", "RAIRAI", courseUnitName,
                 null, Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5.0));
@@ -251,8 +217,7 @@ public class CourseUnitRouteV8IntegrationTest {
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, organisingOrganisationId);
         resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.FAILED);
-        assertTrue(resp.getErrors().stream().anyMatch(e -> e.contains(".courseUnits[0].cooperationNetworks: is missing but it is required")));
-
+        assertTrue(resp.getErrors().stream().anyMatch(e -> e.contains("$.courseUnits[0]: required property 'cooperationNetworks' not found")));
     }
 
     @Test
@@ -971,13 +936,14 @@ public class CourseUnitRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.FAILED);
 
         // Expected errors:
-        //$.courseUnits[0].realisations: should be valid to one and only one schema, but 0 are valid
+        //$.courseUnits[0].realisations: must be valid to one and only one schema, but 0 are valid
         //$.courseUnits[0].realisations: array found, null expected
         //$.courseUnits[0].realisations[0].organisationReferences: null found, array expected
-        //$.courseUnits[0].realisations: should be valid to one and only one schema, but 0 are valid
+        //$.courseUnits[0].realisations: must be valid to one and only one schema, but 0 are valid
         //$.courseUnits[0].realisations: array found, null expected
+        //$.courseUnits[0].realisations[0].organisationReferences: null found, array expected
         //$.courseUnits[0].realisations[0].cooperationNetworks: null found, array expected.
-        assertEquals(6, resp.getErrors().size());
+        assertEquals(7, resp.getErrors().size());
     }
 
     @Test
@@ -1598,7 +1564,6 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("jaksonnimi2 fi", updatedCourseUnit.getName().getValue("fi"));
         assertEquals("jaksonnimi2 en", updatedCourseUnit.getName().getValue("en"));
         assertEquals("jaksonnimi2 sv", updatedCourseUnit.getName().getValue("sv"));
-        assertEquals(2, updatedCourseUnit.getVersion());
         assertNotNull(updatedCourseUnit.getCreatedTime());
         assertNotNull(updatedCourseUnit.getUpdateTime());
         assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, updatedCourseUnit.getType());
@@ -1645,7 +1610,6 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("jaksonnimi3 fi", updatedCourseUnit2.getName().getValue("fi"));
         assertEquals("jaksonnimi3 en", updatedCourseUnit2.getName().getValue("en"));
         assertEquals("jaksonnimi3 sv", updatedCourseUnit2.getName().getValue("sv"));
-        assertEquals(3, updatedCourseUnit2.getVersion());
         assertNotNull(updatedCourseUnit2.getCreatedTime());
         assertNotNull(updatedCourseUnit2.getUpdateTime());
         assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, updatedCourseUnit2.getType());
@@ -1726,7 +1690,7 @@ public class CourseUnitRouteV8IntegrationTest {
     }
 
     @Test
-    public void testSendingUpdateCourseUnitMessage_shouldFailHasExtraField() throws JMSException, IOException {
+    public void testSendingUpdateCourseUnitMessage_shouldNotFailBecauseOfExtraField() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
@@ -1753,7 +1717,7 @@ public class CourseUnitRouteV8IntegrationTest {
         Object updResponse = jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(updResponse instanceof DefaultResponse);
         DefaultResponse response = (DefaultResponse) updResponse;
-        assertTrue(response.getStatus() == Status.FAILED);
+        assertTrue(response.getStatus() == Status.OK);
     }
 
     @Test

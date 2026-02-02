@@ -1,5 +1,8 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "CourseUnitReferenceV8", title = "CourseUnitReferenceV8")
 public class CourseUnitReference {
 
     private String courseUnitId;

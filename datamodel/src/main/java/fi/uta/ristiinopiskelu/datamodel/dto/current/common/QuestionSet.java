@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.List;
  * @author Eero Manninen <eero.manninen@studyo.fi> 
  *         Based on https://wiki.eduuni.fi/download/attachments/70202805/CSC6_curriculum_api_1.0.0-oas3_swagger.json?version=1&modificationDate=1531828139937&api=v2
  */
+@Schema(name = "QuestionSetV9", title = "QuestionSetV9")
 public class QuestionSet {
 
     @JsonProperty("title")

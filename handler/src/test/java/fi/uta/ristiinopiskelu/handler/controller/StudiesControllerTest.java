@@ -123,6 +123,7 @@ public class StudiesControllerTest {
         params.setQuery("TEST");
         params.setOrganizingOrganisationIdentifiers(Arrays.asList("ORG1", "ORG2"));
         params.setLanguage(Language.FI);
+        params.setLangIndependent(false);
         params.setRealisationStartDate(LocalDate.now().minusMonths(1));
         params.setRealisationEndDate(LocalDate.now().plusMonths(1));
         params.setRealisationEnrollmentStartDateTimeTo(OffsetDateTime.now());

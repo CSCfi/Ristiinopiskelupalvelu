@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.ArrayList;
 import java.util.List;
 
-@Schema(name = "MultiBucketAggregation")
+@Schema(name = "MultiBucketAggregationV9", title = "MultiBucketAggregationV9", type = "object")
 public class MultiBucketAggregationDTO extends AggregationDTO {
 
     private String name;

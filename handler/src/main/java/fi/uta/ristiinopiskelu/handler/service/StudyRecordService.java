@@ -9,13 +9,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyrecord.StudyRecor
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.InvalidSearchParametersException;
-import org.springframework.data.domain.Pageable;
-
-import java.util.List;
 
 public interface StudyRecordService extends Service<StudyRecordWriteDTO, StudyRecordEntity, StudyRecordReadDTO> {
-
-    List<StudyRecordEntity> findAllByStudentOidOrStudentHomeEppn(String oid, String eppn, Pageable pageable) throws FindFailedException;
 
     StudyRecordAmountSearchResults searchAmounts(String organisationId, StudyRecordAmountSearchParameters searchParams) throws FindFailedException, InvalidSearchParametersException;
 

@@ -6,6 +6,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.CodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.ExternalCodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.validation.CodeSetConstraint;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.MinEduGuidanceArea;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import org.springframework.util.CollectionUtils;
@@ -17,7 +19,11 @@ import java.util.List;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-@Schema(name = "StudyElement")
+@Schema(name = "StudyElementV8", title = "StudyElementV8", type = "object", discriminatorProperty = "type", discriminatorMapping = {
+    @DiscriminatorMapping(value = "STUDY_MODULE", schema = StudyModuleRestDTO.class),
+    @DiscriminatorMapping(value = "COURSE_UNIT", schema = CourseUnitRestDTO.class),
+    @DiscriminatorMapping(value = "DEGREE", schema = DegreeRestDTO.class)
+}, subTypes = { StudyModuleRestDTO.class, CourseUnitRestDTO.class, DegreeRestDTO.class })
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
 @JsonSubTypes({
     @JsonSubTypes.Type(value = StudyModuleRestDTO.class, name = "STUDY_MODULE"),
@@ -121,6 +127,7 @@ public abstract class StudyElementRestDTO {
     @JsonProperty("cooperationNetworks")
     private List<CooperationNetwork> cooperationNetworks = null;
 
+    @ArraySchema(schema = @Schema(ref = "#/components/schemas/StudyElementV8"))
     @JsonProperty("subElements")
     private List<StudyElementRestDTO> subElements;
 

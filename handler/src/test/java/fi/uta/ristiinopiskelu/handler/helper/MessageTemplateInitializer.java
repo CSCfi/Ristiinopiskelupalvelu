@@ -9,6 +9,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyReco
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.CreateRegistrationRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.CreateStudyRecordRequest;
 import fi.uta.ristiinopiskelu.messaging.util.Oid;
+import fi.uta.ristiinopiskelu.messaging.util.OidPersonNode;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -39,7 +40,7 @@ public class MessageTemplateInitializer {
 
         ExtendedStudent student = new ExtendedStudent();
         student.setPersonId(HetuUtil.generateRandom());
-        student.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        student.setOid(Oid.randomOid(OidPersonNode.PERSON));
         student.setFirstNames("Matti");
         student.setSurName("Nykänen");
         student.setGivenName("Matti");

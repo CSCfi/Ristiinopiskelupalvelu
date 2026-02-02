@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDate;
 
+@Schema(name = "StudyRecordAmountSearchParametersV8", title = "StudyRecordAmountSearchParametersV8")
 public class StudyRecordAmountSearchParameters implements SearchParameters<StudyRecord> {
 
     @Schema(description = "Määrittää haetaanko vastaanotettuja suorituksia (INCOMING) vai lähetettyjä suorituksia (OUTGOING)")

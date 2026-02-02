@@ -2,7 +2,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.read.messageschema;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(name = "MessageSchema")
+@Schema(name = "MessageSchemaV9", title = "MessageSchemaV9")
 public class MessageSchemaReadDTO {
 
     private int schemaVersion;

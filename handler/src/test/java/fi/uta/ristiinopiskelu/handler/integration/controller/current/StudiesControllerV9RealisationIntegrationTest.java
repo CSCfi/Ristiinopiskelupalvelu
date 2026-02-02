@@ -3,6 +3,8 @@ package fi.uta.ristiinopiskelu.handler.integration.controller.current;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation.RealisationReadDTO;
@@ -24,6 +26,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -503,5 +506,75 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
             hasProperty("realisationId", is(realisationEntity2.getRealisationId())),
             hasProperty("realisationId", is(realisationEntity3.getRealisationId()))
         ));
+    }
+
+    @Test
+    public void testFindRealisations_langDependentOrIndependent() throws Exception {
+        String url = "/api/v9/studies/realisations/search";
+
+        createNetworkWithOrganisations("CN-1", "UEF");
+        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+
+        RealisationEntity realisationEntity = createRealisation("R1", "UEF", null, Collections.singletonList(coopNetwork));
+        realisationEntity.setName(new LocalisedString("realiFi", null, "realiSv"));
+        realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
+        realisationEntity.setEnrollmentEndDateTime(OffsetDateTime.now().plusMonths(1));
+        realisationRepository.update(realisationEntity);
+
+        // Target wrong language without langIndependent (should default to false and return no results)
+        RealisationSearchParameters searchParams = new RealisationSearchParameters();
+        searchParams.setIncludeOwn(true);
+        searchParams.setQuery("realiSv");
+        searchParams.setLanguage(Language.FI);
+
+        MvcResult result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        String content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        assertEquals(0, actualResult.size());
+
+        // Target wrong language with langIndependent specifically set to false (should return no results)
+        searchParams.setLangIndependent(false);
+
+        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        assertEquals(0, actualResult.size());
+
+        // Target the right language (should return the realisation)
+        searchParams.setLanguage(Language.SV);
+
+        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        assertEquals(1, actualResult.size());
+        assertEquals(realisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
+
+        // Target the wrong language but this time with langIndependent set to true (should return the realisation)
+        searchParams.setLanguage(Language.FI);
+        searchParams.setLangIndependent(true);
+
+        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        assertEquals(1, actualResult.size());
+        assertEquals(realisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
+
+        // Finally use query that matches no language (should return no results)
+        searchParams.setQuery("realiFoo");
+
+        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        assertEquals(0, actualResult.size());
     }
 }

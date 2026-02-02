@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Schema(name = "StudiesSearchParametersV9", title = "StudiesSearchParametersV9")
 public class StudiesSearchParameters extends PageableSearchParameters<StudyElementEntity> {
 
     @Schema(description = "Rajaa tarjontaa nimen tai koodin perusteella.")
@@ -98,8 +99,11 @@ public class StudiesSearchParameters extends PageableSearchParameters<StudyEleme
     @Schema(description = "Palautetaanko toteutushakuehdoista riippumatta myös opintojaksoja, joilla ei ole yhtään aktiivisia toteutuksia. Oletusarvo: false")
     private boolean includeCourseUnitsWithoutActiveRealisations = false;
 
-    @Schema(description = "Määrittää 'query', 'realisationQuery' ja 'sortDirection' -hakuehtojen kielen. Mahdolliset arvot: fi, sv, en. Oletusarvo: fi")
+    @Schema(description = "Määrittää 'query', 'realisationQuery' ja 'sortBy' -hakuehtojen kielen. Mahdolliset arvot: fi, sv, en. Oletusarvo: fi")
     private Language language = Language.FI;
+
+    @Schema(description = "Kohdistetaanko nimi-haut (query ja realisationQuery) kaikkiin kieliversioihin. Jos true, niin parametri language määrittää silti NAME pohjaiseen järjestämiseen käytetyn kielen. Oletusarvo: false")
+    private boolean langIndependent = false;
 
     @Schema(description = "Palautetaanko vain sellaiset opintojaksot, joihin liittyy vähintään yksi toteutus, jossa " +
         "ilmoittautuminen ei ole suljettu ('enrollmentClosed' = false) JA verkostoliitos on voimassa. Oletusarvo: false")
@@ -151,6 +155,10 @@ public class StudiesSearchParameters extends PageableSearchParameters<StudyEleme
     public void setLanguage(Language language) {
         this.language = language;
     }
+
+    public boolean isLangIndependent() { return langIndependent; }
+
+    public void setLangIndependent(boolean langIndependent) { this.langIndependent = langIndependent; }
 
     public List<String> getNetworkIdentifiers() {
         return networkIdentifiers;

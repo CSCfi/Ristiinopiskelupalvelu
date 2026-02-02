@@ -93,7 +93,6 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
         realisationEntity = super.setOrganizingOrganisationId(realisationEntity);
         realisationEntity = super.setCooperationNetworkData(realisationEntity);
         realisationEntity = super.fillMissingOrganisationInfo(realisationEntity);
-        realisationEntity = super.setUniqueId(realisationEntity);
 
         try {
             RealisationEntity createdEntity = realisationRepository.create(realisationEntity, IndexQuery.OpType.CREATE);
@@ -429,7 +428,7 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
 
         // Find by name
         if(StringUtils.hasText(searchParams.getQuery())) {
-            realisationQuery.filterByName(searchParams.getQuery(), searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI);
+            realisationQuery.filterByName(searchParams.getQuery(), !searchParams.isLangIndependent() ? (searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI) : null);
         }
 
         // Find only realisations that have ongoing enrollment

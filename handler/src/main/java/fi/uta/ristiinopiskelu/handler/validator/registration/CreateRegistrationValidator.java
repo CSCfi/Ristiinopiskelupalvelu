@@ -15,9 +15,9 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
-import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
 import fi.uta.ristiinopiskelu.handler.validator.RequestValidator;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.CreateRegistrationRequest;
+import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -352,32 +352,34 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
         }
 
         // Get selection course unit's completion option(s) that match given selected completion option
-        List<CompletionOptionEntity> courseUnitCompletionOptionsMatchingSelectedCompletionOption = selectionCourseUnitEntity.getCompletionOptions().stream()
+        if(StringUtils.hasText(completionOptionSelection.getSelectionItemId())) {
+            List<CompletionOptionEntity> courseUnitCompletionOptionsMatchingSelectedCompletionOption = selectionCourseUnitEntity.getCompletionOptions().stream()
                 .filter(co -> co.getCompletionOptionId().equals(completionOptionSelection.getSelectionItemId()))
-                .collect(Collectors.toList());
+                .toList();
 
-        if(CollectionUtils.isEmpty(courseUnitCompletionOptionsMatchingSelectedCompletionOption)) {
-            throw new RegistrationSelectionReferenceValidationException("Unable to process registration request." +
+            if (CollectionUtils.isEmpty(courseUnitCompletionOptionsMatchingSelectedCompletionOption)) {
+                throw new RegistrationSelectionReferenceValidationException("Unable to process registration request." +
                     " Selected realisation's course unit does not contain given completion option." +
                     " Root realisation selection: " + getSelectionIdString(realisationSelection) +
                     " Completion option selection: " + getSelectionIdString(completionOptionSelection) +
                     " Course unit selection: " + getSelectionIdString(courseUnitSelection));
-        }
+            }
 
-        // Verify selection completion option contains given selected assessment item
-        CompletionOptionEntity completionOptionContainingAssessmentItemSelection = courseUnitCompletionOptionsMatchingSelectedCompletionOption.stream()
+            // Verify selection completion option contains given selected assessment item
+            CompletionOptionEntity completionOptionContainingAssessmentItemSelection = courseUnitCompletionOptionsMatchingSelectedCompletionOption.stream()
                 .filter(co -> !CollectionUtils.isEmpty(co.getAssessmentItems()))
                 .filter(co -> co.getAssessmentItems().stream().anyMatch(ai -> ai.getAssessmentItemId().equals(assessmentItemSelection.getSelectionItemId())))
                 .findFirst()
                 .orElse(null);
 
-        if(completionOptionContainingAssessmentItemSelection == null) {
-            throw new RegistrationSelectionReferenceValidationException("Unable to process registration request." +
+            if (completionOptionContainingAssessmentItemSelection == null) {
+                throw new RegistrationSelectionReferenceValidationException("Unable to process registration request." +
                     " Selected completion option does not contain given assessment item." +
                     " Root realisation selection: " + getSelectionIdString(realisationSelection) +
                     " Assessment item selection: " + getSelectionIdString(assessmentItemSelection) +
                     " Completion option selection: " + getSelectionIdString(completionOptionSelection) +
                     " Course unit selection: " + getSelectionIdString(courseUnitSelection));
+            }
         }
     }
 

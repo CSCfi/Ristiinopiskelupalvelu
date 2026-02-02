@@ -16,13 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.data.elasticsearch.VersionConflictException;
 import org.springframework.test.context.ActiveProfiles;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(EmbeddedElasticsearchInitializer.class)
 @SpringBootTest(classes = TestEsConfig.class)
@@ -70,9 +67,9 @@ public class NetworkServiceIntegrationTest {
 
         UpdateFailedException exception = Assertions.assertThrows(UpdateFailedException.class,
             () -> networkService.update(created));
-        assertTrue(exception.getCause() instanceof DataAccessResourceFailureException);
-        assertTrue(exception.getCause().getCause().getCause() instanceof ResponseException);
-        ResponseException responseException = (ResponseException) exception.getCause().getCause().getCause();
+        assertTrue(exception.getCause() instanceof VersionConflictException);
+        assertTrue(exception.getCause().getCause() instanceof ResponseException);
+        ResponseException responseException = (ResponseException) exception.getCause().getCause();
         assertEquals(HttpStatus.SC_CONFLICT, responseException.getResponse().getStatusLine().getStatusCode());
                 
         NetworkEntity updatedEntity = networkService.findById("ABCD-NETWORK-2").orElse(null);

@@ -8,6 +8,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStude
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentStudyRight;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationStudentEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudentEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.MessageForwardingFailedException;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
@@ -19,6 +20,7 @@ import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.UpdateStudentStudyRightRequest;
 import fi.uta.ristiinopiskelu.messaging.util.Oid;
+import fi.uta.ristiinopiskelu.messaging.util.OidPersonNode;
 import org.apache.camel.Exchange;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.support.DefaultExchange;
@@ -97,7 +99,7 @@ public class UpdateStudentStudyRightProcessorTest {
         homeStudyRight.setStudyRightType(StudyRightType.BACHELOR);
 
         UpdateStudentStudyRightRequest request = new UpdateStudentStudyRightRequest();
-        request.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        request.setOid(Oid.randomOid(OidPersonNode.PERSON));
         request.setHomeStudyRight(homeStudyRight);
 
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
@@ -151,7 +153,7 @@ public class UpdateStudentStudyRightProcessorTest {
         homeStudyRight.setStudyRightType(StudyRightType.BACHELOR);
 
         UpdateStudentStudyRightRequest request = new UpdateStudentStudyRightRequest();
-        request.setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        request.setOid(Oid.randomOid(OidPersonNode.PERSON));
         request.setHomeStudyRight(homeStudyRight);
 
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
@@ -186,7 +188,7 @@ public class UpdateStudentStudyRightProcessorTest {
             student.setHostStudyRight(hostStudyRight);
 
             RegistrationEntity regForOrg = new RegistrationEntity();
-            regForOrg.setStudent(student);
+            regForOrg.setStudent(RegistrationStudentEntity.from(student));
 
             registrationEntitieForOrg.add(regForOrg);
         }

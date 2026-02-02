@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Person;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
@@ -9,6 +10,7 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 import java.time.LocalDate;
 import java.util.List;
 
+@Schema(name = "CompletedCreditV9", title = "CompletedCreditV9")
 public class CompletedCredit {
     private String educationInstitution;
     private String completedCreditIdentifier;

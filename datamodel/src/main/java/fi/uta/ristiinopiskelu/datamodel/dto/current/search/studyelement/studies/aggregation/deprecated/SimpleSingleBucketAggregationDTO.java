@@ -4,7 +4,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.
 import io.swagger.v3.oas.annotations.media.Schema;
 
 // use "SingleBucketAggregationDTO" instead
-@Schema(name = "SimpleSingleBucketAggregation")
+@Schema(name = "SimpleSingleBucketAggregationV9", title = "SimpleSingleBucketAggregationV9", type = "object")
 @Deprecated(since = "9.0.0")
 public class SimpleSingleBucketAggregationDTO extends SimpleAggregationDTO {
 

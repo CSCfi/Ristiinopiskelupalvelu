@@ -4,7 +4,6 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
-import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
@@ -14,7 +13,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 
-@Schema(name = "CourseUnitRealisation")
 public class CourseUnitRealisationEntity {
     private String realisationId;
     private String realisationIdentifierCode;

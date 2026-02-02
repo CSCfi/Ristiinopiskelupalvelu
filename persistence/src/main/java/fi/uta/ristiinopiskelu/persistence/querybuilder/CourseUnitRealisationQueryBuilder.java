@@ -3,9 +3,8 @@ package fi.uta.ristiinopiskelu.persistence.querybuilder;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
+import co.elastic.clients.elasticsearch._types.query_dsl.DateRangeQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
-import co.elastic.clients.json.JsonData;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.TeachingLanguage;
@@ -13,6 +12,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGui
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -36,14 +36,14 @@ public class CourseUnitRealisationQueryBuilder extends AbstractStudiesQueryBuild
 
         if(startDate != null) {
             realisationDateQuery.must(q -> q
-                .range(rq -> rq
+                .range(rq -> rq.date(rq2 -> rq2
                     .field("realisations.startDate")
-                    .lte(JsonData.of(startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)))));
+                    .lte(startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)))));
 
             assessmentItemRealisationDateQuery.must(q -> q
-                .range(rq -> rq
+                .range(rq -> rq.date(rq2 -> rq2
                     .field("completionOptions.assessmentItems.realisations.startDate")
-                    .lte(JsonData.of(startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)))));
+                    .lte(startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)))));
         }
 
         if(endDate != null) {
@@ -54,14 +54,15 @@ public class CourseUnitRealisationQueryBuilder extends AbstractStudiesQueryBuild
                             .mustNot(eq -> eq
                                 .exists(eq2 -> eq2.field("realisations.endDate")))))
                     .should(q2 -> q2
-                        .range(rq -> rq
+                        .range(rq -> rq.date(rq2 -> rq2
                             .field("realisations.endDate")
-                            .gte(JsonData.of(endDate.format(DateTimeFormatter.ISO_LOCAL_DATE)))))));
+                            .gte(endDate.format(DateTimeFormatter.ISO_LOCAL_DATE)))))));
 
             assessmentItemRealisationDateQuery.must(q -> q.bool(bq -> bq
                 .should(q2 -> q2.bool(bq2 -> bq2.mustNot(eq -> eq.exists(eq2 -> eq2.field("completionOptions.assessmentItems.realisations.endDate")))))
-                .should(q2 -> q2.range(rq -> rq.field("completionOptions.assessmentItems.realisations.endDate")
-                    .gte(JsonData.of(endDate.format(DateTimeFormatter.ISO_LOCAL_DATE)))))));
+                .should(q2 -> q2.range(rq -> rq.date(rq2 -> rq2
+                    .field("completionOptions.assessmentItems.realisations.endDate")
+                    .gte(endDate.format(DateTimeFormatter.ISO_LOCAL_DATE)))))));
         }
 
         mainRealisationQuery.must(realisationDateQuery.build()._toQuery());
@@ -83,39 +84,39 @@ public class CourseUnitRealisationQueryBuilder extends AbstractStudiesQueryBuild
         BoolQuery.Builder assessmentItemRealisationDateQuery = new BoolQuery.Builder();
 
         if(enrollmentStartDateTimeFrom != null || enrollmentStartDateTimeTo != null) {
-            RangeQuery.Builder rqb = new RangeQuery.Builder().field("realisations.enrollmentStartDateTime");
-            RangeQuery.Builder aqb = new RangeQuery.Builder().field("completionOptions.assessmentItems.realisations.enrollmentStartDateTime");
+            DateRangeQuery.Builder rqb = new DateRangeQuery.Builder().field("realisations.enrollmentStartDateTime");
+            DateRangeQuery.Builder aqb = new DateRangeQuery.Builder().field("completionOptions.assessmentItems.realisations.enrollmentStartDateTime");
 
             if (enrollmentStartDateTimeFrom != null) {
                 String startFrom = enrollmentStartDateTimeFrom.format(DateUtils.getFormatter());
-                rqb.gte(JsonData.of(startFrom));
-                aqb.gte(JsonData.of(startFrom));
+                rqb.gte(startFrom);
+                aqb.gte(startFrom);
             }
 
             if (enrollmentStartDateTimeTo != null) {
                 String startTo = enrollmentStartDateTimeTo.format(DateUtils.getFormatter());
-                rqb.lte(JsonData.of(startTo));
-                aqb.lte(JsonData.of(startTo));
+                rqb.lte(startTo);
+                aqb.lte(startTo);
             }
 
-            realisationDateQuery.must(rqb.build()._toQuery());
-            assessmentItemRealisationDateQuery.must(aqb.build()._toQuery());
+            realisationDateQuery.must(rqb.build()._toRangeQuery()._toQuery());
+            assessmentItemRealisationDateQuery.must(aqb.build()._toRangeQuery()._toQuery());
         }
 
         if(enrollmentEndDateTimeFrom != null || enrollmentEndDateTimeTo != null) {
-            RangeQuery.Builder rqb = new RangeQuery.Builder().field("realisations.enrollmentEndDateTime");
-            RangeQuery.Builder aqb = new RangeQuery.Builder().field("completionOptions.assessmentItems.realisations.enrollmentEndDateTime");
+            DateRangeQuery.Builder rqb = new DateRangeQuery.Builder().field("realisations.enrollmentEndDateTime");
+            DateRangeQuery.Builder aqb = new DateRangeQuery.Builder().field("completionOptions.assessmentItems.realisations.enrollmentEndDateTime");
 
             if (enrollmentEndDateTimeFrom != null) {
                 String endFrom = enrollmentEndDateTimeFrom.format(DateUtils.getFormatter());
-                rqb.gte(JsonData.of(endFrom));
-                aqb.gte(JsonData.of(endFrom));
+                rqb.gte(endFrom);
+                aqb.gte(endFrom);
             }
 
             if (enrollmentEndDateTimeTo != null) {
                 String endTo = enrollmentEndDateTimeTo.format(DateUtils.getFormatter());
-                rqb.lte(JsonData.of(endTo));
-                aqb.lte(JsonData.of(endTo));
+                rqb.lte(endTo);
+                aqb.lte(endTo);
             }
 
             if (enrollmentEndDateTimeTo == null) {
@@ -125,17 +126,17 @@ public class CourseUnitRealisationQueryBuilder extends AbstractStudiesQueryBuild
                             .mustNot(eq -> eq
                                 .exists(eq2 -> eq2
                                     .field("realisations.enrollmentEndDateTime")))))
-                    .should(rqb.build()._toQuery())));
+                    .should(rqb.build()._toRangeQuery()._toQuery())));
                 assessmentItemRealisationDateQuery.must(q -> q.bool(bq -> bq
                     .should(q2 -> q2
                         .bool(bq2 -> bq2
                             .mustNot(eq -> eq
                                 .exists(eq2 -> eq2
                                     .field("completionOptions.assessmentItems.realisations.enrollmentEndDateTime")))))
-                    .should(aqb.build()._toQuery())));
+                    .should(aqb.build()._toRangeQuery()._toQuery())));
             } else {
-                realisationDateQuery.must(rqb.build()._toQuery());
-                assessmentItemRealisationDateQuery.must(aqb.build()._toQuery());
+                realisationDateQuery.must(rqb.build()._toRangeQuery()._toQuery());
+                assessmentItemRealisationDateQuery.must(aqb.build()._toRangeQuery()._toQuery());
             }
         }
 
@@ -144,35 +145,46 @@ public class CourseUnitRealisationQueryBuilder extends AbstractStudiesQueryBuild
     }
 
     public void filterByRealisationNameOrIdentifierCode(BoolQuery.Builder mainRealisationQuery, BoolQuery.Builder mainAssessmentItemQuery,
-                                                        String queryString, Language lang) {
-        if(StringUtils.isEmpty(queryString) || lang == null) {
+                                                        String queryString, @Nullable Language lang) {
+        if(StringUtils.isEmpty(queryString)) {
             return;
         }
+
+        // If lang is not given then target all valid name languages (fi, en, sv)
+        Language[] languages = lang != null ? new Language[] { lang } : Language.values();
 
         String formattedQuery = String.format("*%s*", queryString.toLowerCase());
 
         Query realisationNameOrCodeQuery = new Query.Builder().bool(q -> q
-            .must(q2 -> q2.bool(bq -> bq
-                .should(q3 -> q3
-                    .wildcard(wq -> wq
-                        .field(String.format("realisations.name.values.%s.lowercase", lang.getValue()))
-                        .value(formattedQuery)))
-                .should(q3 -> q3
+            .must(q2 -> q2.bool(bq -> {
+                for (Language l: languages) {
+                    bq.should(q3 -> q3.
+                        wildcard(wq -> wq
+                            .field(String.format("realisations.name.values.%s.lowercase", l.getValue()))
+                            .value(formattedQuery)));
+                }
+                bq.should(q3 -> q3
                     .wildcard(wq -> wq
                         .field("realisations.realisationIdentifierCode.lowercase")
-                        .value(formattedQuery))))))
+                        .value(formattedQuery)));
+                return bq;
+            })))
             .build();
 
         Query assessmentItemRealisationNameOrCodeQuery = new Query.Builder().bool(q -> q
-            .must(q2 -> q2.bool(bq -> bq
-                .should(q3 -> q3
-                    .wildcard(wq -> wq
-                        .field(String.format("completionOptions.assessmentItems.realisations.name.values.%s.lowercase", lang.getValue()))
-                        .value(formattedQuery)))
-                .should(q3 -> q3
+            .must(q2 -> q2.bool(bq -> {
+                for (Language l: languages) {
+                    bq.should(q3 -> q3
+                        .wildcard(wq -> wq
+                            .field(String.format("completionOptions.assessmentItems.realisations.name.values.%s.lowercase", l.getValue()))
+                            .value(formattedQuery)));
+                }
+                bq.should(q3 -> q3
                     .wildcard(wq -> wq
                         .field("completionOptions.assessmentItems.realisations.realisationIdentifierCode.lowercase")
-                        .value(formattedQuery))))))
+                        .value(formattedQuery)));
+                return bq;
+            })))
             .build();
 
         mainAssessmentItemQuery.must(assessmentItemRealisationNameOrCodeQuery);

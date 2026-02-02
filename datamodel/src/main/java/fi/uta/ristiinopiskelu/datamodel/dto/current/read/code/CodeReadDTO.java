@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.util.List;
 
-@Schema(name = "Code")
+@Schema(name = "CodeV9", title = "CodeV9")
 public class CodeReadDTO {
     private String codeUri;
     private String resourceUri;

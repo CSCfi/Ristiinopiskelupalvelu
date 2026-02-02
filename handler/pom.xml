@@ -5,7 +5,7 @@
 
 	<groupId>fi.uta.ristiinopiskelu</groupId>
 	<artifactId>handler</artifactId>
-	<version>9.0.23</version>
+	<version>9.0.28</version>
 	<packaging>jar</packaging>
 
 	<name>handler</name>
@@ -14,7 +14,7 @@
 	<parent>
 		<groupId>fi.uta.ristiinopiskelu</groupId>
 		<artifactId>parent</artifactId>
-		<version>9.0.23</version>
+		<version>9.0.28</version>
 		<relativePath>../</relativePath> <!-- lookup parent from repository -->
 	</parent>
 
@@ -171,13 +171,7 @@
 
 		<dependency>
 			<groupId>org.apache.activemq</groupId>
-			<artifactId>artemis-junit</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.activemq</groupId>
-			<artifactId>artemis-jms-server</artifactId>
+			<artifactId>artemis-jakarta-server</artifactId>
 			<scope>test</scope>
 		</dependency>
 
@@ -191,7 +185,11 @@
 	<build>
 		<finalName>ristiinopiskelu-handler</finalName>
 		<plugins>
-			<plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>

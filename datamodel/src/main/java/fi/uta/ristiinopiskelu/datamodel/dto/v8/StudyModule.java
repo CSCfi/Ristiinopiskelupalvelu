@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 
@@ -20,6 +21,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 /* TUNI EXTENSION ENDS */
 
+@Schema(name = "StudyModuleV8", title = "StudyModuleV8", type = "object")
 public class StudyModule extends StudyElement {
     private Integer amountValueMin;
     private Integer amountValueMax;

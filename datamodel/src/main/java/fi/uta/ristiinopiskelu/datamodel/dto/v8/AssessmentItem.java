@@ -14,6 +14,7 @@ import java.util.List;
  *         Based on
  *         https://wiki.eduuni.fi/download/attachments/70202805/CSC6_curriculum_api_1.0.0-oas3_swagger.json?version=1&modificationDate=1531828139937&api=v2
  */
+@Schema(name = "AssessmentItemV8", title = "AssessmentItemV8")
 public class AssessmentItem {
 
     @JsonProperty("assessmentItemId")

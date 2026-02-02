@@ -1,11 +1,11 @@
 package fi.uta.ristiinopiskelu.persistence.config;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
@@ -72,12 +72,12 @@ public class EsConfig extends ElasticsearchConfiguration {
     @Value("${general.elasticsearch.caCertificatePath}")
     private String caCertificatePath;
 
-    @Override
-    public ElasticsearchClient elasticsearchClient(RestClient restClient) {
-        ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(objectMapper(javaTimeModule(), jdk8Module())));
-        return new ElasticsearchClient(transport);
-    }
 
+    @Override
+    public ElasticsearchTransport elasticsearchTransport(RestClient restClient, JsonpMapper jsonpMapper) {
+        return new RestClientTransport(restClient, new JacksonJsonpMapper(objectMapper(javaTimeModule(), jdk8Module())));
+    }
+    
     @Override
     protected RefreshPolicy refreshPolicy() {
         return RefreshPolicy.IMMEDIATE;
@@ -143,18 +143,18 @@ public class EsConfig extends ElasticsearchConfiguration {
 
     // Jackson modules
     @Bean
-    public Module javaTimeModule() {
+    public JavaTimeModule javaTimeModule() {
         return new JavaTimeModule();
     }
 
     @Bean
-    public Module jdk8Module() {
+    public Jdk8Module jdk8Module() {
         return new Jdk8Module();
     }
 
     @Primary
     @Bean("objectMapper")
-    public ObjectMapper objectMapper(Module javaTimeModule, Module jdk8Module) {
+    public ObjectMapper objectMapper(JavaTimeModule javaTimeModule, Jdk8Module jdk8Module) {
         SimpleModule sanitizerModule = new SimpleModule();
         sanitizerModule.addDeserializer(String.class, new HtmlSanitizingStringDeserializer());
 
@@ -174,10 +174,11 @@ public class EsConfig extends ElasticsearchConfiguration {
 
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         objectMapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
+        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         objectMapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
         objectMapper.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
         objectMapper.setDateFormat(new SimpleDateFormat(DateUtils.getPattern()));
-        
+
         return objectMapper;
     }
 

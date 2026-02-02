@@ -59,84 +59,11 @@
     },
     "student": {
       "properties": {
-        "homeEppn": {
-          "type": "keyword"
-        },
-        "hostEppn": {
-          "type": "keyword"
-        },
-        "firstNames": {
-          "type": "text"
-        },
-        "surName": {
-          "type": "text"
-        },
-        "givenName": {
-          "type": "text"
-        },
-        "oid": {
-          "type": "keyword"
-        },
-        "personId": {
-          "type": "keyword"
-        },
         "homeStudentNumber": {
           "type": "keyword"
         },
         "hostStudentNumber": {
           "type": "keyword"
-        },
-        "dateOfBirth": {
-          "type": "date"
-        },
-        "gender": {
-          "type": "integer"
-        },
-        "addresses": {
-          "type": "nested",
-          "properties": {
-            "street": {
-              "type": "text"
-            },
-            "postalCode": {
-              "type": "keyword"
-            },
-            "postOffice": {
-              "type": "text"
-            },
-            "country": {
-              "type": "keyword"
-            }
-          }
-        },
-        "countryOfCitizenship": {
-          "type": "keyword"
-        },
-        "municipalityOfResidence": {
-          "type": "keyword"
-        },
-        "motherTongue": {
-          "type": "keyword"
-        },
-        "preferredLanguage": {
-          "type": "keyword"
-        },
-        "email": {
-          "type": "keyword"
-        },
-        "phone": {
-          "type": "nested",
-          "properties": {
-            "number": {
-              "type": "keyword"
-            },
-            "description": {
-              "type": "text"
-            }
-          }
-        },
-        "safetyProhibition": {
-          "type": "boolean"
         },
         "homeStudyRight": {
           "properties": {
@@ -165,37 +92,6 @@
             },
             "studyRightType": {
               "type": "keyword"
-            },
-            "keywords": {
-              "type": "nested",
-              "properties": {
-                "key": {
-                  "type": "keyword"
-                },
-                "value": {
-                  "properties": {
-                    "values": {
-                      "properties": {
-                        "fi": {
-                          "type": "text",
-                          "copy_to": "search_fi"
-                        },
-                        "en": {
-                          "type": "text",
-                          "copy_to": "search_en"
-                        },
-                        "sv": {
-                          "type": "text",
-                          "copy_to": "search_sv"
-                        }
-                      }
-                    }
-                  }
-                },
-                "keySet": {
-                  "type": "keyword"
-                }
-              }
             }
           }
         },
@@ -226,37 +122,6 @@
             },
             "studyRightType": {
               "type": "keyword"
-            },
-            "keywords": {
-              "type": "nested",
-              "properties": {
-                "key": {
-                  "type": "keyword"
-                },
-                "value": {
-                  "properties": {
-                    "values": {
-                      "properties": {
-                        "fi": {
-                          "type": "text",
-                          "copy_to": "search_fi"
-                        },
-                        "en": {
-                          "type": "text",
-                          "copy_to": "search_en"
-                        },
-                        "sv": {
-                          "type": "text",
-                          "copy_to": "search_sv"
-                        }
-                      }
-                    }
-                  }
-                },
-                "keySet": {
-                  "type": "keyword"
-                }
-              }
             }
           }
         }
@@ -392,43 +257,6 @@
       "type": "text",
       "analyzer": "swedish"
     },
-    "warnings": {
-      "type": "nested",
-      "properties": {
-        "type": {
-          "type": "keyword"
-        },
-        "description": {
-          "properties": {
-            "values": {
-              "properties": {
-                "fi": {
-                  "type": "text",
-                  "copy_to": "search_fi"
-                },
-                "en": {
-                  "type": "text",
-                  "copy_to": "search_en"
-                },
-                "sv": {
-                  "type": "text",
-                  "copy_to": "search_sv"
-                }
-              }
-            }
-          }
-        },
-        "startDate": {
-          "type": "date"
-        },
-        "endDate": {
-          "type": "date"
-        },
-        "studyRightId": {
-          "type": "text"
-        }
-      }
-    },
     "descriptions": {
       "type": "nested",
       "properties": {
@@ -477,16 +305,5 @@
         }
       }
     }
-  },
-  "dynamic_templates": [
-    {
-      "strings": {
-        "match_mapping_type": "string",
-        "mapping": {
-          "type": "text",
-          "analyzer": "standard"
-        }
-      }
-    }
-  ]
+  }
 }

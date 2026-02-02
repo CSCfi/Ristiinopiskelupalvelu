@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-@Schema(name = "Registration")
+@Schema(name = "RegistrationV9", title = "RegistrationV9")
 public class RegistrationReadDTO {
     private String registrationRequestId;
     private String sendingOrganisationTkCode;

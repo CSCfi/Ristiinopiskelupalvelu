@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(name = "SingleBucketAggregation")
+@Schema(name = "SingleBucketAggregationV9", title = "SingleBucketAggregationV9", type = "object")
 public class SingleBucketAggregationDTO extends AggregationDTO {
 
     private String name;

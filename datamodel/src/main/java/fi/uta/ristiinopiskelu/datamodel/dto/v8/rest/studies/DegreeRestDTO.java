@@ -3,7 +3,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.studies;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyElementType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(name = "Degree")
+@Schema(name = "DegreeV8", title = "DegreeV8", type = "object")
 public class DegreeRestDTO extends StudyElementRestDTO {
 
     private double duration;

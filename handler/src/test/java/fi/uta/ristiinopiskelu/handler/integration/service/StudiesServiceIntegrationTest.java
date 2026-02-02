@@ -6,9 +6,9 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrgani
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.InternalStudiesSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchElementType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.InternalStudiesSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -525,7 +525,7 @@ public class StudiesServiceIntegrationTest {
 
         allExistingStudyElements.add(courseUnitRepository.create(courseUnitWithoutNetwork));
 
-        CourseUnitEntity courseUnitWithoutNetwork2 = EntityInitializer.getCourseUnitEntity("CU-101", "CUCODE-101", organisationRunningQuery,
+        CourseUnitEntity courseUnitWithoutNetwork2 = EntityInitializer.getCourseUnitEntity("CU-102", "CUCODE-102", organisationRunningQuery,
                 Collections.emptyList(), new LocalisedString("Ilman verkostoa", "No network", null));
         courseUnitWithoutNetwork2.setOrganisationReferences(Collections.singletonList(organisationReference));
         courseUnitWithoutNetwork2.setStatus(StudyStatus.ACTIVE);

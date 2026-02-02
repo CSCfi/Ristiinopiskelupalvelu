@@ -2,7 +2,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(name = "StudyRecordStudent")
+@Schema(name = "StudyRecordStudentV9", title = "StudyRecordStudentV9")
 public class StudyRecordStudentReadDTO {
 
     private String oid;

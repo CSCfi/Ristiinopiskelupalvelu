@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
+@Schema(name = "RegistrationAmountSearchParametersV9", title = "RegistrationAmountSearchParametersV9")
 public class RegistrationAmountSearchParameters implements SearchParameters<RegistrationEntity> {
 
     @Schema(description = "Rajaa rekisteröintipyyntöjä verkostojen mukaan.")

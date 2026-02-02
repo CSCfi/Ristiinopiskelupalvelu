@@ -1,11 +1,13 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.studies;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.ListSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.ListSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.search.AggregationDTO;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Schema(name = "StudiesRestSearchResultsV8", title = "StudiesRestSearchResultsV8")
 public class StudiesRestSearchResults extends ListSearchResults<StudyElementRestDTO> {
 
     private List<AggregationDTO> aggregations = new ArrayList<>();

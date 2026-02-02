@@ -1,7 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.network;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(name = "ExpenseV9", title = "ExpenseV9")
 public class Expense {
 
     @JsonProperty("pay")

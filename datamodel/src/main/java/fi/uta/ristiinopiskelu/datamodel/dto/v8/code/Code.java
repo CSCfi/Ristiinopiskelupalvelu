@@ -1,8 +1,11 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.code;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDate;
 import java.util.List;
 
+@Schema(name = "CodeV8", title = "CodeV8")
 public class Code {
     private String codeUri;
     private String resourceUri;

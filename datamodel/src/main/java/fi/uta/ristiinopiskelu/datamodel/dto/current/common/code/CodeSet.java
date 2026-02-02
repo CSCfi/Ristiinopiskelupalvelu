@@ -1,5 +1,8 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.code;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "CodeSetV9", title = "CodeSetV9")
 public class CodeSet {
 
     private String key;

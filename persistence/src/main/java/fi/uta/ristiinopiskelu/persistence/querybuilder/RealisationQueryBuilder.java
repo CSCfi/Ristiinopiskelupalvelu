@@ -2,7 +2,6 @@ package fi.uta.ristiinopiskelu.persistence.querybuilder;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
-import co.elastic.clients.json.JsonData;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CourseUnitReference;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
 import org.springframework.util.StringUtils;
@@ -14,16 +13,16 @@ public class RealisationQueryBuilder extends StudiesQueryBuilder {
     public void filterOngoingEnrollments() {
         String formattedNow = DateUtils.getFormattedNow();
         this.must(q -> q.bool(bq -> bq
-                .must(q2 -> q2.range(rq -> rq
+                .must(q2 -> q2.range(rq -> rq.date(rq2 -> rq2
                     .field("enrollmentStartDateTime")
-                    .lte(JsonData.of(formattedNow))))
+                    .lte(formattedNow))))
                 .must(q2 -> q2.bool(bq2 -> bq2
                         .should(q3 -> q3.bool(bq3 -> bq3
                             .mustNot(q4 -> q4
                                 .exists(eq -> eq.field("enrollmentEndDateTime")))))
-                        .should(q3 -> q3.range(rq -> rq
+                        .should(q3 -> q3.range(rq -> rq.date(rq2 -> rq2
                             .field("enrollmentEndDateTime")
-                            .gte(JsonData.of(formattedNow))))))));
+                            .gte(formattedNow))))))));
     }
 
     @Override
@@ -81,8 +80,8 @@ public class RealisationQueryBuilder extends StudiesQueryBuilder {
 
     public void filterPastEndDate() {
         this.must(q -> q
-            .range(rq -> rq
+            .range(rq -> rq.date(rq2 -> rq2
                 .field("endDate")
-                .gte(JsonData.of("now/d"))));
+                .gte("now/d"))));
     }
 }

@@ -1,6 +1,8 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Person;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
@@ -24,7 +26,7 @@ import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.acknowledgement.Acknowledgement;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.CreateRegistrationRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.RegistrationResponse;
-import fi.uta.ristiinopiskelu.messaging.message.current.student.UpdateStudentRequest;
+import fi.uta.ristiinopiskelu.messaging.message.current.student.UpdateStudentStudyRightRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.CreateStudyRecordRequest;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
@@ -164,7 +166,7 @@ public class AcknowledgementRouteIntegrationTest {
     @Test
     public void testSendingAcknowledgementForUpdateStudentRequest_shouldSucceed() throws JMSException {
 
-        Message responseMessage = sendValidStudentUpdateRequest();
+        Message responseMessage = sendValidStudentUpdateStudyRightRequest();
         final String correlationId = responseMessage.getStringProperty(MessageHeader.RIPA_CORRELATION_ID);
         assertNotNull(correlationId);
 
@@ -218,7 +220,7 @@ public class AcknowledgementRouteIntegrationTest {
         return JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
     }
 
-    private Message sendValidStudentUpdateRequest () {
+    private Message sendValidStudentUpdateStudyRightRequest() {
 
         RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
             courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
@@ -227,17 +229,10 @@ public class AcknowledgementRouteIntegrationTest {
         JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
         Message receivedCreateRegistrationMessage = jmsTemplate.receive(receivingOrganisation.getQueue());
         // now send update student info request
-        UpdateStudentRequest updateRequest = new UpdateStudentRequest();
+        UpdateStudentStudyRightRequest updateRequest = new UpdateStudentStudyRightRequest();
         updateRequest.setPersonId(req.getStudent().getPersonId());
         updateRequest.setOid(req.getStudent().getOid());
-        updateRequest.setFirstNames("Teppo");
-        updateRequest.setSurName("Testaaja");
-        updateRequest.setCountryOfCitizenship(Collections.singletonList(Country.FI));
-
-        Phone phone = new Phone();
-        phone.setNumber("0401111111");
-        phone.setDescription("new number");
-        updateRequest.setPhone(Collections.singletonList(phone));
+        updateRequest.setHomeStudyRight(DtoInitializer.getStudentStudyRight(sendingOrganisation.getId(), true));
 
         return  JmsHelper.sendAndReceiveObject(jmsTemplate, updateRequest, sendingOrganisation.getId());
     }

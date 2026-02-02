@@ -56,7 +56,8 @@
         "oneOf": [
           { "$ref": "registrationSelectionItemHier1.json" },
           { "$ref": "registrationSelectionItemHier2.json" },
-          { "$ref": "registrationSelectionItemHier4.json" }
+          { "$ref": "registrationSelectionItemHier4_pending.json"},
+          { "$ref": "registrationSelectionItemHier4_aborted.json"}
         ]
       }
     },

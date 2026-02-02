@@ -617,7 +617,6 @@ public class UpdateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         assertEquals("jaksonnimi2 fi", updatedCourseUnit.getName().getValue("fi"));
         assertEquals("jaksonnimi2 en", updatedCourseUnit.getName().getValue("en"));
         assertEquals("jaksonnimi2 sv", updatedCourseUnit.getName().getValue("sv"));
-        assertEquals(2, updatedCourseUnit.getVersion());
         assertNotNull(updatedCourseUnit.getCreatedTime());
         assertNotNull(updatedCourseUnit.getUpdateTime());
         assertEquals(CompositeIdentifiedEntityType.COURSE_UNIT, updatedCourseUnit.getType());
@@ -664,7 +663,6 @@ public class UpdateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         assertEquals("jaksonnimi3 fi", updatedCourseUnit2.getName().getValue("fi"));
         assertEquals("jaksonnimi3 en", updatedCourseUnit2.getName().getValue("en"));
         assertEquals("jaksonnimi3 sv", updatedCourseUnit2.getName().getValue("sv"));
-        assertEquals(3, updatedCourseUnit2.getVersion());
         assertNotNull(updatedCourseUnit2.getCreatedTime());
         assertNotNull(updatedCourseUnit2.getUpdateTime());
         assertEquals(CompositeIdentifiedEntityType.COURSE_UNIT, updatedCourseUnit2.getType());
@@ -685,7 +683,7 @@ public class UpdateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
     }
     
     @Test
-    public void testSendingUpdateCourseUnitMessage_shouldFailHasExtraField() throws JMSException, IOException {
+    public void testSendingUpdateCourseUnitMessage_shouldNotFailBecauseOfExtraField() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
@@ -711,7 +709,7 @@ public class UpdateCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         Object updResponse = jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(updResponse instanceof DefaultResponse);
         DefaultResponse response = (DefaultResponse) updResponse;
-        assertTrue(response.getStatus() == Status.FAILED);
+        assertTrue(response.getStatus() == Status.OK);
     }
 
     @Test

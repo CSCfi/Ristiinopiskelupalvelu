@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // use "MultiBucketAggregationDTO" now
-@Schema(name = "SimpleMultiBucketAggregation")
+@Schema(name = "SimpleMultiBucketAggregationV9", title = "SimpleMultiBucketAggregationV9", type = "object")
 @Deprecated(since = "9.0.0")
 public class SimpleMultiBucketAggregationDTO extends SimpleAggregationDTO {
 

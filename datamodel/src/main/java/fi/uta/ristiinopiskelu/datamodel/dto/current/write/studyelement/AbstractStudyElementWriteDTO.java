@@ -9,6 +9,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGui
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.DegreeWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.studymodule.StudyModuleWriteDTO;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.util.CollectionUtils;
@@ -65,7 +66,10 @@ public abstract class AbstractStudyElementWriteDTO {
     private LocalisedString furtherInformation = null;
     private List<@CodeSetConstraint(codeSetKey = "study_right_type") CodeReference> targetGroups = null;
     private List<CooperationNetwork> cooperationNetworks = null;
+
+    @ArraySchema(schema = @Schema(ref = "#/components/schemas/StudyElement"))
     private List<AbstractStudyElementWriteDTO> subElements;
+
     private LocalisedString objective;
     private LocalisedString content;
     private StudyElementType type;

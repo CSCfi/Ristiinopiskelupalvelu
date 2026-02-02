@@ -4,15 +4,19 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Address;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Country;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Phone;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyRight;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.Student;
+import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationStudentEntity;
+import lombok.*;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
 
+@EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
 public class ExtendedStudent extends Student {
 
     private StudyRight hostStudyRight;
@@ -32,124 +36,32 @@ public class ExtendedStudent extends Student {
     private List<Phone> phone;
     private Boolean safetyProhibition;
 
-    public StudyRight getHostStudyRight() {
-        return hostStudyRight;
-    }
-
-    public void setHostStudyRight(StudyRight hostStudyRight) {
+    @Builder
+    public ExtendedStudent(String oid, String personId, String homeStudentNumber, String hostStudentNumber, StudyRight hostStudyRight,
+                           StudyRight homeStudyRight, LocalDate dateOfBirth, int gender, List<Address> addresses, Country countryOfCitizenship,
+                           String municipalityOfResidence, String motherTongue, String preferredLanguage, List<String> email,
+                           List<Phone> phone, Boolean safetyProhibition) {
+        super(oid, personId, homeStudentNumber, hostStudentNumber);
         this.hostStudyRight = hostStudyRight;
-    }
-
-    public StudyRight getHomeStudyRight() {
-        return homeStudyRight;
-    }
-
-    public void setHomeStudyRight(StudyRight homeStudyRight) {
         this.homeStudyRight = homeStudyRight;
-    }
-
-    public LocalDate getDateOfBirth() {
-        return dateOfBirth;
-    }
-
-    public void setDateOfBirth(LocalDate dateOfBirth) {
         this.dateOfBirth = dateOfBirth;
-    }
-
-    public int getGender() {
-        return gender;
-    }
-
-    public void setGender(int gender) {
         this.gender = gender;
-    }
-
-    public List<Address> getAddresses() {
-        return addresses;
-    }
-
-    public void setAddresses(List<Address> addresses) {
         this.addresses = addresses;
-    }
-
-    public Country getCountryOfCitizenship() {
-        return countryOfCitizenship;
-    }
-
-    public void setCountryOfCitizenship(Country countryOfCitizenship) {
         this.countryOfCitizenship = countryOfCitizenship;
-    }
-
-    public String getMunicipalityOfResidence() {
-        return municipalityOfResidence;
-    }
-
-    public void setMunicipalityOfResidence(String municipalityOfResidence) {
         this.municipalityOfResidence = municipalityOfResidence;
-    }
-
-    public String getMotherTongue() {
-        return motherTongue;
-    }
-
-    public void setMotherTongue(String motherTongue) {
         this.motherTongue = motherTongue;
-    }
-
-    public String getPreferredLanguage() {
-        return preferredLanguage;
-    }
-
-    public void setPreferredLanguage(String preferredLanguage) {
         this.preferredLanguage = preferredLanguage;
-    }
-
-    public List<String> getEmail() {
-        return email;
-    }
-
-    public void setEmail(List<String> email) {
         this.email = email;
-    }
-
-    public List<Phone> getPhone() {
-        return phone;
-    }
-
-    public void setPhone(List<Phone> phone) {
         this.phone = phone;
-    }
-
-    public Boolean getSafetyProhibition() {
-        return safetyProhibition;
-    }
-
-    public void setSafetyProhibition(Boolean safetyProhibition) {
         this.safetyProhibition = safetyProhibition;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ExtendedStudent)) return false;
-        ExtendedStudent that = (ExtendedStudent) o;
-        return gender == that.gender &&
-                Objects.equals(hostStudyRight, that.hostStudyRight) &&
-                Objects.equals(homeStudyRight, that.homeStudyRight) &&
-                Objects.equals(dateOfBirth, that.dateOfBirth) &&
-                Objects.equals(addresses, that.addresses) &&
-                Objects.equals(countryOfCitizenship, that.countryOfCitizenship) &&
-                Objects.equals(municipalityOfResidence, that.municipalityOfResidence) &&
-                Objects.equals(motherTongue, that.motherTongue) &&
-                Objects.equals(preferredLanguage, that.preferredLanguage) &&
-                Objects.equals(email, that.email) &&
-                Objects.equals(phone, that.phone) &&
-                Objects.equals(safetyProhibition, that.safetyProhibition);
-    }
-
-    @Override
-    public int hashCode() {
-
-        return Objects.hash(hostStudyRight, homeStudyRight, dateOfBirth, gender, addresses, countryOfCitizenship, municipalityOfResidence, motherTongue, preferredLanguage, email, phone, safetyProhibition);
+    public static ExtendedStudent from(RegistrationStudentEntity student) {
+        return ExtendedStudent.builder()
+            .homeStudentNumber(student.getHomeStudentNumber())
+            .hostStudentNumber(student.getHostStudentNumber())
+            .hostStudyRight(StudyRight.from(student.getHostStudyRight()))
+            .homeStudyRight(StudyRight.from(student.getHomeStudyRight()))
+            .build();
     }
 }

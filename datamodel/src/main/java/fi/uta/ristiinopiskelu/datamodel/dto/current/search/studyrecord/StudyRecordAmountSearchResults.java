@@ -1,7 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregations;
 
+@Schema(name = "StudyRecordAmountSearchResultsV9", title = "StudyRecordAmountSearchResultsV9")
 public class StudyRecordAmountSearchResults {
 
     private long totalHits;

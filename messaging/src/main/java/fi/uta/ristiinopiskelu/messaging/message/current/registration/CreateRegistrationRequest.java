@@ -6,10 +6,14 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.Registra
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentWarning;
 import fi.uta.ristiinopiskelu.messaging.message.current.AbstractPersonIdentifiableRequest;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class CreateRegistrationRequest extends AbstractPersonIdentifiableRequest {
 
     private String sendingOrganisationTkCode;
@@ -19,80 +23,11 @@ public class CreateRegistrationRequest extends AbstractPersonIdentifiableRequest
     private String networkDescription;
     private List<RegistrationSelection> selections;
     private OffsetDateTime enrolmentDateTime;
+
+    @Deprecated(since = "9.0.28")
     private List<StudentWarning> warnings;
+
     private List<Description> descriptions;
-
-    public String getSendingOrganisationTkCode() {
-        return sendingOrganisationTkCode;
-    }
-
-    public void setSendingOrganisationTkCode(String sendingOrganisationTkCode) {
-        this.sendingOrganisationTkCode = sendingOrganisationTkCode;
-    }
-
-    public String getReceivingOrganisationTkCode() {
-        return receivingOrganisationTkCode;
-    }
-
-    public void setReceivingOrganisationTkCode(String receivingOrganisationTkCode) {
-        this.receivingOrganisationTkCode = receivingOrganisationTkCode;
-    }
-
-    public ExtendedStudent getStudent() {
-        return student;
-    }
-
-    public void setStudent(ExtendedStudent student) {
-        this.student = student;
-    }
-
-    public String getNetworkIdentifier() {
-        return networkIdentifier;
-    }
-
-    public void setNetworkIdentifier(String networkIdentifier) {
-        this.networkIdentifier = networkIdentifier;
-    }
-
-    public List<RegistrationSelection> getSelections() {
-        return selections;
-    }
-
-    public void setSelections(List<RegistrationSelection> selections) {
-        this.selections = selections;
-    }
-
-    public OffsetDateTime getEnrolmentDateTime() {
-        return enrolmentDateTime;
-    }
-
-    public void setEnrolmentDateTime(OffsetDateTime enrolmentDateTime) {
-        this.enrolmentDateTime = enrolmentDateTime;
-    }
-
-    public String getNetworkDescription() {
-        return networkDescription;
-    }
-
-    public void setNetworkDescription(String networkDescription) {
-        this.networkDescription = networkDescription;
-    }
-
-    public List<StudentWarning> getWarnings() {
-        return warnings;
-    }
-
-    public void setWarnings(List<StudentWarning> warnings) {
-        this.warnings = warnings;
-    }
-
-    public List<Description> getDescriptions() {
-        return descriptions;
-    }
-
-    public void setDescriptions(List<Description> descriptions) {
-        this.descriptions = descriptions;
-    }
 
     @Override
     public String toString() {

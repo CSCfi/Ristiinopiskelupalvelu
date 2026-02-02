@@ -1,13 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.Keyword;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.Organisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.OrganisationRole;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyModule;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateCourseUnitRequestDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateStudyModuleRequestDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
@@ -18,11 +11,7 @@ import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializerV8;
-import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
-import fi.uta.ristiinopiskelu.handler.helper.HistoryHelper;
-import fi.uta.ristiinopiskelu.handler.helper.JmsHelper;
+import fi.uta.ristiinopiskelu.handler.helper.*;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
@@ -59,19 +48,12 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.junit.Assert.assertNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith({
         EmbeddedActiveMQInitializer.class,
@@ -634,21 +616,23 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(response.getStatus() == Status.FAILED);
 
         // Errors that should be given:
-        //$.studyModules[0].subElements: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].subElements: must be valid to one and only one schema, but 0 are valid
         //$.studyModules[0].subElements: array found, null expected
-        //$.studyModules[0].subElements[0]: should be valid to one and only one schema, but 0 are valid
-        //$.studyModules[0].subElements[0].name: is missing but it is required
-        //$.studyModules[0].subElements[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].subElements[0]: must be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].subElements[0]: required property 'name' not found
+        //$.studyModules[0].subElements[0]: must be valid to one and only one schema, but 0 are valid
         //$.studyModules[0].subElements[0].creditsMax: integer found, null expected
-        //$.studyModules[0].subElements[0].amountValueMin: is missing but it is required
-        //$.studyModules[0].subElements[0].amountValueMax: is missing but it is required
-        //$.studyModules[0].subElements[0].optionality: is missing but it is required
-        //$.studyModules[0].subElements[0].creditsMin: is missing but it is required
-        //$.studyModules[0].subElements[0].optionality: is missing but it is required
-        //$.studyModules[0].subElements[0].optionality: is missing but it is required
-        //$.studyModules[0].subElements[0].type: does not have a value in the enumeration [STUDY_MODULE]
-        //$.studyModules[0].subElements[0].name: is missing but it is required.
-        assertEquals(14, response.getErrors().size());
+        //$.studyModules[0].subElements[0].creditsMax: integer found, [null] expected
+        //$.studyModules[0].subElements[0]: required property 'amountValueMin' not found
+        //$.studyModules[0].subElements[0]: required property 'amountValueMax' not found
+        //$.studyModules[0].subElements[0]: required property 'optionality' not found
+        //$.studyModules[0].subElements[0]: required property 'creditsMin' not found
+        //$.studyModules[0].subElements[0]: required property 'optionality' not found
+        //$.studyModules[0].subElements[0].creditsMax: integer found, [null] expected
+        //$.studyModules[0].subElements[0]: required property 'optionality' not found
+        //$.studyModules[0].subElements[0].type: does not have a value in the enumeration ["STUDY_MODULE"]
+        //$.studyModules[0].subElements[0]: required property 'name' not found.
+        assertEquals(16, response.getErrors().size());
     }
 
     @Test
@@ -678,15 +662,17 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(response.getStatus() == Status.FAILED);
 
         // Errors that should be given:
-        //$.studyModules[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0]: must be valid to one and only one schema, but 0 are valid
         //$.studyModules[0].creditsMax: integer found, null expected
         //$.studyModules[0].optionality: string found, null expected
-        //$.studyModules[0].amountValueMin: is missing but it is required
-        //$.studyModules[0].amountValueMax: is missing but it is required
-        //$.studyModules[0].creditsMin: is missing but it is required
-        //$.studyModules[0].creditsMax: integer found, but [null] is required
-        //$.studyModules[0].optionality: does not have a value in the enumeration [ALL].
-        assertEquals(8, response.getErrors().size());
+        //$.studyModules[0].creditsMax: integer found, [null] expected
+        //$.studyModules[0].optionality: does not have a value in the enumeration ["MIN_MAX_AMOUNT"]
+        //$.studyModules[0]: required property 'amountValueMin' not found
+        //$.studyModules[0]: required property 'amountValueMax' not found
+        //$.studyModules[0]: required property 'creditsMin' not found
+        //$.studyModules[0].creditsMax: integer found, [null] expected
+        //$.studyModules[0].optionality: does not have a value in the enumeration ["ALL"].
+        assertEquals(10, response.getErrors().size());
     }
     
     @Test
@@ -709,16 +695,18 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(response.getStatus() == Status.FAILED);
 
         // Errors that should be given:
-        //$.studyModules[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0]: must be valid to one and only one schema, but 0 are valid
         //$.studyModules[0].creditsMin: number found, null expected
         //$.studyModules[0].optionality: string found, null expected
-        //$.studyModules[0].amountValueMin: is missing but it is required
-        //$.studyModules[0].amountValueMax: is missing but it is required
-        //$.studyModules[0].creditsMax: is missing but it is required
-        //$.studyModules[0].creditsMin: number found, but [null] is required
-        //$.studyModules[0].optionality: does not have a value in the enumeration [ALL]
-        //$.studyModules[0].cooperationNetworks: is missing but it is required.
-        assertEquals(9, response.getErrors().size());
+        //$.studyModules[0].creditsMin: number found, [null] expected
+        //$.studyModules[0].optionality: does not have a value in the enumeration ["MIN_MAX_AMOUNT"]
+        //$.studyModules[0]: required property 'amountValueMin' not found
+        //$.studyModules[0]: required property 'amountValueMax' not found
+        //$.studyModules[0]: required property 'creditsMax' not found
+        //$.studyModules[0].creditsMin: number found, [null] expected
+        //$.studyModules[0].optionality: does not have a value in the enumeration ["ALL"]
+        //$.studyModules[0]: required property 'cooperationNetworks' not found.
+        assertEquals(11, response.getErrors().size());
     }
 
     @Test
@@ -1134,7 +1122,7 @@ public class StudyModuleRouteV8IntegrationTest {
     }
 
     @Test
-    public void testSendingUpdateStudyModuleMessage_shouldFailHasExtraField() throws JMSException, IOException {
+    public void testSendingUpdateStudyModuleMessage_shouldNotFailBecauseOfExtraField() throws JMSException, IOException {
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
                 "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -1172,7 +1160,7 @@ public class StudyModuleRouteV8IntegrationTest {
         Object updResponse = jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(updResponse instanceof DefaultResponse);
         DefaultResponse response = (DefaultResponse) updResponse;
-        assertTrue(response.getStatus() == Status.FAILED);
+        assertTrue(response.getStatus() == Status.OK);
     }
 
     @Test
@@ -2453,124 +2441,6 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(courseUnit.getName().getValue("fi"), courseUnitEntityCreatedWithModule.getName().getValue("fi"));
         assertEquals(courseUnit.getName().getValue("en"), courseUnitEntityCreatedWithModule.getName().getValue("en"));
         assertEquals(courseUnit.getName().getValue("sv"), courseUnitEntityCreatedWithModule.getName().getValue("sv"));
-    }
-
-    @Test
-    public void testSendingUpdateStudyModuleMessage_shouldFailAndNotUpdateParentAndAddReferencesToExistingStudyModule() throws JMSException, IOException {
-        String organisingOrganisationId = "TUNI";
-
-        NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
-
-        CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
-                networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-
-        Organisation organisation = DtoInitializerV8.getOrganisation(organisingOrganisationId, organisingOrganisationId);
-        OrganisationReference organisationReference = DtoInitializerV8.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
-
-        CreateCourseUnitRequestDTO courseUnit = DtoInitializerV8.getCreateCourseUnitRequestDTO("CU-ID1", "JEPJEP",
-                new LocalisedString("Opintojakson nimi 1", "Opintojakson nimi 1 Englanniksi", null), Collections.singletonList(network),
-                Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5));
-
-        CreateStudyModuleRequestDTO studyModule = DtoInitializerV8.getCreateStudyModuleRequestDTO("ID1", "RAIRAI",
-                new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null), Collections.singletonList(network),
-                Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5), Collections.singletonList(courseUnit));
-
-        CreateStudyModuleRequest req = new CreateStudyModuleRequest();
-        req.setStudyModules(Collections.singletonList(studyModule));
-
-        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, organisation.getOrganisationTkCode());
-        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
-        assertTrue(resp.getStatus() == Status.OK);
-
-        StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
-        assertNotNull(createdStudyModuleEntity);
-        assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
-
-        CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
-        assertNotNull(courseUnitEntityCreatedWithModule);
-        assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
-        assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
-
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork networkCurrentVersion = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
-            true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-
-        // Create new study module to be added to study module
-        StudyModuleEntity studyModuleEntityToAddRefs = EntityInitializer.getStudyModuleEntity("OK-2", "OK-CODE2",
-                organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(networkCurrentVersion),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("OK 2", null, null));
-
-        studyModuleRepository.save(studyModuleEntityToAddRefs);
-
-        // SEND UPDATE STUDY MODULE MESSAGE
-
-        String updateJson =
-                "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"EXTRAFIELD\": \"ASDASD\", \n" +
-                "        \"UNKNOWNFIELD\": \"ASDASD\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ studyModuleEntityToAddRefs.getStudyElementId() + "\", \n" +
-                "                \"type\": \"STUDY_MODULE\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +                        
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
-
-        Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
-        DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
-        assertTrue(updResp.getStatus() == Status.FAILED);
-
-        // Verify created study module exists but is not updated
-        StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
-
-        assertNotNull(updatedEntity);
-        assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
-        assertNull(updatedEntity.getUpdateTime());
-        assertEquals(studyModule.getName().getValue("fi"), updatedEntity.getName().getValue("fi"));
-        assertEquals(studyModule.getName().getValue("en"), updatedEntity.getName().getValue("en"));
-        assertEquals(studyModule.getName().getValue("sv"), updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, updatedEntity.getStatus());
-
-        // Verify no references added
-        List<StudyModuleEntity> studyModuleEntities = studyModuleRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-                organisationReference.getOrganisation().getOrganisationTkCode(), StudyModuleEntity.class);
-        assertNotNull(studyModuleEntities);
-        assertTrue(studyModuleEntities.size() == 0);
-
-        // Verify reference not removed
-        courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
-        assertNotNull(courseUnitEntityCreatedWithModule);
-        assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
-        assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
     }
 
     @Test

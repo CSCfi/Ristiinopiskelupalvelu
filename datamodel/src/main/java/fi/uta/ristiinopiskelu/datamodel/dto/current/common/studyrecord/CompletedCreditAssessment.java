@@ -1,5 +1,8 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "CompletedCreditAssessmentV9", title = "CompletedCreditAssessmentV9")
 public class CompletedCreditAssessment {
     private GradingScale gradingScale;
     private Grade grade;

@@ -1,51 +1,21 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.student;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Person;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-import java.util.Objects;
-
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@Data
 public class Student extends Person {
 
     private String oid;
     private String personId;
     private String homeStudentNumber;
     private String hostStudentNumber;
-
-    public String getOid() {
-        return oid;
-    }
-
-    public void setOid(String oid) {
-        this.oid = oid;
-    }
-
-    public String getPersonId() {
-        return personId;
-    }
-
-    public void setPersonId(String personId) {
-        this.personId = personId;
-    }
-
-    public String getHomeStudentNumber() {
-        return homeStudentNumber;
-    }
-
-    public void setHomeStudentNumber(String homeStudentNumber) {
-        this.homeStudentNumber = homeStudentNumber;
-    }
-
-    public String getHostStudentNumber() {
-        return hostStudentNumber;
-    }
-
-    public void setHostStudentNumber(String hostStudentNumber) {
-        this.hostStudentNumber = hostStudentNumber;
-    }
-
-    public Student() {
-
-    }
 
     public Student(ExtendedStudent student) {
         this.setOid(student.getOid());
@@ -59,20 +29,12 @@ public class Student extends Person {
         this.setGivenName(student.getGivenName());
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Student)) return false;
-        Student student = (Student) o;
-        return Objects.equals(oid, student.oid) &&
-                Objects.equals(personId, student.personId) &&
-                Objects.equals(homeStudentNumber, student.homeStudentNumber) &&
-                Objects.equals(hostStudentNumber, student.hostStudentNumber);
-    }
-
-    @Override
-    public int hashCode() {
-
-        return Objects.hash(oid, personId, homeStudentNumber, hostStudentNumber);
+    public Student(String homeEppn, String hostEppn, String firstNames, String surName, String givenName, String oid,
+                   String personId, String homeStudentNumber, String hostStudentNumber) {
+        super(homeEppn, hostEppn, firstNames, surName, givenName);
+        this.oid = oid;
+        this.personId = personId;
+        this.homeStudentNumber = homeStudentNumber;
+        this.hostStudentNumber = hostStudentNumber;
     }
 }

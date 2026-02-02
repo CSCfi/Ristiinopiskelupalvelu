@@ -1,7 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(name = "StudyRecordOrganisationV9", title = "StudyRecordOrganisationV9")
 public class StudyRecordOrganisation extends Organisation {
 
   private Integer PIC;

@@ -601,21 +601,23 @@ public class CreateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(response.getStatus() == Status.FAILED);
 
         // Errors that should be given:
-        //$.studyModules[0].subElements: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].subElements: must be valid to one and only one schema, but 0 are valid
         //$.studyModules[0].subElements: array found, null expected
-        //$.studyModules[0].subElements[0]: should be valid to one and only one schema, but 0 are valid
-        //$.studyModules[0].subElements[0].name: is missing but it is required
-        //$.studyModules[0].subElements[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].subElements[0]: must be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0].subElements[0]: required property 'name' not found
+        //$.studyModules[0].subElements[0]: must be valid to one and only one schema, but 0 are valid
         //$.studyModules[0].subElements[0].creditsMax: integer found, null expected
-        //$.studyModules[0].subElements[0].amountValueMin: is missing but it is required
-        //$.studyModules[0].subElements[0].amountValueMax: is missing but it is required
-        //$.studyModules[0].subElements[0].optionality: is missing but it is required
-        //$.studyModules[0].subElements[0].creditsMin: is missing but it is required
-        //$.studyModules[0].subElements[0].optionality: is missing but it is required
-        //$.studyModules[0].subElements[0].optionality: is missing but it is required
-        //$.studyModules[0].subElements[0].type: does not have a value in the enumeration [STUDY_MODULE]
-        //$.studyModules[0].subElements[0].name: is missing but it is required.
-        assertEquals(14, response.getErrors().size());
+        //$.studyModules[0].subElements[0].creditsMax: integer found, [null] expected
+        //$.studyModules[0].subElements[0]: required property 'amountValueMin' not found
+        //$.studyModules[0].subElements[0]: required property 'amountValueMax' not found
+        //$.studyModules[0].subElements[0]: required property 'optionality' not found
+        //$.studyModules[0].subElements[0]: required property 'creditsMin' not found
+        //$.studyModules[0].subElements[0]: required property 'optionality' not found
+        //$.studyModules[0].subElements[0].creditsMax: integer found, [null] expected
+        //$.studyModules[0].subElements[0]: required property 'optionality' not found
+        //$.studyModules[0].subElements[0].type: does not have a value in the enumeration ["STUDY_MODULE"]
+        //$.studyModules[0].subElements[0]: required property 'name' not found.
+        assertEquals(16, response.getErrors().size());
     }
 
     @Test
@@ -645,15 +647,17 @@ public class CreateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(response.getStatus() == Status.FAILED);
 
         // Errors that should be given:
-        //$.studyModules[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0]: must be valid to one and only one schema, but 0 are valid
         //$.studyModules[0].creditsMax: integer found, null expected
         //$.studyModules[0].optionality: string found, null expected
-        //$.studyModules[0].amountValueMin: is missing but it is required
-        //$.studyModules[0].amountValueMax: is missing but it is required
-        //$.studyModules[0].creditsMin: is missing but it is required
-        //$.studyModules[0].creditsMax: integer found, but [null] is required
-        //$.studyModules[0].optionality: does not have a value in the enumeration [ALL]
-        assertEquals(8, response.getErrors().size());
+        //$.studyModules[0].creditsMax: integer found, [null] expected
+        //$.studyModules[0].optionality: does not have a value in the enumeration ["MIN_MAX_AMOUNT"]
+        //$.studyModules[0]: required property 'amountValueMin' not found
+        //$.studyModules[0]: required property 'amountValueMax' not found
+        //$.studyModules[0]: required property 'creditsMin' not found
+        //$.studyModules[0].creditsMax: integer found, [null] expected
+        //$.studyModules[0].optionality: does not have a value in the enumeration ["ALL"].
+        assertEquals(10, response.getErrors().size());
     }
 
     @Test
@@ -676,16 +680,18 @@ public class CreateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(response.getStatus() == Status.FAILED);
 
         // Errors that should be given:
-        //$.studyModules[0]: should be valid to one and only one schema, but 0 are valid
+        //$.studyModules[0]: must be valid to one and only one schema, but 0 are valid
         //$.studyModules[0].creditsMin: number found, null expected
         //$.studyModules[0].optionality: string found, null expected
-        //$.studyModules[0].amountValueMin: is missing but it is required
-        //$.studyModules[0].amountValueMax: is missing but it is required
-        //$.studyModules[0].creditsMax: is missing but it is required
-        //$.studyModules[0].creditsMin: number found, but [null] is required
-        //$.studyModules[0].optionality: does not have a value in the enumeration [ALL]
-        //$.studyModules[0].cooperationNetworks: is missing but it is required.
-        assertEquals(9, response.getErrors().size());
+        //$.studyModules[0].creditsMin: number found, [null] expected
+        //$.studyModules[0].optionality: does not have a value in the enumeration ["MIN_MAX_AMOUNT"]
+        //$.studyModules[0]: required property 'amountValueMin' not found
+        //$.studyModules[0]: required property 'amountValueMax' not found
+        //$.studyModules[0]: required property 'creditsMax' not found
+        //$.studyModules[0].creditsMin: number found, [null] expected
+        //$.studyModules[0].optionality: does not have a value in the enumeration ["ALL"]
+        //$.studyModules[0]: required property 'cooperationNetworks' not found.
+        assertEquals(11, response.getErrors().size());
     }
 
     @Test

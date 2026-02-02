@@ -7,7 +7,7 @@ RUN groupadd --system --gid 201 ripa && \
     useradd --system -u 201 -g ripa ripa
 
 RUN $MICRODNF_CMD update \
-    && $MICRODNF_CMD install java-17-openjdk \
+    && $MICRODNF_CMD install java-21-openjdk \
     && $MICRODNF_CMD clean all
 
 USER ripa

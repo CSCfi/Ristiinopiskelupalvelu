@@ -1,7 +1,10 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.List;
 
+@Schema(name = "GroupQuotaV8", title = "GroupQuotaV8")
 public class GroupQuota {
     private List<String> networkIdentifiers;
     private Integer minSeats;

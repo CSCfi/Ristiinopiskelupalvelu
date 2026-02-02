@@ -2,10 +2,8 @@ package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.mpolla.HetuUtil;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Person;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyRight;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.*;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
@@ -20,6 +18,7 @@ import fi.uta.ristiinopiskelu.messaging.message.v8.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.Status;
 import fi.uta.ristiinopiskelu.messaging.message.v8.studyrecord.*;
 import fi.uta.ristiinopiskelu.messaging.util.Oid;
+import fi.uta.ristiinopiskelu.messaging.util.OidPersonNode;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RegistrationRepository;
@@ -121,23 +120,18 @@ public class StudyRecordRouteV8IntegrationTest {
 
         registrationRepository.create(registration);
 
-        StudyRight homeStudyRight = DtoInitializerV8.getStudyRight(studentHomeOrganization.getId());
-        StudyRight hostStudyRight = DtoInitializerV8.getStudyRight(courseUnitOrganizerOrganization.getId());
-
-        ExtendedStudent extendedStudent = new ExtendedStudent();
-        extendedStudent.setOid(registration.getStudent().getOid());
-        extendedStudent.setPersonId(registration.getStudent().getPersonId());
-        extendedStudent.setHomeEppn("mactestington@eppn.fi");
-        extendedStudent.setHomeStudentNumber("1234567");
-        extendedStudent.setFirstNames("Testi");
-        extendedStudent.setSurName("Mac Testington");
-        extendedStudent.setGivenName("Testo");
-        extendedStudent.setHostStudentNumber("1234566");
-        extendedStudent.setHostEppn("testst@testi2.fi");
-        extendedStudent.setHomeStudyRight(homeStudyRight);
-        extendedStudent.setHostStudyRight(hostStudyRight);
-        
-        student = new StudyRecordStudent(extendedStudent);
+        student = StudyRecordStudent.builder()
+            .oid(Oid.randomOid(OidPersonNode.PERSON))
+            .personId(HetuUtil.generateRandom())
+            .homeStudentNumber(registration.getStudent().getHomeStudentNumber())
+            .firstNames("Testi")
+            .surName("Mac Testington")
+            .givenName("Testo")
+            .hostStudentNumber(registration.getStudent().getHostStudentNumber())
+            .hostEppn("testst@testi2.fi")
+            .homeStudyRightIdentifier(DtoInitializerV8.getStudyRight(studentHomeOrganization.getId()).getIdentifiers())
+            .hostStudyRightIdentifier(DtoInitializerV8.getStudyRight(courseUnitOrganizerOrganization.getId()).getIdentifiers())
+            .build();
     }
 
     @Test
@@ -198,8 +192,8 @@ public class StudyRecordRouteV8IntegrationTest {
         assertEquals(resp.getStudyRecordRequestId(), forwardedReply.getStudyRecordRequestId());
         assertEquals(replyRequest.getStatus(), forwardedReply.getStatus());
         assertEquals(forwardedReply.getCompletedCredits().get(0).getMinEduGuidanceArea(), MinEduGuidanceArea.EDUCATION);
-        assertEquals(receivedRequest.getStudent().getFirstNames(), forwardedReply.getStudent().getFirstNames());
-        assertEquals(receivedRequest.getStudent().getHomeEppn(), forwardedReply.getStudent().getHomeEppn());
+        assertEquals(null, forwardedReply.getStudent().getFirstNames());
+        assertEquals(null, forwardedReply.getStudent().getHomeEppn());
         assertEquals(receivedRequest.getStudent().getHomeStudyRightIdentifier(), forwardedReply.getStudent().getHomeStudyRightIdentifier());
         assertEquals(receivedRequest.getStudent().getHostStudyRightIdentifier(), forwardedReply.getStudent().getHostStudyRightIdentifier());
     }
@@ -264,8 +258,8 @@ public class StudyRecordRouteV8IntegrationTest {
         assertEquals(resp.getStudyRecordRequestId(), forwardedReply.getStudyRecordRequestId());
         assertEquals(replyRequest.getStatus(), forwardedReply.getStatus());
         assertEquals(forwardedReply.getCompletedCredits().get(0).getMinEduGuidanceArea(), MinEduGuidanceArea.EDUCATION);
-        assertEquals(receivedRequest.getStudent().getFirstNames(), forwardedReply.getStudent().getFirstNames());
-        assertEquals(receivedRequest.getStudent().getHomeEppn(), forwardedReply.getStudent().getHomeEppn());
+        assertEquals(null, forwardedReply.getStudent().getFirstNames());
+        assertEquals(null, forwardedReply.getStudent().getHomeEppn());
     }
     @Test
     public void testSendingCreateOtherWithIdentifiers_shouldSucceed() throws JMSException, IOException {
@@ -326,8 +320,8 @@ public class StudyRecordRouteV8IntegrationTest {
         assertEquals(resp.getStudyRecordRequestId(), forwardedReply.getStudyRecordRequestId());
         assertEquals(replyRequest.getStatus(), forwardedReply.getStatus());
         assertEquals(forwardedReply.getCompletedCredits().get(0).getMinEduGuidanceArea(), MinEduGuidanceArea.EDUCATION);
-        assertEquals(receivedRequest.getStudent().getFirstNames(), forwardedReply.getStudent().getFirstNames());
-        assertEquals(receivedRequest.getStudent().getHomeEppn(), forwardedReply.getStudent().getHomeEppn());
+        assertEquals(null, forwardedReply.getStudent().getFirstNames());
+        assertEquals(null, forwardedReply.getStudent().getHomeEppn());
         assertEquals(receivedRequest.getStudent().getHomeStudyRightIdentifier(), forwardedReply.getStudent().getHomeStudyRightIdentifier());
         assertEquals(receivedRequest.getStudent().getHostStudyRightIdentifier(), forwardedReply.getStudent().getHostStudyRightIdentifier());
     }
@@ -366,7 +360,7 @@ public class StudyRecordRouteV8IntegrationTest {
 
         // send only oid
         createStudyRecordRequest.getStudent().setPersonId(null);
-        createStudyRecordRequest.getStudent().setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        createStudyRecordRequest.getStudent().setOid(Oid.randomOid(OidPersonNode.PERSON));
 
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, studentHomeOrganization.getId());
         resp = (StudyRecordResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -375,7 +369,7 @@ public class StudyRecordRouteV8IntegrationTest {
 
         // send both
         createStudyRecordRequest.getStudent().setPersonId(HetuUtil.generateRandom());
-        createStudyRecordRequest.getStudent().setOid(Oid.randomOid(Oid.PERSON_NODE_ID));
+        createStudyRecordRequest.getStudent().setOid(Oid.randomOid(OidPersonNode.PERSON));
 
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, studentHomeOrganization.getId());
         resp = (StudyRecordResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -453,8 +447,8 @@ public class StudyRecordRouteV8IntegrationTest {
         assertEquals(resp.getStudyRecordRequestId(), forwardedReply.getStudyRecordRequestId());
         assertEquals(replyRequest.getStatus(), forwardedReply.getStatus());
         assertEquals(forwardedReply.getCompletedCredits().get(0).getMinEduGuidanceArea(), MinEduGuidanceArea.EDUCATION);
-        assertEquals(receivedRequest.getStudent().getFirstNames(), forwardedReply.getStudent().getFirstNames());
-        assertEquals(receivedRequest.getStudent().getHomeEppn(), forwardedReply.getStudent().getHomeEppn());
+        assertEquals(null, forwardedReply.getStudent().getFirstNames());
+        assertEquals(null, forwardedReply.getStudent().getHomeEppn());
         assertEquals(receivedRequest.getStudent().getHomeStudyRightIdentifier(), forwardedReply.getStudent().getHomeStudyRightIdentifier());
         assertEquals(receivedRequest.getStudent().getHostStudyRightIdentifier(), forwardedReply.getStudent().getHostStudyRightIdentifier());
     }
@@ -524,8 +518,8 @@ public class StudyRecordRouteV8IntegrationTest {
         assertEquals(replyRequest.getRejectionReason().getValue("en"), forwardedReply.getRejectionReason().getValue("en"));
         assertEquals(replyRequest.getRejectionReason().getValue("sv"), forwardedReply.getRejectionReason().getValue("sv"));
         assertEquals(forwardedReply.getCompletedCredits().get(0).getMinEduGuidanceArea(), MinEduGuidanceArea.EDUCATION);
-        assertEquals(receivedRequest.getStudent().getFirstNames(), forwardedReply.getStudent().getFirstNames());
-        assertEquals(receivedRequest.getStudent().getHomeEppn(), forwardedReply.getStudent().getHomeEppn());
+        assertEquals(null, forwardedReply.getStudent().getFirstNames());
+        assertEquals(null, forwardedReply.getStudent().getHomeEppn());
         assertEquals(receivedRequest.getStudent().getHomeStudyRightIdentifier(), forwardedReply.getStudent().getHomeStudyRightIdentifier());
         assertEquals(receivedRequest.getStudent().getHostStudyRightIdentifier(), forwardedReply.getStudent().getHostStudyRightIdentifier());
     }

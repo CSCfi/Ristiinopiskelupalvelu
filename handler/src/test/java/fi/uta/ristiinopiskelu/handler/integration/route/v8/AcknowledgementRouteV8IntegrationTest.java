@@ -1,9 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.Country;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Person;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.Phone;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.RegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.*;
@@ -21,12 +19,14 @@ import fi.uta.ristiinopiskelu.messaging.message.v8.Status;
 import fi.uta.ristiinopiskelu.messaging.message.v8.acknowledgement.Acknowledgement;
 import fi.uta.ristiinopiskelu.messaging.message.v8.registration.CreateRegistrationRequest;
 import fi.uta.ristiinopiskelu.messaging.message.v8.registration.RegistrationResponse;
-import fi.uta.ristiinopiskelu.messaging.message.v8.student.UpdateStudentRequest;
+import fi.uta.ristiinopiskelu.messaging.message.v8.student.UpdateStudentStudyRightRequest;
 import fi.uta.ristiinopiskelu.messaging.message.v8.studyrecord.CreateStudyRecordRequest;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RegistrationRepository;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,8 +38,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import jakarta.jms.JMSException;
-import jakarta.jms.Message;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -165,7 +163,7 @@ public class AcknowledgementRouteV8IntegrationTest {
     @Test
     public void testSendingAcknowledgementForUpdateStudentRequest_shouldSucceed() throws JMSException {
 
-        Message responseMessage = sendValidStudentUpdateRequest();
+        Message responseMessage = sendValidStudentStudyRightUpdateRequest();
         final String correlationId = responseMessage.getStringProperty(MessageHeader.RIPA_CORRELATION_ID);
         assertNotNull(correlationId);
 
@@ -219,7 +217,7 @@ public class AcknowledgementRouteV8IntegrationTest {
         return JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
     }
 
-    private Message sendValidStudentUpdateRequest () {
+    private Message sendValidStudentStudyRightUpdateRequest () {
 
         RegistrationSelection selection = DtoInitializerV8.getRegistrationSelectionCourseUnit(
             courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
@@ -229,17 +227,10 @@ public class AcknowledgementRouteV8IntegrationTest {
         JmsHelper.sendAndReceiveObject(jmsTemplate, req, sendingOrganisation.getId());
         Message receivedCreateRegistrationMessage = jmsTemplate.receive(receivingOrganisation.getQueue());
         // now send update student info request
-        UpdateStudentRequest updateRequest = new UpdateStudentRequest();
+        UpdateStudentStudyRightRequest updateRequest = new UpdateStudentStudyRightRequest();
         updateRequest.setPersonId(req.getStudent().getPersonId());
         updateRequest.setOid(req.getStudent().getOid());
-        updateRequest.setFirstNames("Teppo");
-        updateRequest.setSurName("Testaaja");
-        updateRequest.setCountryOfCitizenship(Collections.singletonList(Country.FI));
-
-        Phone phone = new Phone();
-        phone.setNumber("0401111111");
-        phone.setDescription("new number");
-        updateRequest.setPhone(Collections.singletonList(phone));
+        updateRequest.setHomeStudyRight(DtoInitializerV8.getStudentStudyRight(sendingOrganisation.getId(), true));
 
         return  JmsHelper.sendAndReceiveObject(jmsTemplate, updateRequest, sendingOrganisation.getId());
     }
@@ -263,8 +254,6 @@ public class AcknowledgementRouteV8IntegrationTest {
         fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyRight hostStudyRight = DtoInitializerV8.getStudyRight(receivingOrganisation.getId());
 
         fi.uta.ristiinopiskelu.datamodel.dto.v8.ExtendedStudent registrationStudentV8 = new fi.uta.ristiinopiskelu.datamodel.dto.v8.ExtendedStudent();
-        registrationStudentV8.setOid(registration.getStudent().getOid());
-        registrationStudentV8.setPersonId(registration.getStudent().getPersonId());
         registrationStudentV8.setHomeEppn("mactestington@eppn.fi");
         registrationStudentV8.setHomeStudentNumber("1234567");
         registrationStudentV8.setFirstNames("Testi");

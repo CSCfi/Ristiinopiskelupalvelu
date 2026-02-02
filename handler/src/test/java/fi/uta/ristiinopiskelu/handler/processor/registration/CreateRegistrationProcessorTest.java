@@ -86,8 +86,8 @@ public class CreateRegistrationProcessorTest {
         objectMapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
         objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
 
-        processor = spy(new CreateRegistrationProcessor(registrationService, organisationService, studentService,
-                validator, objectMapper, new ModelMapper(), messageForwarder));
+        processor = spy(new CreateRegistrationProcessor(registrationService, organisationService, validator,
+            objectMapper, new ModelMapper(), messageForwarder));
     }
 
     @Test

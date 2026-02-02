@@ -1,5 +1,8 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "DescriptionV8", title = "DescriptionV8")
 public class Description {
 
     private String key;

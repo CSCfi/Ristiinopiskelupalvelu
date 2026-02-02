@@ -3,6 +3,7 @@ package fi.uta.ristiinopiskelu.handler.integration.route.current.realisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
@@ -140,6 +141,9 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
                 "               \"referenceOrganizer\": \"TUNI\",\n" +
                 "               \"referenceType\": \"COURSE_UNIT\"\n" +
                 "          }\n" +
+                "       ],\n" +
+                "        \"minEduGuidanceArea\": [\n" +
+                "           5\n" +
                 "       ]\n" +
                 "   }\n" +
                 "}";
@@ -158,6 +162,9 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(20, updatedEntity.getMinSeats());
         assertEquals(200, updatedEntity.getMaxSeats());
         assertEquals(StudyStatus.ARCHIVED, updatedEntity.getStatus());
+        assertNotNull(updatedEntity.getMinEduGuidanceArea());
+        assertEquals(1, updatedEntity.getMinEduGuidanceArea().size());
+        assertEquals(MinEduGuidanceArea.BUSINESS_ADMINIST_AND_LAW, updatedEntity.getMinEduGuidanceArea().get(0));
     }
 
     @Test
@@ -330,7 +337,7 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
-    public void testSendingUpdateRealisationMessage_shouldFailHasExtraField() throws JMSException, IOException {
+    public void testSendingUpdateRealisationMessage_shouldNotFailBecauseOfExtraField() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
@@ -361,7 +368,7 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
 
         assertTrue(updResponse instanceof DefaultResponse);
         DefaultResponse response = (DefaultResponse) updResponse;
-        assertTrue(response.getStatus() == Status.FAILED);
+        assertTrue(response.getStatus() == Status.OK);
     }
 
     @Test

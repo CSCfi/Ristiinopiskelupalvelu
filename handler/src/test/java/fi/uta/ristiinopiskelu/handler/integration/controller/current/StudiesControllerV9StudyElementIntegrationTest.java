@@ -1,13 +1,16 @@
 package fi.uta.ristiinopiskelu.handler.integration.controller.current;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation.RealisationReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchElementType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchResults;
@@ -2750,5 +2753,139 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
             hasProperty("studyElementId", is(courseUnitEntity2.getStudyElementId())),
             hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId()))
         ));
+    }
+
+    @Test
+    public void testFindStudies_langDependentOrIndependent() throws Exception {
+        createNetworkWithOrganisations("CN-1", "UEF");
+        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+
+        CourseUnitRealisationEntity realisationRef = new CourseUnitRealisationEntity();
+        realisationRef.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
+        realisationRef.setEnrollmentEndDateTime(OffsetDateTime.now().plusMonths(6));
+        realisationRef.setRealisationId("TOT-1");
+        realisationRef.setOrganizingOrganisationId("UEF");
+        realisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
+        realisationRef.setName(new LocalisedString("cuRealisationNameFi", null, "cuRealisationNameSv"));
+        realisationRef.setStatus(StudyStatus.ACTIVE);
+
+        CourseUnitRealisationEntity aiRealisationRef = new CourseUnitRealisationEntity();
+        aiRealisationRef.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
+        aiRealisationRef.setEnrollmentEndDateTime(OffsetDateTime.now().plusMonths(6));
+        aiRealisationRef.setRealisationId("TOT-2");
+        aiRealisationRef.setOrganizingOrganisationId("UEF");
+        aiRealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
+        aiRealisationRef.setName(new LocalisedString("cuCoAiRealisationNameFi", null, "cuCoAiRealisationNameSv"));
+        aiRealisationRef.setStatus(StudyStatus.ACTIVE);
+
+        CompletionOptionEntity completionOption = new CompletionOptionEntity();
+        AssessmentItemEntity assessmentItem = new AssessmentItemEntity();
+        assessmentItem.setRealisations(Collections.singletonList(aiRealisationRef));
+        completionOption.setAssessmentItems(Collections.singletonList(assessmentItem));
+
+        CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", null, "UEF",
+            "cuNameFi", Collections.singletonList(coopNetwork), Collections.singletonList(realisationRef), null, null);
+        courseUnitEntity.setName(new LocalisedString("cuNameFi", null, "cuNameSv"));
+        courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOption));
+        courseUnitRepository.update(courseUnitEntity);
+
+        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReference aiCuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        aiCuReference.setReferenceAssessmentItemId(courseUnitEntity.getCompletionOptions().get(0).getAssessmentItems().get(0).getAssessmentItemId());
+
+        // the actual realisations
+        RealisationEntity realisationEntity = createRealisation("TOT-1", "UEF",
+            Collections.singletonList(cuReference), Collections.singletonList(coopNetwork));
+        realisationEntity.setName(new LocalisedString("cuRealisationNameFi", null, "cuRealisationNameSv"));
+        realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
+        realisationEntity.setEnrollmentEndDateTime(OffsetDateTime.now().plusMonths(6));
+        realisationRepository.update(realisationEntity);
+
+        RealisationEntity aiRealisationEntity = createRealisation("TOT-2", "UEF",
+            Collections.singletonList(aiCuReference), Collections.singletonList(coopNetwork));
+        aiRealisationEntity.setName(new LocalisedString("cuCoAiRealisationNameFi", null, "cuCoAiRealisationNameSv"));
+        aiRealisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
+        aiRealisationEntity.setEnrollmentEndDateTime(OffsetDateTime.now().plusMonths(6));
+        realisationRepository.update(aiRealisationEntity);
+
+        // First target course unit name with wrong language (defaults to fi)
+        StudiesSearchParameters searchParams = new StudiesSearchParameters();
+        searchParams.setIncludeOwn(true);
+        searchParams.setQuery("cuNameSv");
+
+        MvcResult result = this.getMvcResult(searchParams);
+        String content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(0, actualResult.getResults().size());
+
+        // Then target course unit name with right language
+        searchParams.setLanguage(Language.SV);
+
+        result = this.getMvcResult(searchParams);
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(1, actualResult.getResults().size());
+        assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
+
+        // Then target course unit name with again the wrong language, but with langIndependent = true
+        searchParams.setLanguage(Language.FI);
+        searchParams.setLangIndependent(true);
+
+        result = this.getMvcResult(searchParams);
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(1, actualResult.getResults().size());
+        assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
+
+        // Then search with a name that could match either realisation name or completion option assessment item realisation name, but with wrong language
+        searchParams.setQuery(null);
+        searchParams.setRealisationQuery("NameSv");
+        searchParams.setLangIndependent(false);
+
+        result = this.getMvcResult(searchParams);
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(0, actualResult.getResults().size());
+
+        // The same but with langIndependent = true (double match)
+        searchParams.setLangIndependent(true);
+
+        result = this.getMvcResult(searchParams);
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(1, actualResult.getResults().size());
+        assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
+
+        // The same but use a name that only matches realisation name
+        searchParams.setRealisationQuery("cuRealisationNameSv");
+
+        result = this.getMvcResult(searchParams);
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(1, actualResult.getResults().size());
+        assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
+
+        // And finally the same but with completion option assessment item realisation name
+        searchParams.setRealisationQuery("cuCoAiRealisationNameSv");
+
+        result = this.getMvcResult(searchParams);
+        content = result.getResponse().getContentAsString();
+        System.out.print("Content:\n" + content);
+
+        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        assertEquals(1, actualResult.getResults().size());
+        assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
     }
 }

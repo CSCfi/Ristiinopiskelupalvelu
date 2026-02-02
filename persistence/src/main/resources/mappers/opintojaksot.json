@@ -372,6 +372,26 @@
         },
         "keySet": {
           "type": "keyword"
+        },
+        "keySetValue": {
+          "properties": {
+            "values": {
+              "properties": {
+                "fi": {
+                  "type": "text",
+                  "copy_to": "search_fi"
+                },
+                "en": {
+                  "type": "text",
+                  "copy_to": "search_en"
+                },
+                "sv": {
+                  "type": "text",
+                  "copy_to": "search_sv"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -781,6 +801,9 @@
                 },
                 "status": {
                   "type": "keyword"
+                },
+                "minEduGuidanceArea": {
+                  "type": "integer"
                 }
               }
             }
@@ -798,6 +821,9 @@
           "type": "keyword"
         },
         "referenceType": {
+          "type": "keyword"
+        },
+        "referenceAssessmentItemId": {
           "type": "keyword"
         },
         "onlyEnrollableWithParent": {
@@ -929,6 +955,9 @@
         },
         "status": {
           "type": "keyword"
+        },
+        "minEduGuidanceArea": {
+          "type": "integer"
         }
       }
     },
@@ -950,16 +979,5 @@
     "type": {
       "type": "keyword"
     }
-  },
-  "dynamic_templates": [
-    {
-      "strings": {
-        "match_mapping_type": "string",
-        "mapping": {
-          "type": "text",
-          "analyzer": "standard"
-        }
-      }
-    }
-  ]
+  }
 }

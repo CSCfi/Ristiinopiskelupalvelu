@@ -21,8 +21,6 @@ import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.modelmapper.ModelMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -30,8 +28,6 @@ import java.util.Collections;
 
 @Component
 public class UpdateStudentStudyRightReplyProcessor implements Processor {
-
-    private static final Logger logger = LoggerFactory.getLogger(UpdateStudentStudyRightReplyProcessor.class);
 
     private StudentService studentService;
     private OrganisationService organisationService;

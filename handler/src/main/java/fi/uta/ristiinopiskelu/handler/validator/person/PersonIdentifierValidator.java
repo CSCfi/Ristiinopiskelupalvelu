@@ -6,7 +6,7 @@ public class PersonIdentifierValidator {
         return new PersonSsnValidationResult(ssn);
     }
 
-    public static PersonOidValidationResult validateOid(String oid) {
-        return new PersonOidValidationResult(oid);
+    public static PersonOidValidationResult validateOid(String oid, boolean validateChecksum) {
+        return new PersonOidValidationResult(oid, validateChecksum);
     }
 }

@@ -1,8 +1,11 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.registration;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Schema(name = "RegistrationAmountSearchResultV8", title = "RegistrationAmountSearchResultV8")
 public class RegistrationAmountSearchResult {
 
     private RegistrationSelectionIdentifier identifier;

@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(name = "CompletedCreditTargetV9", title = "CopmletedCreditTargetV9")
 public class CompletedCreditTarget {
 
     @Schema(description = "Rajaa tuloksia suorituskohteen tyypin mukaan")

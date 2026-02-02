@@ -6,24 +6,22 @@ import fi.uta.ristiinopiskelu.handler.service.StudyRecordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @Tag(name = "studyrecords", description = "Opintosuoritukset v8")
 @RequestMapping("/api/v8/studyrecords")
 @RestController
 public class StudyRecordControllerV8 extends AbstractController {
-
-    private static final Logger logger = LoggerFactory.getLogger(StudyRecordControllerV8.class);
 
     @Autowired
     private StudyRecordService studyRecordService;
 
     @Operation(summary = "Hae opintosuoritusten lukumääriä", description = "Operaatio hakee opintosuoritusten lukumääriä annetuilla hakuehdoilla.",
         tags = "studyrecords")
-    @RequestMapping(value = "/search/amounts", method = RequestMethod.POST)
+    @PostMapping(value = "/search/amounts")
     public Long findStudyRecordAmounts(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordAmountSearchParameters searchParams) {
 

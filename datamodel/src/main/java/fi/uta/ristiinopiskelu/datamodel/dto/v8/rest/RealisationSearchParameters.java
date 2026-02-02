@@ -1,15 +1,16 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8.rest;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.CourseUnitReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Realisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.MinEduGuidanceArea;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.Arrays;
 import java.util.List;
 
+@Schema(name = "RealisationSearchParametersV8", title = "RealisationSearchParametersV8")
 public class RealisationSearchParameters extends PageableSearchParameters<Realisation> {
 
     @Schema(description = "Rajaa toteutuksia tunnisteen mukaan.")

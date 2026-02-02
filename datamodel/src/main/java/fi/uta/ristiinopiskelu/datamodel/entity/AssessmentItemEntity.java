@@ -2,12 +2,10 @@ package fi.uta.ristiinopiskelu.datamodel.entity;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.AssessmentItemType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-@Schema(name = "AssessmentItem")
 public class AssessmentItemEntity {
 
     private String assessmentItemId;

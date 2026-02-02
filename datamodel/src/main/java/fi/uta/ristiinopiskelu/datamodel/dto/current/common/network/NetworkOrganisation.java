@@ -1,7 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.network;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(name = "NetworkOrganisationV9", title = "NetworkOrganisationV9")
 public class NetworkOrganisation {
     @JsonProperty("organisationTkCode")
     private String organisationTkCode = null;

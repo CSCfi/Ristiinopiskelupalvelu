@@ -5,7 +5,7 @@
 
     <groupId>fi.uta.ristiinopiskelu</groupId>
     <artifactId>messaging</artifactId>
-    <version>9.0.23</version>
+    <version>9.0.28</version>
     <packaging>jar</packaging>
 
     <name>messaging</name>
@@ -14,7 +14,7 @@
     <parent>
         <groupId>fi.uta.ristiinopiskelu</groupId>
         <artifactId>parent</artifactId>
-        <version>9.0.23</version>
+        <version>9.0.28</version>
         <relativePath>../</relativePath>
     </parent>
 
@@ -68,6 +68,10 @@
     
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.ArrayList;
 import java.util.List;
 
-@Schema(name = "Bucket")
+@Schema(name = "BucketV9", title = "BucketV9")
 public class BucketDTO {
     private String key;
     private long count;

@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.MinEduGuidanceArea;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ import java.util.List;
  *         Based on
  *         https://wiki.eduuni.fi/download/attachments/70202805/CSC6_curriculum_api_1.0.0-oas3_swagger.json?version=1&modificationDate=1531828139937&api=v2
  */
+@Schema(name = "RealisationV8", title = "RealisationV8")
 public class Realisation {
 
     private String realisationId;

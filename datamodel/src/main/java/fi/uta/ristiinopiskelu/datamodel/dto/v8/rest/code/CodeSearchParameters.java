@@ -2,7 +2,9 @@ package fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.code;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.code.Code;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.PageableSearchParameters;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(name = "CodeSearchParametersV8", title = "CodeSearchParametersV8")
 public class CodeSearchParameters extends PageableSearchParameters<Code> {
 
     private String codeKey;

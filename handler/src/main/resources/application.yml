@@ -48,6 +48,8 @@ camel:
     stream-caching-enabled: true
 general:
   only-test-persons-allowed: ${only_test_persons_allowed}
+  oid:
+    validate-checksum: ${oid_validate_checksum}
   message-schema:
     version:
       current: 9

@@ -118,8 +118,8 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
 
         // Find by name
         if(StringUtils.hasText(searchParams.getQuery())) {
-            studiesQueryWithLanguagesBuilder.filterByName(searchParams.getQuery(), searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI);
-            studiesQueryWithoutLanguagesBuilder.filterByName(searchParams.getQuery(), searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI);
+            studiesQueryWithLanguagesBuilder.filterByName(searchParams.getQuery(), !searchParams.isLangIndependent() ? (searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI) : null);
+            studiesQueryWithoutLanguagesBuilder.filterByName(searchParams.getQuery(), !searchParams.isLangIndependent() ? (searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI) : null);
         }
 
         // Filter to return only study elements for requesting organisations networks
@@ -375,11 +375,11 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
             if(StringUtils.hasText(searchParams.getRealisationQuery())) {
                 courseUnitRealisationQueryBuilder.filterByRealisationNameOrIdentifierCode(mainRealisationQuery,
                     mainAssessmentItemRealisationQuery, searchParams.getRealisationQuery(),
-                    searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI);
+                    !searchParams.isLangIndependent() ? (searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI) : null);
 
                 courseUnitRealisationQueryBuilder.filterByRealisationNameOrIdentifierCode(aggregationRealisationQuery,
                     aggregationAssessmentItemRealisationQuery, searchParams.getRealisationQuery(),
-                    searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI);
+                    !searchParams.isLangIndependent() ? (searchParams.getLanguage() != null ? searchParams.getLanguage() : Language.FI) : null);
             }
 
             if(useLanguageSearch) {

@@ -3,9 +3,11 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.Objects;
 
+@Schema(name = "StudyElementReferenceV9", title = "StudyElementReferenceV9")
 public class StudyElementReference {
     private String referenceIdentifier;
     private String referenceOrganizer;

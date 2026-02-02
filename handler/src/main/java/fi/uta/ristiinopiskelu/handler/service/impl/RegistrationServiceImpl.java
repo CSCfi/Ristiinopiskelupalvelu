@@ -6,14 +6,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.Registra
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.registration.RegistrationReadDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchParameters;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchResult;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchResults;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationSearchParameters;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationSearchResults;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationSelectionIdentifier;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationStatusAmountSearchParameters;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationStatusAmountSearchResults;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.registration.RegistrationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.studyrecord.SearchDirection;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
@@ -35,7 +28,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -115,7 +107,7 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
         try {
             // find all registrations for this study right
             List<RegistrationEntity> registrations = registrationRepository.findByStudentHomeStudyRightIdentifiersStudyRightIdAndStudentHomeStudyRightIdentifiersOrganisationTkCodeReference(
-                studyRightId, organisation).orElse(Collections.emptyList());
+                studyRightId, organisation);
 
             return getRegistrationsPerOrganisation(registrations);
 

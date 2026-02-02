@@ -11,11 +11,11 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.Valid;
+
 import java.util.List;
 
-@Schema(name = "Network")
+@Schema(name = "NetworkV9", title = "NetworkV9")
 public class NetworkReadDTO {
 
     @JsonProperty("id")
