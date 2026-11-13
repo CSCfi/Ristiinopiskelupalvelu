@@ -3,6 +3,7 @@ process.env.VUE_APP_VERSION = require('./package.json').version;
 module.exports = {
   publicPath: '/admin-ui',
   outputDir: 'target/dist',
+  transpileDependencies: ['vuetify'],
   devServer: {
     port: 3000,
     proxy: {

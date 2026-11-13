@@ -1,14 +1,13 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current.realisation;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.HistoryHelper;
 import fi.uta.ristiinopiskelu.handler.helper.JmsHelper;
@@ -27,7 +26,6 @@ import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,9 +76,6 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     private OrganisationService organisationService;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
     private CourseUnitRepository courseUnitRepository;
 
     @Autowired
@@ -98,20 +93,20 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         for(String organisationId : organisationIds) {
             if(!organisationService.findById(organisationId).isPresent()) {
                 OrganisationEntity organisation = EntityInitializer.getOrganisationEntity(organisationId, organisationId,
-                    new LocalisedString(organisationId, null, null), this.messageSchemaVersion);
-                organisationService.create(modelMapper.map(organisation, OrganisationEntity.class));
+                    new LocalisedStringEntity(organisationId, null, null), this.messageSchemaVersion);
+                organisationService.create(organisation);
             }
         }
     }
 
     @Test
-    public void testSendingDeleteRealisationMessage_shouldSuccess() throws JMSException, IOException {
+    public void testSendingDeleteRealisationMessage_shouldSuccess() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
@@ -127,9 +122,12 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         Optional<RealisationEntity> realisationEntity = realisationService.findByIdAndOrganizingOrganisationId("129177", "TUNI");
         assertTrue(realisationEntity.isPresent());
 
-        String deleteJson = "{\n" +
-            "    \"realisationId\": \"129177\"\n" +
-            "}";
+        String deleteJson =
+        """
+            {
+                "realisationId": "129177"
+            }
+        """;
         Message deleteResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, deleteJson, MessageType.DELETE_REALISATION_REQUEST.name(), organisingOrganisationId);
 
         DefaultResponse deleteResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(deleteResponseMessage);
@@ -146,9 +144,9 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
@@ -164,9 +162,12 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         Optional<RealisationEntity> realisationEntity = realisationService.findByIdAndOrganizingOrganisationId("129177", "TUNI");
         assertTrue(realisationEntity.isPresent());
 
-        String deleteJson = "{\n" +
-            "    \"realisationId\": \"129177\"\n" +
-            "}";
+        String deleteJson =
+        """
+            {
+                "realisationId": "129177"
+            }
+        """;
         Message deleteResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, deleteJson, MessageType.DELETE_REALISATION_REQUEST.name(), organisingOrganisationId);
 
         DefaultResponse deleteResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(deleteResponseMessage);
@@ -190,7 +191,7 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(400, historyEntity.getMaxSeats());
         assertEquals(historyEntity.getStudyElementReferences().size(), 1);
         assertTrue(historyEntity.getStudyElementReferences().stream().anyMatch(
-            ser -> ser.getReferenceType() == StudyElementType.COURSE_UNIT
+            ser -> ser.getReferenceType() == StudyElementTypeEntity.COURSE_UNIT
                 && ser.getReferenceIdentifier().equals("CU-1")));
         assertEquals(2, historyEntity.getPersonReferences().size());
         assertTrue(historyEntity.getPersonReferences().stream().allMatch(pr -> pr.getPerson() != null));
@@ -205,13 +206,13 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     public void testSendingDeleteRealisationMessage_courseUnitsHaveDenormalizedData_shouldRemoveCourseUnitDenormalizedData() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         RealisationEntity realisationEntityToDelete = EntityInitializer.getRealisationEntity("R1", "RCODE1", "TUNI",
             null, Collections.singletonList(cooperationNetwork), null);
-        realisationEntityToDelete.setName(new LocalisedString("Nimi 1", "Name 1", "Namn 1"));
+        realisationEntityToDelete.setName(new LocalisedStringEntity("Nimi 1", "Name 1", "Namn 1"));
         realisationEntityToDelete.setStartDate(LocalDate.now().minusMonths(1));
         realisationEntityToDelete.setEndDate(LocalDate.now().plusMonths(6));
         realisationEntityToDelete.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
@@ -220,7 +221,7 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         // Add second realisation that is not deleted to verify no extra denormalized data is removed
         RealisationEntity realisationEntity2 = EntityInitializer.getRealisationEntity("R2", "RCODE2", "TUNI",
             null, Collections.singletonList(cooperationNetwork), null);
-        realisationEntity2.setName(new LocalisedString("Nimi 2", "Name 2", "Namn 2"));
+        realisationEntity2.setName(new LocalisedStringEntity("Nimi 2", "Name 2", "Namn 2"));
         realisationEntity2.setStartDate(LocalDate.now().minusMonths(2));
         realisationEntity2.setEndDate(LocalDate.now().plusMonths(7));
         realisationEntity2.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(2));
@@ -230,8 +231,8 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
             "CU1", "CODE1", organisingOrganisationId, Collections.singletonList(cooperationNetwork), null);
 
-        CourseUnitRealisationEntity courseUnitRealisationEntity = modelMapper.map(realisationEntityToDelete, CourseUnitRealisationEntity.class);
-        CourseUnitRealisationEntity courseUnitRealisationEntityNotRemoved = modelMapper.map(realisationEntity2, CourseUnitRealisationEntity.class);
+        CourseUnitRealisationEntity courseUnitRealisationEntity = CourseUnitRealisationEntity.from(realisationEntityToDelete);
+        CourseUnitRealisationEntity courseUnitRealisationEntityNotRemoved = CourseUnitRealisationEntity.from(realisationEntity2);
         courseUnit.setRealisations(Arrays.asList(courseUnitRealisationEntity, courseUnitRealisationEntityNotRemoved));
         courseUnitRepository.create(courseUnit);
 
@@ -247,10 +248,10 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         courseUnitRepository.create(courseUnitWithAssessmentItemRealisations);
 
         // Add references for realisation to created course units
-        StudyElementReference courseUnitRef = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity courseUnitRef = EntityInitializer.getStudyElementReferenceForCourseUnit(
             courseUnit.getStudyElementId(), organisingOrganisationId);
 
-        StudyElementReference assessmentItemRef = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity assessmentItemRef = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             courseUnitWithAssessmentItemRealisations.getStudyElementId(), organisingOrganisationId, assessmentItemEntity.getAssessmentItemId());
 
         realisationEntityToDelete.setStudyElementReferences(Arrays.asList(assessmentItemRef, courseUnitRef));
@@ -258,9 +259,12 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         realisationRepository.create(realisationEntityToDelete);
 
         // Send delete message
-        String deleteJson = "{\n" +
-            "    \"realisationId\": \"" + realisationEntityToDelete.getRealisationId()  + "\"\n" +
-            "}";
+        String deleteJson =
+        """
+            {
+                "realisationId": "%s"
+            }
+        """.formatted(realisationEntityToDelete.getRealisationId());
 
         Message deleteResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, deleteJson, MessageType.DELETE_REALISATION_REQUEST.name(), organisingOrganisationId);
 
@@ -306,84 +310,86 @@ public class DeleteRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     private final String testRealisationJson =
-        "{\n" +
-            "    \"realisations\": [\n" +
-            "        {\n" +
-            "            \"status\": \"ACTIVE\",\n" +
-            "            \"realisationId\": \"129177\",\n" +
-            "            \"realisationIdentifierCode\": \"129177\",\n" +
-            "            \"selections\": null,\n" +
-            "            \"questionSets\": null,\n" +
-            "            \"enrollmentStartDateTime\": \"2018-09-30T21:00:00.000Z\",\n" +
-            "            \"enrollmentEndDateTime\": \"2018-12-04T22:00:00.000Z\",\n" +
-            "            \"startDate\": \"2019-01-06\",\n" +
-            "            \"endDate\": \"2019-05-30\",\n" +
-            "            \"creditsMin\": 5,\n" +
-            "            \"creditsMax\": 15,\n" +
-            "            \"minSeats\": 10,\n" +
-            "            \"maxSeats\": 400,\n" +
-            "            \"name\": {\n" +
-            "               \"values\": {\n" +
-            "                    \"fi\": \"nimi fi\",\n" +
-            "                    \"sv\": null,\n" +
-            "                    \"en\": null\n" +
-            "                }\n" +
-            "             },\n" +
-            "            \"personReferences\": [\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                },\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi2@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"studyElementReferences\": [\n" +
-            "               {\n" +
-            "                    \"referenceIdentifier\": \"CU-1\",\n" +
-            "                    \"referenceOrganizer\": \"TUNI\",\n" +
-            "                    \"referenceType\": \"COURSE_UNIT\"\n" +
-            "               }\n" +
-            "            ],\n" +
-            "           \"organisationReferences\": [\n" +
-            "               {\n" +
-            "                   \"organisationRole\": 1,\n" +
-            "                   \"target\": {\n" +
-            "                       \"organisationIdentifier\": \"TUNI\",\n" +
-            "                       \"organisationTkCode\": \"TUNI\"\n" +
-            "                   }\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"cooperationNetworks\": [\n" +
-            "               {\n" +
-            "                   \"id\": \"CN-1\",\n" +
-            "                   \"name\": {\n" +
-            "                       \"values\": {\n" +
-            "                           \"fi\": \"Verkosto 1\",\n" +
-            "                           \"en\": \"Network 1\",\n" +
-            "                           \"sv\": null\n" +
-            "                       }\n" +
-            "                   },\n" +
-            "                   \"enrollable\": true\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"teachingLanguage\": [\n" +
-            "               \"fi\"\n" +
-            "           ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+    """
+        {
+            "realisations": [
+                {
+                    "status": "ACTIVE",
+                    "realisationId": "129177",
+                    "realisationIdentifierCode": "129177",
+                    "selections": null,
+                    "questionSets": null,
+                    "enrollmentStartDateTime": "2018-09-30T21:00:00.000Z",
+                    "enrollmentEndDateTime": "2018-12-04T22:00:00.000Z",
+                    "startDate": "2019-01-06",
+                    "endDate": "2019-05-30",
+                    "creditsMin": 5,
+                    "creditsMax": 15,
+                    "minSeats": 10,
+                    "maxSeats": 400,
+                    "name": {
+                       "values": {
+                            "fi": "nimi fi",
+                            "sv": null,
+                            "en": null
+                        }
+                     },
+                    "personReferences": [
+                        {
+                            "personRole": {
+                                "key": "teacher",
+                                "codeSetKey": "personRole"
+                            },
+                            "person": {
+                                "homeEppn": "testi@test.fi",
+                                "surName": "Testinen"
+                            }
+                        },
+                        {
+                            "personRole": {
+                                "key": "teacher",
+                                "codeSetKey": "personRole"
+                            },
+                            "person": {
+                                "homeEppn": "testi2@test.fi",
+                                "surName": "Testinen"
+                            }
+                        }
+                    ],
+                    "studyElementReferences": [
+                       {
+                            "referenceIdentifier": "CU-1",
+                            "referenceOrganizer": "TUNI",
+                            "referenceType": "COURSE_UNIT"
+                       }
+                    ],
+                   "organisationReferences": [
+                       {
+                           "organisationRole": 1,
+                           "target": {
+                               "organisationIdentifier": "TUNI",
+                               "organisationTkCode": "TUNI"
+                           }
+                       }
+                   ],
+                   "cooperationNetworks": [
+                       {
+                           "id": "CN-1",
+                           "name": {
+                               "values": {
+                                   "fi": "Verkosto 1",
+                                   "en": "Network 1",
+                                   "sv": null
+                               }
+                           },
+                           "enrollable": true
+                       }
+                   ],
+                   "teachingLanguage": [
+                       "fi"
+                   ]
+                }
+            ]
+        }
+    """;
 }

@@ -2,6 +2,8 @@ package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateCourseUnitRequestDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateStudyElementRequestDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.ScaleValue;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.annotation.Transient;
@@ -145,5 +147,22 @@ public class CourseUnit extends StudyElement {
             }
         }
         return assessmentItemEntities;
+    }
+
+    public static CourseUnit from(CreateCourseUnitRequestDTO source) {
+        if (source == null) {
+            return null;
+        }
+
+        CourseUnit target = new CourseUnit();
+        CreateStudyElementRequestDTO.copyStudyElementFields(source, target);
+        target.setAssessmentScale(source.getAssessmentScale());
+        target.setLearningMaterials(source.getLearningMaterials());
+        target.setExamBookEnquiry(source.getExamBookEnquiry());
+        target.setGroupSize(source.getGroupSize());
+        target.setCompletionOptions(source.getCompletionOptions());
+        target.setRealisations(source.getRealisations());
+        target.setOnlyEnrollableWithParent(source.getOnlyEnrollableWithParent());
+        return target;
     }
 }

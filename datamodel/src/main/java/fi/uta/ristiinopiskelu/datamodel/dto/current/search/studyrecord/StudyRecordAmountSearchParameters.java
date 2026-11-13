@@ -3,12 +3,21 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.SearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Schema(name = "StudyRecordAmountSearchParametersV9", title = "StudyRecordAmountSearchParametersV9")
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
 public class StudyRecordAmountSearchParameters implements SearchParameters<StudyRecordEntity> {
+
+    @Schema(description = "Verkoston tunniste")
+    private String networkIdentifier;
 
     @Schema(description = "Lähettävän organisaation tilastokeskuskoodi")
     private String sendingOrganisation;
@@ -26,60 +35,4 @@ public class StudyRecordAmountSearchParameters implements SearchParameters<Study
     private StudyRecordDividing divideBy;
 
     private List<StudyRecordGroupingDates> groupByDates;
-
-    public String getSendingOrganisation() {
-        return sendingOrganisation;
-    }
-
-    public void setSendingOrganisation(String sendingOrganisation) {
-        this.sendingOrganisation = sendingOrganisation;
-    }
-
-    public String getReceivingOrganisation() {
-        return receivingOrganisation;
-    }
-
-    public void setReceivingOrganisation(String receivingOrganisation) {
-        this.receivingOrganisation = receivingOrganisation;
-    }
-
-    public LocalDate getCompletionDateStart() {
-        return completionDateStart;
-    }
-
-    public void setCompletionDateStart(LocalDate completionDateStart) {
-        this.completionDateStart = completionDateStart;
-    }
-
-    public LocalDate getCompletionDateEnd() {
-        return completionDateEnd;
-    }
-
-    public void setCompletionDateEnd(LocalDate completionDateEnd) {
-        this.completionDateEnd = completionDateEnd;
-    }
-
-    public StudyRecordGrouping getGroupBy() {
-        return groupBy;
-    }
-
-    public void setGroupBy(StudyRecordGrouping groupBy) {
-        this.groupBy = groupBy;
-    }
-
-    public StudyRecordDividing getDivideBy() {
-        return divideBy;
-    }
-
-    public void setDivideBy(StudyRecordDividing divideBy) {
-        this.divideBy = divideBy;
-    }
-
-    public List<StudyRecordGroupingDates> getGroupByDates() {
-        return groupByDates;
-    }
-
-    public void setGroupByDates(List<StudyRecordGroupingDates> groupByDates) {
-        this.groupByDates = groupByDates;
-    }
 }

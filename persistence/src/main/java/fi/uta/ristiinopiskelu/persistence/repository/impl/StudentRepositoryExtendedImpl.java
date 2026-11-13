@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
-import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
@@ -39,11 +38,11 @@ public class StudentRepositoryExtendedImpl implements StudentRepositoryExtended 
             query = QueryBuilders.term(tq -> tq.field("personId").value(personId));
         }
 
-        return elasticsearchTemplate.search(NativeQuery.builder()
+        NativeQuery nativeQuery = NativeQuery.builder()
                         .withQuery(query)
-                        .withPageable(pageable)
-                        .build(), StudentEntity.class)
-                .map(SearchHit::getContent)
-                .toList();
+                        .withPageable(pageable != null ? pageable : Pageable.unpaged())
+                        .build();
+
+        return ElasticsearchQueryUtils.search(elasticsearchTemplate, nativeQuery, StudentEntity.class);
     }
 }

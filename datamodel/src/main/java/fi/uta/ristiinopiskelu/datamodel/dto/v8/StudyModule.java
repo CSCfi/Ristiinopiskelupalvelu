@@ -1,6 +1,8 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.v8;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateStudyElementRequestDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateStudyModuleRequestDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -98,5 +100,21 @@ public class StudyModule extends StudyElement {
 
     public void setCredits(BigDecimal credits) {
         this.credits = credits;
+    }
+
+    public static fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyModule from(CreateStudyModuleRequestDTO source) {
+        if (source == null) {
+            return null;
+        }
+
+        fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyModule target = new fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyModule();
+        CreateStudyElementRequestDTO.copyStudyElementFields(source, target);
+        target.setAmountValueMin(source.getAmountValueMin());
+        target.setAmountValueMax(source.getAmountValueMax());
+        target.setOptionality(source.getOptionality());
+        target.setOptionalityFurtherInformation(source.getOptionalityFurtherInformation());
+        target.setCredits(source.getCredits());
+        target.setStudyModuleType(source.getStudyModuleType());
+        return target;
     }
 }

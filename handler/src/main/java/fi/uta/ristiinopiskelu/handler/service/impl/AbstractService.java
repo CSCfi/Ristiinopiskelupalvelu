@@ -1,16 +1,16 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.code.CodeReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.network.NetworkReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.organisation.OrganisationReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation.RealisationReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyrecord.StudyRecordReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.ListSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.SearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.SearchResults;
-import fi.uta.ristiinopiskelu.datamodel.entity.GenericEntity;
-import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
-import fi.uta.ristiinopiskelu.handler.exception.DeleteFailedException;
-import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
-import fi.uta.ristiinopiskelu.handler.exception.InvalidSearchParametersException;
-import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
+import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.handler.exception.*;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.service.Service;
 import fi.uta.ristiinopiskelu.handler.service.result.AbstractEntityModificationResult;
@@ -19,11 +19,12 @@ import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationRe
 import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.handler.utils.ExtendedBeanUtils;
 import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.util.Assert;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,9 +54,7 @@ public abstract class AbstractService<D, T extends GenericEntity, R> implements 
 
     protected abstract ExtendedRepository<T, String> getRepository();
 
-    protected abstract ObjectMapper getObjectMapper();
-
-    protected abstract ModelMapper getModelMapper();
+    protected abstract JsonMapper getJsonMapper();
 
     protected boolean isValidateId() {
         return true;
@@ -190,8 +189,8 @@ public abstract class AbstractService<D, T extends GenericEntity, R> implements 
     @Override
     public <A> A copy(A original, Class<? extends A> type) {
         try {
-            return getObjectMapper().readValue(getObjectMapper().writeValueAsString(original), type);
-        } catch (JsonProcessingException e) {
+            return getJsonMapper().readValue(getJsonMapper().writeValueAsString(original), type);
+        } catch (JacksonException e) {
             throw new IllegalStateException("Entity serialisation failed", e);
         }
     }
@@ -199,7 +198,33 @@ public abstract class AbstractService<D, T extends GenericEntity, R> implements 
     @Override
     public R toReadDTO(T entity) {
         Assert.notNull(entity, "Entity cannot be null");
-        return this.getModelMapper().map(entity, getReadDtoClass());
+
+        if (entity instanceof StudyElementEntity studyElementEntity && AbstractStudyElementReadDTO.class.isAssignableFrom(getReadDtoClass())) {
+            return getReadDtoClass().cast(AbstractStudyElementReadDTO.from(studyElementEntity));
+        }
+
+        if (entity instanceof CodeEntity codeEntity && getReadDtoClass().equals(CodeReadDTO.class)) {
+            return getReadDtoClass().cast(CodeReadDTO.from(codeEntity));
+        }
+
+        if (entity instanceof NetworkEntity networkEntity && getReadDtoClass().equals(NetworkReadDTO.class)) {
+            return getReadDtoClass().cast(NetworkReadDTO.from(networkEntity));
+        }
+
+        if (entity instanceof OrganisationEntity organisationEntity && getReadDtoClass().equals(OrganisationReadDTO.class)) {
+            return getReadDtoClass().cast(OrganisationReadDTO.from(organisationEntity));
+        }
+
+        if (entity instanceof RealisationEntity realisationEntity && getReadDtoClass().equals(RealisationReadDTO.class)) {
+            return getReadDtoClass().cast(RealisationReadDTO.from(realisationEntity));
+        }
+
+        if (entity instanceof StudyRecordEntity studyRecordEntity && getReadDtoClass().equals(StudyRecordReadDTO.class)) {
+            return getReadDtoClass().cast(StudyRecordReadDTO.from(studyRecordEntity));
+        }
+
+        throw new IllegalStateException("Unsupported explicit mapping from %s to %s".formatted(entity.getClass().getSimpleName(),
+            getReadDtoClass().getSimpleName()));
     }
 
     @Override

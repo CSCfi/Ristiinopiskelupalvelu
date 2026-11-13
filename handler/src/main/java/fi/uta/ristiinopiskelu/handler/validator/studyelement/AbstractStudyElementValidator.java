@@ -1,10 +1,10 @@
 package fi.uta.ristiinopiskelu.handler.validator.studyelement;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.StudyElement;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.impl.AbstractStudyElementService;
@@ -74,7 +74,7 @@ public abstract class AbstractStudyElementValidator<T extends AbstractStudyEleme
 
         OrganisationReference organizingOrganisation = organizerOrganisationReferences.stream().findFirst().get();
 
-        if (!organizingOrganisation.getOrganisation().getOrganisationTkCode().equals(organisationId)) {
+        if (!organizingOrganisation.getTarget().getOrganisationTkCode().equals(organisationId)) {
             throw new OrganizingOrganisationMismatchValidationException("studyElementType " + studyElementType + " with [studyElementId: " + studyElementId + "]" +
                     " organizer does not match JMS header organisation id.");
         }
@@ -94,7 +94,7 @@ public abstract class AbstractStudyElementValidator<T extends AbstractStudyEleme
                 new UnknownCooperationNetworkValidationException("Study element type " + studyElementType + " with [studyElementId: " + studyElement.getStudyElementId()
                         + "] contains unknown cooperation network (" + cooperationNetwork.getId() + ")"));
 
-            Predicate<NetworkOrganisation> isOrganisationInNetwork = networkOrg ->
+            Predicate<NetworkOrganisationEntity> isOrganisationInNetwork = networkOrg ->
                     networkOrg.getOrganisationTkCode().equals(organisationId);
 
             if(networkEntity.getOrganisations().stream().noneMatch(isOrganisationInNetwork)) {

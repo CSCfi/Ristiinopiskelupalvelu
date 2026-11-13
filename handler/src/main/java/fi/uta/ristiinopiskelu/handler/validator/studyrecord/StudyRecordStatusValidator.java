@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.handler.validator.studyrecord;
 
 import fi.uta.ristiinopiskelu.handler.exception.validation.InvalidMessageBodyException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.MissingMessageHeaderException;
+import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.handler.validator.RequestValidator;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.StudyRecordReplyRequest;
 import org.springframework.stereotype.Component;
@@ -13,7 +14,7 @@ public class StudyRecordStatusValidator implements RequestValidator<StudyRecordR
     @Override
     public void validateRequest(StudyRecordReplyRequest reply, String organisationId) {
         if(StringUtils.isEmpty(organisationId)) {
-            throw new MissingMessageHeaderException("Cannot perform create. Organisation Id is missing from header. This should not happen.");
+            throw new MissingMessageHeaderException(MessageHeader.JMS_XUSERID);
         }
         
         if(StringUtils.isEmpty(reply.getStudyRecordRequestId())) {

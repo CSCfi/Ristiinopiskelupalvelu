@@ -1,7 +1,11 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeSet;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeValue;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.code.CodeSetEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.code.CodeValueEntity;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -11,11 +15,15 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.List;
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 @Document(indexName = "koodisto", createIndex = false)
 public class CodeEntity extends GenericEntity implements Serializable {
     private String codeUri;
     private String resourceUri;
-    private CodeSet codeSet;
+    private CodeSetEntity codeSet;
     private String key;
     private Integer codeVersion;
 
@@ -29,90 +37,5 @@ public class CodeEntity extends GenericEntity implements Serializable {
     private LocalDate validityEndDate;
     
     private String status;
-    private List<CodeValue> codeValues;
-
-    public String getCodeUri() {
-        return codeUri;
-    }
-
-    public void setCodeUri(String codeUri) {
-        this.codeUri = codeUri;
-    }
-
-    public String getResourceUri() {
-        return resourceUri;
-    }
-
-    public void setResourceUri(String resourceUri) {
-        this.resourceUri = resourceUri;
-    }
-
-    public CodeSet getCodeSet() {
-        return codeSet;
-    }
-
-    public void setCodeSet(CodeSet codeSet) {
-        this.codeSet = codeSet;
-    }
-
-    public String getKey() {
-        return key;
-    }
-
-    public void setKey(String key) {
-        this.key = key;
-    }
-
-    public Integer getCodeVersion() {
-        return codeVersion;
-    }
-
-    public void setCodeVersion(Integer codeVersion) {
-        this.codeVersion = codeVersion;
-    }
-
-    public LocalDate getUpdateDate() {
-        return updateDate;
-    }
-
-    public void setUpdateDate(LocalDate updateDate) {
-        this.updateDate = updateDate;
-    }
-
-    public LocalDate getValidityStartDate() {
-        return validityStartDate;
-    }
-
-    public void setValidityStartDate(LocalDate validityStartDate) {
-        this.validityStartDate = validityStartDate;
-    }
-
-    public LocalDate getValidityEndDate() {
-        return validityEndDate;
-    }
-
-    public void setValidityEndDate(LocalDate validityEndDate) {
-        this.validityEndDate = validityEndDate;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public List<CodeValue> getCodeValues() {
-        return codeValues;
-    }
-
-    public void setCodeValues(List<CodeValue> codeValues) {
-        this.codeValues = codeValues;
-    }
-
-    public String toString() {
-        return "Code(codeUri=" + this.getCodeUri() + ")";
-    }
-
+    private List<CodeValueEntity> codeValues;
 }

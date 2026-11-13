@@ -1,7 +1,9 @@
 package fi.uta.ristiinopiskelu.handler.validator.realisation;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
@@ -13,7 +15,6 @@ import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.handler.validator.JsonRequestValidator;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -22,19 +23,18 @@ import jakarta.validation.Validator;
 @Component
 public class UpdateRealisationValidator extends AbstractRealisationValidator implements JsonRequestValidator<RealisationEntity> {
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     protected UpdateRealisationValidator() {
     }
 
     @Autowired
-    public UpdateRealisationValidator(ModelMapper modelMapper,
-                                      ObjectMapper objectMapper,
+    public UpdateRealisationValidator(JsonMapper jsonMapper,
                                       RealisationService realisationService,
                                       CourseUnitService courseUnitService,
                                       NetworkService networkService, Validator beanValidator) {
-        super(modelMapper, realisationService, courseUnitService, networkService, beanValidator);
-        this.objectMapper = objectMapper;
+        super(realisationService, courseUnitService, networkService, beanValidator);
+        this.jsonMapper = jsonMapper;
     }
 
     @Override
@@ -48,7 +48,7 @@ public class UpdateRealisationValidator extends AbstractRealisationValidator imp
         }
 
         JsonNode realisationJson = request.get("realisation");
-        RealisationWriteDTO parsedRealisation = objectMapper.convertValue(realisationJson, RealisationWriteDTO.class);
+        RealisationWriteDTO parsedRealisation = jsonMapper.convertValue(realisationJson, RealisationWriteDTO.class);
         super.validateObject(parsedRealisation, organisationId);
 
         RealisationEntity originalRealisation = realisationService.findByIdAndOrganizingOrganisationId(
@@ -67,12 +67,12 @@ public class UpdateRealisationValidator extends AbstractRealisationValidator imp
         if(realisationJson.has("studyElementReferences") || realisationJson.has("cooperationNetworks")) {
             // If update message is not updating study element references, setup with original values
             if(!realisationJson.has("studyElementReferences")) {
-                parsedRealisation.setStudyElementReferences(originalRealisation.getStudyElementReferences());
+                parsedRealisation.setStudyElementReferences(StudyElementReference.from(originalRealisation.getStudyElementReferences()));
             }
 
             // If update message is not updating cooperation networks, setup with original values
             if(!realisationJson.has("cooperationNetworks")) {
-                parsedRealisation.setCooperationNetworks(originalRealisation.getCooperationNetworks());
+                parsedRealisation.setCooperationNetworks(CooperationNetwork.from(originalRealisation.getCooperationNetworks()));
             }
 
             validateStudyElementReferences(parsedRealisation, organisationId);

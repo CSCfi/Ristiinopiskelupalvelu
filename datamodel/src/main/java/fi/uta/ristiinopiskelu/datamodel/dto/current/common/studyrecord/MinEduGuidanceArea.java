@@ -2,6 +2,10 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.MinEduGuidanceAreaEntity;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * VIRTA-codes, "Koulutusala"
@@ -47,5 +51,15 @@ public enum MinEduGuidanceArea {
     @Override
     public String toString() {
         return String.valueOf(this.code);
+    }
+
+    public static List<MinEduGuidanceArea> from(List<MinEduGuidanceAreaEntity> source) {
+        if (source == null) {
+            return null;
+        }
+
+        return source.stream()
+            .map(item -> MinEduGuidanceArea.fromValue(item.getCode()))
+            .collect(Collectors.toList());
     }
 }

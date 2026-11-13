@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.write.registration;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationReplySelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -21,8 +22,8 @@ public class RegistrationWriteDTO {
     private RegistrationStatus status;
     private String statusInfo;
     private ExtendedStudent student;
-    private List<RegistrationSelection> selections;
-    private List<RegistrationSelection> selectionsReplies;
+    private List<CreateRegistrationSelection> selections;
+    private List<RegistrationReplySelection> selectionsReplies;
 
     public String getSendingOrganisationTkCode() {
         return sendingOrganisationTkCode;
@@ -104,19 +105,19 @@ public class RegistrationWriteDTO {
         this.student = student;
     }
 
-    public List<RegistrationSelection> getSelections() {
+    public List<CreateRegistrationSelection> getSelections() {
         return selections;
     }
 
-    public void setSelections(List<RegistrationSelection> selections) {
+    public void setSelections(List<CreateRegistrationSelection> selections) {
         this.selections = selections;
     }
 
-    public List<RegistrationSelection> getSelectionsReplies() {
+    public List<RegistrationReplySelection> getSelectionsReplies() {
         return selectionsReplies;
     }
 
-    public void setSelectionsReplies(List<RegistrationSelection> selectionsReplies) {
+    public void setSelectionsReplies(List<RegistrationReplySelection> selectionsReplies) {
         this.selectionsReplies = selectionsReplies;
     }
 

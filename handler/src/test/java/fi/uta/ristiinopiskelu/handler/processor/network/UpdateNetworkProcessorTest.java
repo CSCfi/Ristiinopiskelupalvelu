@@ -1,11 +1,5 @@
 package fi.uta.ristiinopiskelu.handler.processor.network;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
@@ -20,18 +14,19 @@ import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.network.UpdateNetworkRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.notification.NetworkUpdatedNotification;
+import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.support.DefaultExchange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,40 +35,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class UpdateNetworkProcessorTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(UpdateNetworkProcessorTest.class);
-
-    @MockBean
+    @MockitoBean
     private OrganisationService organisationService;
 
-    @MockBean
+    @MockitoBean
     private NetworkService networkService;
 
-    @MockBean
+    @MockitoBean
     private UpdateNetworkValidator validator;
 
-    @MockBean
+    @MockitoBean
     private JmsMessageForwarder jmsMessageForwarder;
 
-    @MockBean
+    @MockitoBean
     private MessageSchemaService messageSchemaService;
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private UpdateNetworkProcessor processor;
 
     @BeforeEach
     public void before() {
-        objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .registerModule(new Jdk8Module());
-
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        objectMapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
-        objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
-
-        processor = spy(new UpdateNetworkProcessor(networkService, organisationService, validator, objectMapper, jmsMessageForwarder));
+        jsonMapper = new EsConfig().jsonMapper(null);
+        processor = spy(new UpdateNetworkProcessor(networkService, organisationService, validator, jsonMapper, jmsMessageForwarder));
     }
 
     @Test
@@ -95,7 +82,7 @@ public class UpdateNetworkProcessorTest {
         request.setNetwork(network);
 
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
-        exchange.getIn().setBody(objectMapper.writeValueAsString(request));
+        exchange.getIn().setBody(jsonMapper.writeValueAsString(request));
 
         List<OrganisationEntity> returningOrgEntitys = new ArrayList<>();
         for(String orgId : organisationIds) {
@@ -106,9 +93,9 @@ public class UpdateNetworkProcessorTest {
             returningOrgEntitys.add(entity);
         }
 
-        when(validator.validateJson(any(), any())).thenReturn(NetworkEntity.fromDto(network));
+        when(validator.validateJson(any(), any())).thenReturn(NetworkEntity.from(network));
         when(organisationService.findByIds(any())).thenReturn(returningOrgEntitys);
-        when(networkService.update(any(JsonNode.class))).thenReturn(NetworkEntity.fromDto(network));
+        when(networkService.update(any(JsonNode.class))).thenReturn(NetworkEntity.from(network));
         when(messageSchemaService.getCurrentSchemaVersion()).thenReturn(1);
 
         processor.process(exchange);

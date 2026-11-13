@@ -1,21 +1,21 @@
 package fi.uta.ristiinopiskelu.handler.validator.registration;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Selection;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.*;
 import fi.uta.ristiinopiskelu.datamodel.entity.CompletionOptionEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.SelectionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.SelectionValueEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.SelectionTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.handler.validator.RequestValidator;
+import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.CreateRegistrationRequest;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
 import org.apache.commons.lang3.BooleanUtils;
@@ -47,15 +47,16 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
 
     @Override
     public void validateRequest(CreateRegistrationRequest registration, String organisationId) throws ValidationException {
-        if(StringUtils.isEmpty(organisationId)) {
-            throw new MissingMessageHeaderException("Cannot perform create. Organisation Id is missing from header. This should not happen.");
+        if(!StringUtils.hasText(organisationId)) {
+            throw new MissingMessageHeaderException(MessageHeader.JMS_XUSERID);
         }
 
         NetworkEntity networkEntity = networkService.findValidNetworkById(registration.getNetworkIdentifier())
                 .orElseThrow(() -> new ValidNetworkNotFoundValidationException("Could not find valid network with given network id: " + registration.getNetworkIdentifier()));
 
         if(!registration.getSendingOrganisationTkCode().equals(organisationId)) {
-            throw new ValidationException("Unable to process registration request. SendingOrganisation not match given JMS header organisation id.");
+            throw new OrganizingOrganisationMismatchValidationException(
+                "Unable to process registration request. SendingOrganisation does not match the JMS header organisation id.");
         }
 
         if(!isOrganisationValidInNetwork(networkEntity, registration.getSendingOrganisationTkCode())) {
@@ -73,25 +74,25 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
         if(CollectionUtils.isEmpty(registration.getSelections())) {
             throw new InvalidMessageBodyException("Unable to process registration request. Request has no selections.");
         }
-        verifyNoRankSpecifiedForSelection(registration.getSelections());
+
         verifySelectionsHierarchy(registration.getSelections(), registration.getReceivingOrganisationTkCode());
         verifyAllSelectionsBelongToGivenNetwork(networkEntity.getId(), registration, registration.getReceivingOrganisationTkCode());
         verifySelectionsEnrollable(registration.getSelections(), registration.getEnrolmentDateTime(), registration.getReceivingOrganisationTkCode());
     }
 
-    protected void verifySelectionsEnrollable(List<RegistrationSelection> selections, OffsetDateTime enrollmentDateTime, String receivingOrganisationTkCode) {
+    protected void verifySelectionsEnrollable(List<CreateRegistrationSelection> selections, OffsetDateTime enrollmentDateTime, String receivingOrganisationTkCode) {
         if(enrollmentDateTime == null) {
             throw new RegistrationSelectionEnrollmentTimeValidationException("Unable to process registration request." +
                     " Could not verify enrollment time validity because enrollmentDateTime was not given with request.");
         }
 
-        List<RegistrationSelection> realisationSelections = selections.stream()
+        List<CreateRegistrationSelection> realisationSelections = selections.stream()
                 .filter(selection -> selection.getSelectionItemType() == RegistrationSelectionItemType.REALISATION)
-                .collect(Collectors.toList());
+                .toList();
 
-        List<RegistrationSelection> notEnrollableSelections = new ArrayList<>();
+        List<CreateRegistrationSelection> notEnrollableSelections = new ArrayList<>();
 
-        for (RegistrationSelection selection : realisationSelections) {
+        for (CreateRegistrationSelection selection : realisationSelections) {
             RealisationEntity realisationEntity = realisationService.findByIdAndOrganizingOrganisationId(
                     selection.getSelectionItemId(), receivingOrganisationTkCode).orElse(null);
 
@@ -123,8 +124,8 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
     protected void verifyAllSelectionsBelongToGivenNetwork(String registrationNetworkId, CreateRegistrationRequest registration, String organisationId) {
         List<String> selectionsNotValidInGivenNetwork = new ArrayList<>();
 
-        for (RegistrationSelection selection : registration.getSelections()) {
-            CooperationNetwork cooperationNetwork = null;
+        for (CreateRegistrationSelection selection : registration.getSelections()) {
+            CooperationNetworkEntity cooperationNetwork = null;
             if(selection.getSelectionItemType() == RegistrationSelectionItemType.REALISATION) {
                 RealisationEntity realisationEntity = realisationService.findByIdAndOrganizingOrganisationId(
                         selection.getSelectionItemId(), organisationId).orElse(null);
@@ -176,7 +177,7 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
         }
     }
 
-    private CooperationNetwork findCooperationNetworkFromArrayById(List<CooperationNetwork> cooperationNetworks, String networkIdToFind) {
+    private CooperationNetworkEntity findCooperationNetworkFromArrayById(List<CooperationNetworkEntity> cooperationNetworks, String networkIdToFind) {
         if(CollectionUtils.isEmpty(cooperationNetworks)) {
             return null;
         }
@@ -187,9 +188,9 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
                 .orElse(null);
     }
 
-    protected void verifySelectionsHierarchy(List<RegistrationSelection> selections, String receivingOrganisation) throws ValidationException {
-        for(RegistrationSelection selection : selections) {
-            RegistrationSelection courseUnitSelection = findCourseUnitSelection(selection);
+    protected void verifySelectionsHierarchy(List<CreateRegistrationSelection> selections, String receivingOrganisation) throws ValidationException {
+        for(CreateRegistrationSelection selection : selections) {
+            ParentAwareRegistrationSelection courseUnitSelection = findCourseUnitSelection(selection);
             if(courseUnitSelection == null) {
                 throw new RegistrationSelectionHierarchyValidationException("Unable to process registration request." +
                         " Registration contains selection hierarchy that is missing course unit.");
@@ -228,7 +229,7 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
                         selectedRealisationEntity.getStudyElementReferences().stream().noneMatch(ref ->
                             ref.getReferenceIdentifier().equals(selectedCourseUnitEntity.getStudyElementId())
                             && ref.getReferenceOrganizer().equals(selectedCourseUnitEntity.getOrganizingOrganisationId())
-                            && ref.getReferenceType() == StudyElementType.COURSE_UNIT)) {
+                            && ref.getReferenceType() == StudyElementTypeEntity.COURSE_UNIT)) {
 
                         throw new RegistrationSelectionReferenceValidationException("Unable to process registration request." +
                                 " Registration has selected realisation that does not have reference to referenced course unit." +
@@ -240,7 +241,7 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
                 }
 
                 List<String> registrationSubGroupSelections = selection.getSubGroupSelections() != null ? selection.getSubGroupSelections() : Collections.emptyList();
-                List<Selection> selectedRealisationEntityGroupSelections =
+                List<SelectionEntity> selectedRealisationEntityGroupSelections =
                     selectedRealisationEntity.getGroupSelections() != null ? selectedRealisationEntity.getGroupSelections() : Collections.emptyList();
 
                 // make sure that all of the selected sub groups actually exist
@@ -256,12 +257,13 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
 
                 // finally check if sub group selection amounts match the selection type rules (not required if aborting)
                 if (selection.getSelectionItemStatus() != RegistrationSelectionItemStatus.ABORTED_BY_STUDENT) {
-                    for (Selection sel : selectedRealisationEntityGroupSelections) {
+                    for (SelectionEntity sel : selectedRealisationEntityGroupSelections) {
                         String[] selectionsInThisSelection = sel.getSelectionValues().stream()
                             .filter(sv -> registrationSubGroupSelections.stream().anyMatch(sgs -> sgs.equals(sv.getId())))
-                            .map(sv -> sv.getId()).toArray(String[]::new);
+                            .map(SelectionValueEntity::getId)
+                            .toArray(String[]::new);
 
-                        if (sel.getType() == SelectionType.CHOOSE_ONE) {
+                        if (sel.getType() == SelectionTypeEntity.CHOOSE_ONE) {
                             // Currently 1-N is allowed
                             if (selectionsInThisSelection.length < 1) {
                                 throw new RegistrationSelectionSubGroupSelectionAmountMismatchValidationException("Unable to process registration request." +
@@ -269,7 +271,7 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
                                     selectionsInThisSelection.length + " selections made, selections [" + StringUtils.arrayToCommaDelimitedString(selectionsInThisSelection) + "]." +
                                     " Failed realisation selection: " + getSelectionIdString(selection));
                             }
-                        } else if (sel.getType() == SelectionType.CHOOSE_MANY) {
+                        } else if (sel.getType() == SelectionTypeEntity.CHOOSE_MANY) {
                             // Currently anything (0-N) is allowed
                         }
                     }
@@ -283,21 +285,22 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
         }
     }
 
-    private RegistrationSelection findCourseUnitSelection(RegistrationSelection selection) {
-        RegistrationSelection current = selection;
-        RegistrationSelection courseUnitSelection = null;
+    private ParentAwareRegistrationSelection findCourseUnitSelection(CreateRegistrationSelection selection) {
+        ParentAwareRegistrationSelection current = selection;
+
         while(current != null) {
             if(current.getSelectionItemType() == RegistrationSelectionItemType.COURSE_UNIT) {
-                courseUnitSelection = current;
-                break;
+                return current;
             }
+
             current = current.getParent();
         }
-        return courseUnitSelection;
+
+        return null;
     }
 
-    protected void verifyHierarchyReferences(RegistrationSelection realisationSelection, CourseUnitEntity selectionCourseUnitEntity,
-                                                RealisationEntity selectionRealisationEntity) {
+    protected void verifyHierarchyReferences(CreateRegistrationSelection realisationSelection, CourseUnitEntity selectionCourseUnitEntity,
+                                             RealisationEntity selectionRealisationEntity) {
 
         // Verify realisation selection parent is ASSESSMENT_ITEM
         if(realisationSelection == null || realisationSelection.getParent().getSelectionItemType() != RegistrationSelectionItemType.ASSESSMENT_ITEM) {
@@ -306,7 +309,7 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
                     " Got: " + getSelectionIdString(realisationSelection.getParent()));
         }
 
-        RegistrationSelection assessmentItemSelection = realisationSelection.getParent();
+        CreateRegistrationSelectionParent assessmentItemSelection = realisationSelection.getParent();
 
         // Verify selected realisation has reference to selected assessment item and course unit
         if(CollectionUtils.isEmpty(selectionRealisationEntity.getStudyElementReferences())
@@ -331,7 +334,7 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
                     " Incorrect parent: " + getSelectionIdString(assessmentItemSelection.getParent()));
         }
 
-        RegistrationSelection completionOptionSelection = assessmentItemSelection.getParent();
+        CreateRegistrationSelectionParent completionOptionSelection = assessmentItemSelection.getParent();
 
         if(completionOptionSelection.getParent() == null || completionOptionSelection.getParent().getSelectionItemType() != RegistrationSelectionItemType.COURSE_UNIT) {
             throw new RegistrationSelectionHierarchyValidationException("Unable to process registration request." +
@@ -340,7 +343,7 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
                     " Incorrect parent: " + getSelectionIdString(assessmentItemSelection.getParent()));
         }
 
-        RegistrationSelection courseUnitSelection = completionOptionSelection.getParent();
+        CreateRegistrationSelectionParent courseUnitSelection = completionOptionSelection.getParent();
 
         // Verify course unit has completion options -> if none found selection hierarchy must be wrong
         if(CollectionUtils.isEmpty(selectionCourseUnitEntity.getCompletionOptions())) {
@@ -388,14 +391,5 @@ public class CreateRegistrationValidator extends AbstractRegistrationValidator i
                 && (o.getValidityInNetwork() != null)
                 && (o.getValidityInNetwork().getStart() != null && DateUtils.isBeforeOrEqual(o.getValidityInNetwork().getStart(), OffsetDateTime.now()))
                 && (o.getValidityInNetwork().getEnd() == null || DateUtils.isAfterOrEqual(o.getValidityInNetwork().getEnd(), OffsetDateTime.now())));
-    }
-    protected void verifyNoRankSpecifiedForSelection(List<RegistrationSelection> selections) {
-        for (RegistrationSelection selection : selections){
-            if (selection.getRank() != null) {
-                throw new RegistrationSelectionRankException("Unable to process registration request." +
-                    " Rank cannot be specified with CreateRegistrationRequest");
-            }
-
-        }
     }
 }

@@ -1,8 +1,6 @@
 package fi.uta.ristiinopiskelu.examples.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.examples.message.CreateRegistrationRequest;
 import jakarta.jms.ConnectionFactory;
 import org.apache.activemq.artemis.api.core.TransportConfiguration;
@@ -26,7 +24,7 @@ import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.config.JmsListenerContainerFactory;
 import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.jms.support.converter.MappingJackson2MessageConverter;
+import org.springframework.jms.support.converter.JacksonJsonMessageConverter;
 import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.jms.support.converter.MessageType;
 import org.springframework.util.Assert;
@@ -54,11 +52,10 @@ public class ExampleApplicationConfig {
     private static final String TRUSTSTORE_PASWORD = "password";
 
     @Bean
-    public ObjectMapper objectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .registerModule(new Jdk8Module());
-        return objectMapper;
+    public JsonMapper jsonMapper() {
+        JsonMapper jsonMapper = JsonMapper.builder()
+                .build();
+        return jsonMapper;
     }
 
     @Bean
@@ -123,14 +120,12 @@ public class ExampleApplicationConfig {
 
     // TODO: you could also configure this message converter in order to automagically convert JSON message body to POJO via Jackson.
     @Bean
-    public MessageConverter jacksonJmsMessageConverter(ObjectMapper objectMapper) {
+    public MessageConverter jacksonJmsMessageConverter(JsonMapper jsonMapper) {
         Map<String, Class<?>> typeIds = Collections.singletonMap("CREATE_REGISTRATION_REQUEST", CreateRegistrationRequest.class);
 
-        MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
+        JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter(jsonMapper);
         converter.setTargetType(MessageType.TEXT);
         converter.setTypeIdPropertyName("messageType");
-        converter.setTargetType(org.springframework.jms.support.converter.MessageType.TEXT);
-        converter.setObjectMapper(objectMapper);
         converter.setTypeIdMappings(typeIds);
         return converter;
     }

@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.processor;
 
 import fi.uta.ristiinopiskelu.handler.exception.validation.UnallowedMessageTypeException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.MissingMessageHeaderException;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import org.apache.camel.Exchange;
@@ -21,16 +22,40 @@ public class AuthenticationProcessorTest {
     private String DN = "CN=localhost, OU=gofore, O=TUNI, L=tre, ST=tre, C=fi";
 
     @Test
-    public void testWithoutMessageTypeWithDN_ShouldSuccess() throws Exception {
+    public void testWithoutMessageTypeWithDN_ShouldFail() {
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
         exchange.getIn().setHeader(MessageHeader.JMS_XUSERID, DN);
 
         AuthenticationProcessor processor = new AuthenticationProcessor();
         ReflectionTestUtils.setField(processor, "adminUiUser", adminUiUser);
-        processor.process(exchange);
+        MissingMessageHeaderException exception = assertThrows(
+            MissingMessageHeaderException.class, () -> processor.process(exchange));
+        assertEquals("Message is missing header: messageType", exception.getMessage());
+    }
 
-        String organisationId = (String) exchange.getMessage().getHeader(MessageHeader.JMS_XUSERID);
-        assertEquals(DN, organisationId);
+    @Test
+    public void testWithoutUserId_ShouldFailWithMissingHeader() {
+        Exchange exchange = new DefaultExchange(new DefaultCamelContext());
+        exchange.getIn().setHeader(MessageHeader.MESSAGE_TYPE, MessageType.CREATE_COURSEUNIT_REQUEST);
+
+        AuthenticationProcessor processor = new AuthenticationProcessor();
+        ReflectionTestUtils.setField(processor, "adminUiUser", adminUiUser);
+
+        MissingMessageHeaderException exception = assertThrows(
+            MissingMessageHeaderException.class, () -> processor.process(exchange));
+        assertEquals("Message is missing header: JMSXUserID", exception.getMessage());
+    }
+
+    @Test
+    public void testUnknownMessageType_ShouldFail() {
+        Exchange exchange = new DefaultExchange(new DefaultCamelContext());
+        exchange.getIn().setHeader(MessageHeader.JMS_XUSERID, DN);
+        exchange.getIn().setHeader(MessageHeader.MESSAGE_TYPE, "NOT_A_MESSAGE_TYPE");
+
+        AuthenticationProcessor processor = new AuthenticationProcessor();
+        ReflectionTestUtils.setField(processor, "adminUiUser", adminUiUser);
+
+        assertThrows(UnallowedMessageTypeException.class, () -> processor.process(exchange));
     }
 
     @Test

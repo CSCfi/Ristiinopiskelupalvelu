@@ -29,8 +29,12 @@ public class StudyRecordStudent extends Student {
     public StudyRecordStudent(RegistrationStudentEntity registrationStudent) {
         setHomeStudentNumber(registrationStudent.getHomeStudentNumber());
         setHostStudentNumber(registrationStudent.getHostStudentNumber());
-        setHomeStudyRightIdentifier(registrationStudent.getHomeStudyRight().getIdentifiers());
-        setHostStudyRightIdentifier(registrationStudent.getHostStudyRight().getIdentifiers());
+        setHomeStudyRightIdentifier(registrationStudent.getHomeStudyRight() != null
+            ? toDto(registrationStudent.getHomeStudyRight().getIdentifiers())
+            : null);
+        setHostStudyRightIdentifier(registrationStudent.getHostStudyRight() != null
+            ? toDto(registrationStudent.getHostStudyRight().getIdentifiers())
+            : null);
     }
 
     @Builder
@@ -50,8 +54,16 @@ public class StudyRecordStudent extends Student {
         return StudyRecordStudent.builder()
             .homeStudentNumber(studyRecordStudent.getHomeStudentNumber())
             .hostStudentNumber(studyRecordStudent.getHostStudentNumber())
-            .homeStudyRightIdentifier(studyRecordStudent.getHomeStudyRightIdentifier())
-            .hostStudyRightIdentifier(studyRecordStudent.getHostStudyRightIdentifier())
+            .homeStudyRightIdentifier(toDto(studyRecordStudent.getHomeStudyRightIdentifier()))
+            .hostStudyRightIdentifier(toDto(studyRecordStudent.getHostStudyRightIdentifier()))
             .build();
+    }
+
+    private static StudyRightIdentifier toDto(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyRightIdentifierEntity identifier) {
+        if (identifier == null) {
+            return null;
+        }
+
+        return new StudyRightIdentifier(identifier.getOrganisationTkCodeReference(), identifier.getStudyRightId());
     }
 }

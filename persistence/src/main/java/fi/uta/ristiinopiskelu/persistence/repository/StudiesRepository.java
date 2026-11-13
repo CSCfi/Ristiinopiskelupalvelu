@@ -13,7 +13,7 @@ import java.util.List;
 @NoRepositoryBean
 public interface StudiesRepository {
 
-    SearchResponse<StudyElementEntity> findAllStudiesByParentReferences(String referenceIdentifier, String referenceOrganizer);
+    List<StudyElementEntity> findAllStudiesByParentReferences(String referenceIdentifier, String referenceOrganizer);
 
     SearchResponse<StudyElementEntity> findAllStudies(BoolQuery.Builder searchQueryBuilder, StudiesSearchRealisationQueries realisationQueriesWithTeachingLanguage,
                                                       StudiesSearchRealisationQueries realisationQueriesWithoutTeachingLanguage,

@@ -4,6 +4,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.Completed
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.RoutingType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordStudentReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.OffsetDateTime;
@@ -83,5 +84,22 @@ public class StudyRecordReadDTO {
 
     public void setStatus(StudyRecordStatus status) {
         this.status = status;
+    }
+
+    public static StudyRecordReadDTO from(StudyRecordEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        StudyRecordReadDTO target = new StudyRecordReadDTO();
+        target.setId(source.getId());
+        target.setSendingOrganisation(source.getSendingOrganisation());
+        target.setReceivingOrganisation(source.getReceivingOrganisation());
+        target.setStudent(StudyRecordStudentReadDTO.from(source.getStudent()));
+        target.setCompletedCredits(CompletedCredit.from(source.getCompletedCredits()));
+        target.setSendingTime(source.getSendingTime());
+        target.setRoutingType(RoutingType.from(source.getRoutingType()));
+        target.setStatus(StudyRecordStatus.from(source.getStatus()));
+        return target;
     }
 }

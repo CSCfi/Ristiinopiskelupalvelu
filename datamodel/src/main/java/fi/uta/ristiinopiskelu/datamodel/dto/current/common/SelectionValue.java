@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
+import fi.uta.ristiinopiskelu.datamodel.entity.common.SelectionValueEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
@@ -63,5 +64,25 @@ public class SelectionValue {
 
     public void setGroupQuotas(List<GroupQuota> groupQuotas) {
         this.groupQuotas = groupQuotas;
+    }
+
+    public static SelectionValue from(SelectionValueEntity source) {
+        if (source == null) {
+            return null;
+        }
+        SelectionValue target = new SelectionValue();
+        target.setMinSeats(source.getMinSeats());
+        target.setMaxSeats(source.getMaxSeats());
+        target.setName(LocalisedString.from(source.getName()));
+        target.setId(source.getId());
+        target.setGroupQuotas(GroupQuota.from(source.getGroupQuotas()));
+        return target;
+    }
+
+    public static List<SelectionValue> from(List<SelectionValueEntity> source) {
+        if (source == null) {
+            return null;
+        }
+        return source.stream().map(SelectionValue::from).toList();
     }
 }

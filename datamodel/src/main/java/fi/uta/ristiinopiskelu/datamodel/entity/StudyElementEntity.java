@@ -7,6 +7,19 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.ExternalCodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.DegreeWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.studymodule.StudyModuleWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.code.CodeReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.code.ExternalCodeReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.MinEduGuidanceAreaEntity;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -18,6 +31,10 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
+@NoArgsConstructor
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
 @JsonSubTypes({ @JsonSubTypes.Type(value = StudyModuleEntity.class, name = "STUDY_MODULE"),
     @JsonSubTypes.Type(value = CourseUnitEntity.class, name = "COURSE_UNIT"),
@@ -44,215 +61,34 @@ public abstract class StudyElementEntity extends CompositeIdentifiedEntity imple
     private String studyElementPermanentId;
     private String studyElementId;
     private String studyElementIdentifierCode;
-    private List<ExternalCodeReference> classificationCodes;
+    private List<ExternalCodeReferenceEntity> classificationCodes;
     private String abbreviation;
-    private LocalisedString name;
-    private LocalisedString description;
+    private LocalisedStringEntity name;
+    private LocalisedStringEntity description;
     private BigDecimal creditsMin;
     private BigDecimal creditsMax;
-    private LocalisedString creditsDescription;
-    private List<OrganisationReference> organisationReferences;
-    private List<PersonReference> personReferences;
-    private List<Keyword> keywords;
-    private LocalisedString preconditions;
+    private LocalisedStringEntity creditsDescription;
+    private List<OrganisationReferenceEntity> organisationReferences;
+    private List<PersonReferenceEntity> personReferences;
+    private List<KeywordEntity> keywords;
+    private LocalisedStringEntity preconditions;
     private List<String> teachingLanguage;
     private List<String> languagesOfCompletion;
-    private LocalisedString furtherInformation;
-    private List<CodeReference> targetGroups;
-    private List<CooperationNetwork> cooperationNetworks;
-    private LocalisedString objective;
-    private LocalisedString content;
-    private List<Description> organisationSpecificDescriptions;
+    private LocalisedStringEntity furtherInformation;
+    private List<CodeReferenceEntity> targetGroups;
+    private List<CooperationNetworkEntity> cooperationNetworks;
+    private LocalisedStringEntity objective;
+    private LocalisedStringEntity content;
+    private List<DescriptionEntity> organisationSpecificDescriptions;
     private String organizingOrganisationId;
-    private List<StudyElementReference> parents;
-    private StudyStatus status;
-    private List<MinEduGuidanceArea> minEduGuidanceArea;
-    
-    private CompositeIdentifiedEntityType type;
-
-    public void setSendingTime(OffsetDateTime sendingTime) {
-        this.sendingTime = sendingTime;
-    }
-
-    public void setCreatedTime(OffsetDateTime createdTime) {
-        this.createdTime = createdTime;
-    }
-
-    public void setValidityStartDate(LocalDate validityStartDate) {
-        this.validityStartDate = validityStartDate;
-    }
-
-    public void setValidityEndDate(LocalDate validityEndDate) {
-        this.validityEndDate = validityEndDate;
-    }
-
-    public void setStudyElementIdentifierCode(String studyElementIdentifierCode) {
-        this.studyElementIdentifierCode = studyElementIdentifierCode;
-    }
-
-    public void setAbbreviation(String abbreviation) {
-        this.abbreviation = abbreviation;
-    }
-
-    public void setName(LocalisedString name) {
-        this.name = name;
-    }
-
-    public void setDescription(LocalisedString description) {
-        this.description = description;
-    }
-
-    public void setCreditsMin(BigDecimal creditsMin) {
-        this.creditsMin = creditsMin;
-    }
-
-    public void setCreditsMax(BigDecimal creditsMax) {
-        this.creditsMax = creditsMax;
-    }
-
-    public void setCreditsDescription(LocalisedString creditsDescription) {
-        this.creditsDescription = creditsDescription;
-    }
-
-    public void setOrganisationReferences(List<OrganisationReference> organisationReferences) {
-        this.organisationReferences = organisationReferences;
-    }
-
-    public void setPersonReferences(List<PersonReference> personReferences) {
-        this.personReferences = personReferences;
-    }
-
-    public void setKeywords(List<Keyword> keywords) {
-        this.keywords = keywords;
-    }
-
-    public void setPreconditions(LocalisedString preconditions) {
-        this.preconditions = preconditions;
-    }
-
-    public void setTeachingLanguage(List<String> teachingLanguage) {
-        this.teachingLanguage = teachingLanguage;
-    }
-
-    public void setLanguagesOfCompletion(List<String> languagesOfCompletion) {
-        this.languagesOfCompletion = languagesOfCompletion;
-    }
-
-    public void setFurtherInformation(LocalisedString furtherInformation) {
-        this.furtherInformation = furtherInformation;
-    }
-
-    public void setTargetGroups(List<CodeReference> targetGroups) {
-        this.targetGroups = targetGroups;
-    }
-
-    public void setCooperationNetworks(List<CooperationNetwork> cooperationNetworks) {
-        this.cooperationNetworks = cooperationNetworks;
-    }
-
-    public void setObjective(LocalisedString objective) {
-        this.objective = objective;
-    }
-
-    public void setContent(LocalisedString content) {
-        this.content = content;
-    }
-
-    public void setOrganisationSpecificDescriptions(List<Description> organisationSpecificDescriptions) {
-        this.organisationSpecificDescriptions = organisationSpecificDescriptions;
-    }
-
-    public OffsetDateTime getSendingTime() {
-        return this.sendingTime;
-    }
-
-    public OffsetDateTime getCreatedTime() {
-        return this.createdTime;
-    }
-
-    public LocalDate getValidityStartDate() {
-        return this.validityStartDate;
-    }
-
-    public LocalDate getValidityEndDate() {
-        return this.validityEndDate;
-    }
-
-    public String getStudyElementIdentifierCode() {
-        return this.studyElementIdentifierCode;
-    }
-
-    public String getAbbreviation() {
-        return this.abbreviation;
-    }
-
-    public LocalisedString getName() {
-        return this.name;
-    }
-
-    public LocalisedString getDescription() {
-        return this.description;
-    }
-
-    public BigDecimal getCreditsMin() {
-        return this.creditsMin;
-    }
-
-    public BigDecimal getCreditsMax() {
-        return this.creditsMax;
-    }
-
-    public LocalisedString getCreditsDescription() {
-        return this.creditsDescription;
-    }
-
-    public List<OrganisationReference> getOrganisationReferences() {
-        return this.organisationReferences;
-    }
-
-    public List<PersonReference> getPersonReferences() {
-        return this.personReferences;
-    }
-
-    public List<Keyword> getKeywords() {
-        return this.keywords;
-    }
-
-    public LocalisedString getPreconditions() {
-        return this.preconditions;
-    }
-
-    public List<String> getTeachingLanguage() {
-        return this.teachingLanguage;
-    }
-
-    public List<String> getLanguagesOfCompletion() {
-        return this.languagesOfCompletion;
-    }
-
-    public LocalisedString getFurtherInformation() {
-        return this.furtherInformation;
-    }
-
-    public List<CodeReference> getTargetGroups() {
-        return this.targetGroups;
-    }
+    private List<StudyElementReferenceEntity> parents;
+    private StudyStatusEntity status;
+    private List<MinEduGuidanceAreaEntity> minEduGuidanceArea;
+    private CompositeIdentifiedEntityTypeEntity type;
 
     @Override
-    public List<CooperationNetwork> getCooperationNetworks() {
+    public List<CooperationNetworkEntity> getCooperationNetworks() {
         return this.cooperationNetworks;
-    }
-
-    public LocalisedString getObjective() {
-        return this.objective;
-    }
-
-    public LocalisedString getContent() {
-        return this.content;
-    }
-
-    public List<Description> getOrganisationSpecificDescriptions() {
-        return this.organisationSpecificDescriptions;
     }
 
     @Override
@@ -265,76 +101,8 @@ public abstract class StudyElementEntity extends CompositeIdentifiedEntity imple
         this.organizingOrganisationId = organizingOrganisationId;
     }
 
-    public String getStudyElementId() {
-        return studyElementId;
-    }
-
-    public void setStudyElementId(String studyElementId) {
-        this.studyElementId = studyElementId;
-    }
-
-    public List<ExternalCodeReference> getClassificationCodes() {
-        return classificationCodes;
-    }
-
-    public void setClassificationCodes(List<ExternalCodeReference> classificationCodes) {
-        this.classificationCodes = classificationCodes;
-    }
-
-    public List<StudyElementReference> getParents() {
-        return parents;
-    }
-
-    public void setParents(List<StudyElementReference> parents) {
-        this.parents = parents;
-    }
-
-    public OffsetDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(OffsetDateTime updateTime) {
-        this.updateTime = updateTime;
-    }
-
-    public StudyStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(StudyStatus status) {
-        this.status = status;
-    }
-
-    public Boolean getMissing() {
-        return missing;
-    }
-
-    public void setMissing(Boolean missing) {
-        this.missing = missing;
-    }
-
-    public String getStudyElementPermanentId() {
-        return studyElementPermanentId;
-    }
-
-    public void setStudyElementPermanentId(String studyElementPermanentId) {
-        this.studyElementPermanentId = studyElementPermanentId;
-    }
-
-    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
-        return minEduGuidanceArea;
-    }
-
-    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
-        this.minEduGuidanceArea = minEduGuidanceArea;
-    }
-
-    public void setType(CompositeIdentifiedEntityType type) {
-        this.type = type;
-    }
-
     @Override
-    public CompositeIdentifiedEntityType getType() {
+    public CompositeIdentifiedEntityTypeEntity getType() {
         return type;
     }
 
@@ -344,20 +112,67 @@ public abstract class StudyElementEntity extends CompositeIdentifiedEntity imple
     public String getElementId() {
         return studyElementId;
     }
-    
-    public String toString() {
-        return "StudyElement(id=" + this.getId() + ", missing=" + this.getMissing() +
-                ", sendingTime=" + this.getSendingTime() + ", createdTime=" + this.getCreatedTime() +
-                ", validityStartDate=" + this.getValidityStartDate() + ", validityEndDate=" + this.getValidityEndDate() +
-                ", studyElementPermanentId=" + this.getStudyElementPermanentId() + ", code=" + this.getStudyElementIdentifierCode() +
-                ", abbreviation=" + this.getAbbreviation() + ", name=" + this.getName() + ", description=" + this.getDescription() +
-                ", creditsMin=" + this.getCreditsMin() + ", creditsMax=" + this.getCreditsMax() + ", creditsDescription=" + this.getCreditsDescription() +
-                ", organisationReferences=" + this.getOrganisationReferences() + ", personReferences=" + this.getPersonReferences() +
-                ", keywords=" + this.getKeywords() + ", preconditions=" + this.getPreconditions() + ", teachingLanguage=" + this.getTeachingLanguage() +
-                ", languagesOfCompletion=" + this.getLanguagesOfCompletion() + ", furtherInformation=" + this.getFurtherInformation() +
-                ", targetGroups=" + this.getTargetGroups() + ", cooperationNetworks=" + this.getCooperationNetworks() +
-                ", objective=" + this.getObjective() + ", content=" + this.getContent() +
-                ", organisationSpecificDescriptions=" + this.getOrganisationSpecificDescriptions() + ")";
+
+    public static StudyElementEntity from(AbstractStudyElementWriteDTO source) {
+        if (source instanceof CourseUnitWriteDTO courseUnitWriteDTO) {
+            return CourseUnitEntity.from(courseUnitWriteDTO);
+        }
+        if (source instanceof StudyModuleWriteDTO studyModuleWriteDTO) {
+            return StudyModuleEntity.from(studyModuleWriteDTO);
+        }
+        if (source instanceof DegreeWriteDTO degreeWriteDTO) {
+            return DegreeEntity.from(degreeWriteDTO);
+        }
+
+        if (source == null) {
+            return null;
+        }
+
+        if (source.getType() == StudyElementType.COURSE_UNIT) {
+            return new CourseUnitEntity();
+        }
+        if (source.getType() == StudyElementType.STUDY_MODULE) {
+            return new StudyModuleEntity();
+        }
+        if (source.getType() == StudyElementType.DEGREE) {
+            return new DegreeEntity();
+        }
+
+        throw new IllegalStateException("Unidentified StudyElement DTO type: " + source.getClass().getSimpleName());
     }
 
+    public static <T extends AbstractStudyElementReadDTO> void copyStudyElementEntityToReadDto(StudyElementEntity source, T target) {
+        target.setMissing(source.getMissing());
+        target.setSendingTime(source.getSendingTime());
+        target.setCreatedTime(source.getCreatedTime());
+        target.setUpdateTime(source.getUpdateTime());
+        target.setValidityStartDate(source.getValidityStartDate());
+        target.setValidityEndDate(source.getValidityEndDate());
+        target.setStudyElementId(source.getStudyElementId());
+        target.setStudyElementPermanentId(source.getStudyElementPermanentId());
+        target.setStudyElementIdentifierCode(source.getStudyElementIdentifierCode());
+        target.setClassificationCodes(ExternalCodeReference.from(source.getClassificationCodes()));
+        target.setAbbreviation(source.getAbbreviation());
+        target.setName(LocalisedString.from(source.getName()));
+        target.setDescription(LocalisedString.from(source.getDescription()));
+        target.setCreditsMin(source.getCreditsMin());
+        target.setCreditsMax(source.getCreditsMax());
+        target.setCreditsDescription(LocalisedString.from(source.getCreditsDescription()));
+        target.setOrganisationReferences(OrganisationReference.from(source.getOrganisationReferences()));
+        target.setPersonReferences(PersonReference.from(source.getPersonReferences()));
+        target.setKeywords(Keyword.from(source.getKeywords()));
+        target.setPreconditions(LocalisedString.from(source.getPreconditions()));
+        target.setTeachingLanguage(source.getTeachingLanguage());
+        target.setLanguagesOfCompletion(source.getLanguagesOfCompletion());
+        target.setFurtherInformation(LocalisedString.from(source.getFurtherInformation()));
+        target.setTargetGroups(CodeReference.from(source.getTargetGroups()));
+        target.setCooperationNetworks(CooperationNetwork.from(source.getCooperationNetworks()));
+        target.setObjective(LocalisedString.from(source.getObjective()));
+        target.setContent(LocalisedString.from(source.getContent()));
+        target.setOrganisationSpecificDescriptions(Description.from(source.getOrganisationSpecificDescriptions()));
+        target.setParents(StudyElementReference.from(source.getParents()));
+        target.setStatus(StudyStatus.from(source.getStatus()));
+        target.setMinEduGuidanceArea(MinEduGuidanceArea.from(source.getMinEduGuidanceArea()));
+        target.setType(StudyElementType.from(source.getType()));
+    }
 }

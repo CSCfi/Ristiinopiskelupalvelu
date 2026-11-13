@@ -1,14 +1,13 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
+
 import co.elastic.clients.elasticsearch._types.ShardFailure;
 import co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
-import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.TeachingLanguage;
@@ -20,9 +19,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchRealisationQueries;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchSortField;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CompositeIdentifiedEntityTypeEntity;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.StudiesService;
@@ -30,7 +28,6 @@ import fi.uta.ristiinopiskelu.handler.service.impl.processor.StudiesSearchPostPr
 import fi.uta.ristiinopiskelu.persistence.querybuilder.CourseUnitRealisationQueryBuilder;
 import fi.uta.ristiinopiskelu.persistence.querybuilder.StudiesQueryBuilder;
 import fi.uta.ristiinopiskelu.persistence.repository.StudiesRepository;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -43,7 +40,6 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -52,9 +48,6 @@ import java.util.stream.Collectors;
 public class StudiesServiceImpl implements StudiesService, InitializingBean {
 
     private static final Logger logger = LoggerFactory.getLogger(StudiesServiceImpl.class);
-
-    @Autowired
-    private ModelMapper modelMapper;
 
     @Autowired
     private StudiesRepository studiesRepository;
@@ -66,20 +59,7 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
 
     @Override
     public List<StudyElementEntity> findAllStudiesByParentReferences(String referenceIdentifier, String referenceOrganizer) throws FindFailedException {
-        SearchResponse<StudyElementEntity> response = studiesRepository.findAllStudiesByParentReferences(referenceIdentifier, referenceOrganizer);
-
-        // check for failures
-        if(response.shards().failed().intValue() > 0) {
-            for(ShardFailure failure : response.shards().failures()) {
-                throw new IllegalStateException("Error while searching studies by parent references: %s".formatted(failure.status()));
-            }
-        }
-
-        if(response.hits() == null || response.hits().total() == null || response.hits().total().value() == 0) {
-            return Collections.emptyList();
-        }
-
-        return response.hits().hits().stream().map(Hit::source).collect(Collectors.toList());
+        return studiesRepository.findAllStudiesByParentReferences(referenceIdentifier, referenceOrganizer);
     }
 
     @Override
@@ -284,12 +264,12 @@ public class StudiesServiceImpl implements StudiesService, InitializingBean {
 
     @Override
     public AbstractStudyElementReadDTO toRestDTO(StudyElementEntity entity) {
-        if(entity.getType() == CompositeIdentifiedEntityType.COURSE_UNIT) {
-            return modelMapper.map(entity, CourseUnitReadDTO.class);
-        } else if (entity.getType() == CompositeIdentifiedEntityType.STUDY_MODULE) {
-            return modelMapper.map(entity, StudyModuleReadDTO.class);
-        } else if (entity.getType() == CompositeIdentifiedEntityType.DEGREE) {
-            return modelMapper.map(entity, DegreeReadDTO.class);
+        if(entity.getType() == CompositeIdentifiedEntityTypeEntity.COURSE_UNIT) {
+            return CourseUnitReadDTO.from((CourseUnitEntity) entity);
+        } else if (entity.getType() == CompositeIdentifiedEntityTypeEntity.STUDY_MODULE) {
+            return StudyModuleReadDTO.from((StudyModuleEntity) entity);
+        } else if (entity.getType() == CompositeIdentifiedEntityTypeEntity.DEGREE) {
+            return DegreeReadDTO.from(((DegreeEntity) entity));
         } else {
             throw new IllegalStateException("Unknown StudyElement type:" + entity.getClass());
         }

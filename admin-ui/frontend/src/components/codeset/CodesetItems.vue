@@ -1,108 +1,110 @@
 <template>
   <div class="codeset-container">
     <v-card>
-      <v-toolbar>
-        <v-toolbar-title>{{ $t('codeValues') }}</v-toolbar-title>
+      <v-card-title class="d-flex align-center">
+        <span>{{ $t('codeValues') }}</span>
         <v-spacer></v-spacer>
-        <v-toolbar-items>
-          <v-btn flat v-if="superuser" title="Lisää" @click="addItem" :disabled="!activeCodeSetId">
-            <v-icon>add</v-icon>
-          </v-btn>
-        </v-toolbar-items>
-      </v-toolbar>
+        <v-btn
+          variant="text"
+          icon
+          v-if="superuser"
+          title="Lisää"
+          @click="addItem"
+          :disabled="!activeCodeSetId"
+        >
+          <v-icon icon="mdi-plus"></v-icon>
+        </v-btn>
+      </v-card-title>
       <v-list>
-        <v-list-tile
+        <v-list-item
           v-for="item in codesetItems"
           :key="item.id"
           active-class="highlighted"
           :class="['list-tile', item.id === activeMessage ? 'highlighted' : '']"
+          @click="onClickRow(item.id)"
         >
-          <v-list-tile-action
-            v-if="superuser === true"
-            title="Poista"
-            @click="removeDialog(item.id)"
-          >
-            <v-icon color="red">delete</v-icon>
-          </v-list-tile-action>
-          <v-list-tile-content @click="onClickRow(item.id)">
-            <v-list-tile-title v-text="item.title" :id="item.id"></v-list-tile-title>
-          </v-list-tile-content>
-        </v-list-tile>
+          <template #append>
+            <v-btn
+              v-if="superuser === true"
+              variant="text"
+              color="red"
+              icon
+              title="Poista"
+              @click.stop="removeDialog(item.id)"
+            >
+              <v-icon icon="mdi-delete"></v-icon>
+            </v-btn>
+          </template>
+          <v-list-item-title v-text="item.title" :id="item.id"></v-list-item-title>
+        </v-list-item>
       </v-list>
     </v-card>
     <v-dialog v-model="dialog" width="600px">
       <v-card>
         <v-card-title class="headline">{{ $t('codeRemoveConfirmation') }}</v-card-title>
         <v-card-text>
-          {{ $t('codeRemoveConfirmationInfo') }}
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="green darken-1" flat="flat" @click="dialog = false">
-            {{ $t('cancel') }}
-          </v-btn>
-          <v-btn color="green darken-1" flat="flat" @click="onDelete">
-            {{ $t('yes') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+        {{ $t('codeRemoveConfirmationInfo') }}
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="green" variant="text" @click="dialog = false">
+          {{ $t('cancel') }}
+        </v-btn>
+        <v-btn color="green" variant="text" @click="onDelete">
+          {{ $t('yes') }}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    admin: {
-      default() {
-        return false;
-      }
-    },
-    superuser: {
-      default() {
-        return false;
-      }
-    },
-    codesetItems: {
-      default() {
-        return [];
-      }
-    },
-    activeItem: {
-      default() {
-        return false;
-      }
-    },
-    activeCodeSetId: String
+<script setup>
+import { computed, ref } from 'vue';
+
+const props = defineProps({
+  admin: {
+    type: Boolean,
+    default: false
   },
-  data() {
-    return {
-      dialog: false,
-      removeItem: null
-    };
+  superuser: {
+    type: Boolean,
+    default: false
   },
-  created: function() {},
-  computed: {
-    activeMessage: function() {
-      return this.activeItem;
-    }
+  codesetItems: {
+    type: Array,
+    default: () => []
   },
-  methods: {
-    onClickRow(id) {
-      this.$emit('itemRowClicked', id);
-    },
-    addItem() {
-      this.$emit('addItem');
-    },
-    onDelete() {
-      this.$emit('itemRowDelete', this.removeItem);
-      this.dialog = false;
-    },
-    removeDialog(item) {
-      this.removeItem = item;
-      this.dialog = true;
-    }
-  }
+  activeItem: {
+    type: [Boolean, String, Number],
+    default: false
+  },
+  activeCodeSetId: String
+});
+
+const emit = defineEmits(['itemRowClicked', 'addItem', 'itemRowDelete']);
+
+const dialog = ref(false);
+const removeItem = ref(null);
+
+const activeMessage = computed(() => props.activeItem);
+
+const onClickRow = id => {
+  emit('itemRowClicked', id);
+};
+
+const addItem = () => {
+  emit('addItem');
+};
+
+const onDelete = () => {
+  emit('itemRowDelete', removeItem.value);
+  dialog.value = false;
+};
+
+const removeDialog = item => {
+  removeItem.value = item;
+  dialog.value = true;
 };
 </script>
 
@@ -113,17 +115,14 @@ export default {
 .v-icon.material-icons.theme--light.red--text:hover {
   font-size: 1.7em;
 }
-.v-list__tile__content {
+.v-list-item__content {
   cursor: pointer;
 }
-.v-list__tile__action {
+.v-list-item__append {
   cursor: pointer;
 }
-.v-list__tile {
+.v-list-item {
   padding: 0 0 0 16px;
-}
-.v-toolbar__content {
-  padding: 0 0 0 24px;
 }
 .list-tile:hover {
   background: rgba(0, 0, 0, 0.1);

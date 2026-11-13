@@ -1,74 +1,49 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Optionality;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyModuleType;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.studymodule.StudyModuleWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CompositeIdentifiedEntityTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.OptionalityEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyModuleTypeEntity;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.springframework.data.elasticsearch.annotations.Document;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
 @Document(indexName = "opintokokonaisuudet", createIndex = false)
 public class StudyModuleEntity extends StudyElementEntity implements Serializable {
 
     private Integer amountValueMin;
     private Integer amountValueMax;
-    private Optionality optionality;
-    private LocalisedString optionalityFurtherInformation;
-    private StudyModuleType studyModuleType;
+    private OptionalityEntity optionality;
+    private LocalisedStringEntity optionalityFurtherInformation;
+    private StudyModuleTypeEntity studyModuleType;
     private BigDecimal credits;
 
     public StudyModuleEntity() {
-        setType(CompositeIdentifiedEntityType.STUDY_MODULE);
+        setType(CompositeIdentifiedEntityTypeEntity.STUDY_MODULE);
     }
 
-    public Integer getAmountValueMin() {
-        return amountValueMin;
-    }
+    public static StudyModuleEntity from(StudyModuleWriteDTO source) {
+        if (source == null) {
+            return null;
+        }
 
-    public void setAmountValueMin(Integer amountValueMin) {
-        this.amountValueMin = amountValueMin;
-    }
-
-    public Integer getAmountValueMax() {
-        return amountValueMax;
-    }
-
-    public void setAmountValueMax(Integer amountValueMax) {
-        this.amountValueMax = amountValueMax;
-    }
-
-    public Optionality getOptionality() {
-        return optionality;
-    }
-
-    public void setOptionality(Optionality optionality) {
-        this.optionality = optionality;
-    }
-
-    public LocalisedString getOptionalityFurtherInformation() {
-        return optionalityFurtherInformation;
-    }
-
-    public void setOptionalityFurtherInformation(LocalisedString optionalityFurtherInformation) {
-        this.optionalityFurtherInformation = optionalityFurtherInformation;
-    }
-
-    public StudyModuleType getStudyModuleType() {
-        return studyModuleType;
-    }
-
-    public void setStudyModuleType(StudyModuleType studyModuleType) {
-        this.studyModuleType = studyModuleType;
-    }
-
-    public BigDecimal getCredits() {
-        return credits;
-    }
-
-    public void setCredits(BigDecimal credits) {
-        this.credits = credits;
+        StudyModuleEntity target = new StudyModuleEntity();
+        AbstractStudyElementWriteDTO.copyStudyElementWriteDtoToEntity(source, target);
+        target.setAmountValueMin(source.getAmountValueMin());
+        target.setAmountValueMax(source.getAmountValueMax());
+        target.setOptionality(OptionalityEntity.from(source.getOptionality()));
+        target.setOptionalityFurtherInformation(LocalisedStringEntity.from(source.getOptionalityFurtherInformation()));
+        target.setStudyModuleType(StudyModuleTypeEntity.from(source.getStudyModuleType()));
+        target.setCredits(source.getCredits());
+        return target;
     }
 }
-

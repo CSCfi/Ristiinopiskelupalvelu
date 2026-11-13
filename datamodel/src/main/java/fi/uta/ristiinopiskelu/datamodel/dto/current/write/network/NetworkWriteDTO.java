@@ -11,8 +11,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.Valid;
+
 import java.util.List;
 
 @Schema(name = "Network")
@@ -65,10 +65,6 @@ public class NetworkWriteDTO {
         this.id = id;
     }
 
-    /**
-     * M2 1.1.5.2
-     * @return name
-     **/
     @Schema(description = "M2 1.1.5.2", required = true)
     public LocalisedString getName() {
         return name;
@@ -160,20 +156,24 @@ public class NetworkWriteDTO {
         this.published = published;
     }
 
-    public static NetworkWriteDTO fromEntity(NetworkEntity entity) {
+    public static NetworkWriteDTO from(NetworkEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+
         NetworkWriteDTO network = new NetworkWriteDTO();
-        network.id = entity.getId();
-        network.name = entity.getName();
-        network.abbreviation = entity.getAbbreviation();
-        network.networkType = entity.getNetworkType();
-        network.description = entity.getDescription();
-        network.targetGroups = entity.getTargetGroups();
-        network.organisations = entity.getOrganisations();
-        network.furtherInformation = entity.getFurtherInformation();
-        network.restrictions = entity.getRestrictions();
-        network.validity = entity.getValidity();
-        network.expenses = entity.getExpenses();
-        network.published = entity.isPublished();
+        network.setId(entity.getId());
+        network.setName(LocalisedString.from(entity.getName()));
+        network.setAbbreviation(entity.getAbbreviation());
+        network.setNetworkType(NetworkType.from(entity.getNetworkType()));
+        network.setDescription(LocalisedString.from(entity.getDescription()));
+        network.setTargetGroups(new CodeReference().from(entity.getTargetGroups()));
+        network.setOrganisations(new NetworkOrganisation().from(entity.getOrganisations()));
+        network.setFurtherInformation(LocalisedString.from(entity.getFurtherInformation()));
+        network.setRestrictions(new CodeReference().from(entity.getRestrictions()));
+        network.setValidity(new Validity().from(entity.getValidity()));
+        network.setExpenses(Expense.from(entity.getExpenses()));
+        network.setPublished(entity.isPublished());
         return network;
     }
 }

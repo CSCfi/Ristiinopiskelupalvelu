@@ -2,8 +2,8 @@ package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.CommonStudyRepository;
@@ -13,16 +13,14 @@ import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
-import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class CommonStudyRepositoryImpl<T extends CompositeIdentifiedEntity> implements CommonStudyRepository<T> {
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     protected ElasticsearchTemplate elasticsearchTemplate;
@@ -39,8 +37,8 @@ public class CommonStudyRepositoryImpl<T extends CompositeIdentifiedEntity> impl
         C copy;
 
         try {
-            copy = objectMapper.readValue(objectMapper.writeValueAsString(original), type);
-        } catch (JsonProcessingException e) {
+            copy = jsonMapper.readValue(jsonMapper.writeValueAsString(original), type);
+        } catch (JacksonException e) {
             throw new IllegalStateException("Entity serialisation failed", e);
         }
         
@@ -83,6 +81,6 @@ public class CommonStudyRepositoryImpl<T extends CompositeIdentifiedEntity> impl
                 .withPageable(Pageable.unpaged())
                 .build();
 
-        return elasticsearchTemplate.search(builder, type).get().map(SearchHit::getContent).collect(Collectors.toList());
+        return ElasticsearchQueryUtils.search(elasticsearchTemplate, builder, type);
     }
 }

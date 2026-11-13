@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.processor;
 
 
+import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.RistiinopiskeluMessage;
@@ -14,7 +15,7 @@ public abstract class AbstractResponseProcessor implements Processor {
 
     @Override
     public void process(Exchange exchange) throws Exception {
-        String correlationId = exchange.getIn().getHeader("JMSMessageID", String.class);
+        String correlationId = exchange.getIn().getHeader(MessageHeader.JMS_MESSAGEID, String.class);
         exchange.setMessage(new RistiinopiskeluMessage(exchange, MessageType.DEFAULT_RESPONSE, correlationId,
                 new DefaultResponse(Status.OK, getMessage())));
     }

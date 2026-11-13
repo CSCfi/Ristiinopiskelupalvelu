@@ -42,7 +42,17 @@ springwolf:
       staging:
         protocol: ssl
         host: risti-lb.csc.fi:61617
+tomcat:
+  ajp:
+    port: 8009
+    secret-required: ${tomcat_ajp_secret_required:true}
+    secret: ${tomcat_ajp_secret:}
 camel:
+  component:
+    jms:
+      # workaround until all clients have fixed their message type handling. seems like newer Artemis versions correctly
+      # send all messages as TextMessage (as was originally intended, ofc) but previously, it sent them as BytesMessages
+      jms-message-type: Bytes
   springboot:
     main-run-controller: true
     stream-caching-enabled: true

@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord;
 
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.CompletedCreditAssessmentEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(name = "CompletedCreditAssessmentV9", title = "CompletedCreditAssessmentV9")
@@ -39,5 +40,17 @@ public class CompletedCreditAssessment {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public static CompletedCreditAssessment from(CompletedCreditAssessmentEntity source) {
+        if (source == null) {
+            return null;
+        }
+        CompletedCreditAssessment target = new CompletedCreditAssessment();
+        target.setGradingScale(GradingScale.from(source.getGradingScale()));
+        target.setGrade(Grade.from(source.getGrade()));
+        target.setEgt(source.getEgt());
+        target.setDescription(source.getDescription());
+        return target;
     }
 }

@@ -1,13 +1,24 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.github.mpolla.HetuUtil;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelectionParent;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.Rank;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.RegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.CreateRegistrationSelectionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.CreateRegistrationSelectionParentEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationReplySelectionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationSelectionItemStatusEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationSelectionItemTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationStatusEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -26,7 +37,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.commons.util.StringUtils;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,7 +75,7 @@ public class RegistrationRouteV8IntegrationTest {
     }
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private OrganisationRepository organisationRepository;
@@ -82,9 +92,6 @@ public class RegistrationRouteV8IntegrationTest {
     @Autowired
     private RealisationRepository realisationRepository;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
     private int messageSchemaVersion = 8;
 
     private NetworkEntity testNetwork;
@@ -95,36 +102,36 @@ public class RegistrationRouteV8IntegrationTest {
     public void before() {
         JmsHelper.setMessageSchemaVersion(this.messageSchemaVersion);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity validity =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity();
+        ValidityEntity validity =
+            new ValidityEntity();
         validity.setStart(OffsetDateTime.now().minusDays(30));
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation organisation =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation();
+        NetworkOrganisationEntity organisation =
+            new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TESTORG1");
         organisation.setValidityInNetwork(validity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation organisation2 =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation();
+        NetworkOrganisationEntity organisation2 =
+            new NetworkOrganisationEntity();
         organisation2.setOrganisationTkCode("TESTORG2");
         organisation2.setValidityInNetwork(validity);
 
         testNetwork = new NetworkEntity();
         testNetwork.setId("CN-1");
-        testNetwork.setName(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("verkosto", null, null));
+        testNetwork.setName(new LocalisedStringEntity("verkosto", null, null));
         testNetwork.setOrganisations(Arrays.asList(organisation, organisation2));
         testNetwork.setValidity(validity);
         testNetwork.setPublished(true);
         networkRepository.create(testNetwork);
 
         sendingOrganisation = new OrganisationEntity();
-        sendingOrganisation.setOrganisationName(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Lähettävä testiorganisaatio", null, null));
+        sendingOrganisation.setOrganisationName(new LocalisedStringEntity("Lähettävä testiorganisaatio", null, null));
         sendingOrganisation.setId("TESTORG1");
         sendingOrganisation.setQueue("testiorganisaatio1");
         sendingOrganisation.setSchemaVersion(this.messageSchemaVersion);
 
         receivingOrganisation = new OrganisationEntity();
-        receivingOrganisation.setOrganisationName(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Vastaanottava testiorganisaatio", null, null));
+        receivingOrganisation.setOrganisationName(new LocalisedStringEntity("Vastaanottava testiorganisaatio", null, null));
         receivingOrganisation.setId("TESTORG2");
         receivingOrganisation.setQueue("testiorganisaatio2");
         receivingOrganisation.setSchemaVersion(this.messageSchemaVersion);
@@ -135,12 +142,12 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingCourseUnitRegistrationStatusMessage_shouldSucceed() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
                 Collections.singletonList(cooperationNetwork),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -206,10 +213,10 @@ public class RegistrationRouteV8IntegrationTest {
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
+        assertEquals(RegistrationStatusEntity.REGISTERED, reg.getStatus());
 
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() ==
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.ACCEPTED));
+            RegistrationSelectionItemStatusEntity.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getRank().getRankAll() == selectionRank.getRankAll() &&
             s.getRank().getMaxSeatsAll() == selectionRank.getMaxSeatsAll() &&
@@ -219,12 +226,12 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingCourseUnitRegistrationStatusMessageWithoutStudentEppn_shouldSucceed() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
             Collections.singletonList(cooperationNetwork),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -291,10 +298,10 @@ public class RegistrationRouteV8IntegrationTest {
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
+        assertEquals(RegistrationStatusEntity.REGISTERED, reg.getStatus());
 
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() ==
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.ACCEPTED));
+            RegistrationSelectionItemStatusEntity.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getRank().getRankAll() == selectionRank.getRankAll() &&
             s.getRank().getMaxSeatsAll() == selectionRank.getMaxSeatsAll() &&
@@ -304,12 +311,12 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingCourseUnitRegistrationStatusMessageWithoutStudentnumber_shouldFail() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
             Collections.singletonList(cooperationNetwork),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -360,12 +367,12 @@ public class RegistrationRouteV8IntegrationTest {
     }
     @Test
     public void testSendingCourseUnitRegistrationStatusMessageWithoutStydyright_shouldFail() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
             Collections.singletonList(cooperationNetwork),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -416,11 +423,11 @@ public class RegistrationRouteV8IntegrationTest {
     }
     @Test
     public void testSendingCourseUnitRegistrationStatusMessageRejected_shouldSucceed() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-            Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -472,26 +479,25 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingRealisationRegistration_shouldSuccess() throws JMSException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-                Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+                Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity ref = EntityInitializer.getStudyElementReferenceForCourseUnit(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
 
-
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.Selection groupSelection = DtoInitializer.getSelection(
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetusryhmä 1", null, null),
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionType.CHOOSE_ONE,
+        SelectionEntity groupSelection = EntityInitializer.getSelection(
+            new LocalisedStringEntity("Opetusryhmä 1", null, null),
+            SelectionTypeEntity.CHOOSE_ONE,
             Arrays.asList(
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                    new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Tentti", null, null), "TESTIRYHMA1", null),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                    new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetus", null, null), "TESTIRYHMA2", null)));
+                new SelectionValueEntity(null, null,
+                    new LocalisedStringEntity("Tentti", null, null), "TESTIRYHMA1", null),
+                new SelectionValueEntity(null, null,
+                    new LocalisedStringEntity("Opetus", null, null), "TESTIRYHMA2", null)));
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
                 Collections.singletonList(ref), Collections.singletonList(cooperationNetwork), Collections.singletonList(groupSelection));
@@ -566,47 +572,46 @@ public class RegistrationRouteV8IntegrationTest {
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
+        assertEquals(RegistrationStatusEntity.REGISTERED, reg.getStatus());
 
         RegistrationSelection replyRealisationSelection = req.getSelections().get(0);
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regRealisationSelection = reg.getSelectionsReplies().get(0);
+        RegistrationReplySelectionEntity regRealisationSelection = reg.getSelectionsReplies().get(0);
         RegistrationSelection replyCourseUnitSelection = req.getSelections().get(0).getParent();
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regCourseUnitSelection = reg.getSelectionsReplies().get(0).getParent();
+        CreateRegistrationSelectionParentEntity regCourseUnitSelection = reg.getSelections().get(0).getParent();
 
         assertEquals(replyRealisationSelection.getSelectionItemId(), regRealisationSelection.getSelectionItemId());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType.REALISATION,
+        assertEquals(RegistrationSelectionItemTypeEntity.REALISATION,
             regRealisationSelection.getSelectionItemType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.ACCEPTED,
+        assertEquals(RegistrationSelectionItemStatusEntity.ACCEPTED,
             regRealisationSelection.getSelectionItemStatus());
         assertEquals("Hyväksytty kurssille.", regRealisationSelection.getSelectionItemStatusInfo());
 
         assertEquals(replyCourseUnitSelection.getSelectionItemId(), regCourseUnitSelection.getSelectionItemId());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType.COURSE_UNIT,
+        assertEquals(RegistrationSelectionItemTypeEntity.COURSE_UNIT,
             regCourseUnitSelection.getSelectionItemType());
-        assertNull(regCourseUnitSelection.getSelectionItemStatus());
         assertNull(regCourseUnitSelection.getParent());
     }
 
     @Test
     public void testSendingRealisationRegistrationWithOutdatedSelection_shouldFail() throws JMSException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-            Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity ref = EntityInitializer.getStudyElementReferenceForCourseUnit(
             courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.Selection groupSelection = DtoInitializer.getSelection(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetusryhmä 1", null, null),
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionType.CHOOSE_ONE,
+        SelectionEntity groupSelection = EntityInitializer.getSelection(new LocalisedStringEntity("Opetusryhmä 1", null, null),
+            SelectionTypeEntity.CHOOSE_ONE,
             Arrays.asList(
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                    new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Tentti", null, null), "TESTIRYHMA1", null),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                    new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetus", null, null), "TESTIRYHMA2", null)));
+                new SelectionValueEntity(null, null,
+                    new LocalisedStringEntity("Tentti", null, null), "TESTIRYHMA1", null),
+                new SelectionValueEntity(null, null,
+                    new LocalisedStringEntity("Opetus", null, null), "TESTIRYHMA2", null)));
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
             Collections.singletonList(ref), Collections.singletonList(cooperationNetwork), Collections.singletonList(groupSelection));
@@ -630,24 +635,24 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingRealisationRegistrationWithOutdatedSelectionAndStatusAbortedByStudent_shouldSucceed() throws JMSException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-            Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity ref = EntityInitializer.getStudyElementReferenceForCourseUnit(
             courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.Selection groupSelection = DtoInitializer.getSelection(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetusryhmä 1", null, null),
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionType.CHOOSE_ONE,
+        SelectionEntity groupSelection = EntityInitializer.getSelection(new LocalisedStringEntity("Opetusryhmä 1", null, null),
+            SelectionTypeEntity.CHOOSE_ONE,
             Arrays.asList(
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                    new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Tentti", null, null), "TESTIRYHMA1", null),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                    new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetus", null, null), "TESTIRYHMA2", null)));
+                new SelectionValueEntity(null, null,
+                    new LocalisedStringEntity("Tentti", null, null), "TESTIRYHMA1", null),
+                new SelectionValueEntity(null, null,
+                    new LocalisedStringEntity("Opetus", null, null), "TESTIRYHMA2", null)));
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
             Collections.singletonList(ref), Collections.singletonList(cooperationNetwork), Collections.singletonList(groupSelection));
@@ -672,7 +677,7 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingAssessmentItemRealisationRegistration_shouldSuccess() throws JMSException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         AssessmentItemEntity assessmentItemEntity = new AssessmentItemEntity();
@@ -683,12 +688,12 @@ public class RegistrationRouteV8IntegrationTest {
         completionOptionEntity.setAssessmentItems(Arrays.asList(assessmentItemEntity));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntityWithCompletionOptions("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-                Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null),
+                Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null),
             Collections.singletonList(completionOptionEntity));
 
         courseUnitRepository.create(courseUnitEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity ref = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
@@ -780,44 +785,38 @@ public class RegistrationRouteV8IntegrationTest {
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
+        assertEquals(RegistrationStatusEntity.REGISTERED, reg.getStatus());
 
         RegistrationSelection replyRealisationSelection = req.getSelections().get(0);
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regRealisationSelection = reg.getSelectionsReplies().get(0);
+        RegistrationReplySelectionEntity regRealisationSelection = reg.getSelectionsReplies().get(0);
         assertEquals(replyRealisationSelection.getSelectionItemId(), regRealisationSelection.getSelectionItemId());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType.REALISATION, regRealisationSelection.getSelectionItemType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.ACCEPTED, regRealisationSelection.getSelectionItemStatus());
+        assertEquals(RegistrationSelectionItemTypeEntity.REALISATION, regRealisationSelection.getSelectionItemType());
+        assertEquals(RegistrationSelectionItemStatusEntity.ACCEPTED, regRealisationSelection.getSelectionItemStatus());
         assertEquals("Hyväksytty kurssille.", regRealisationSelection.getSelectionItemStatusInfo());
 
         RegistrationSelection replyCompletionOptionSelection = replyRealisationSelection.getParent();
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regCompletionOptionSelection = regRealisationSelection.getParent();
+        CreateRegistrationSelectionParentEntity regCompletionOptionSelection = reg.getSelections().get(0).getParent();
         assertEquals(replyCompletionOptionSelection.getSelectionItemId(), regCompletionOptionSelection.getSelectionItemId());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType.ASSESSMENT_ITEM,
+        assertEquals(RegistrationSelectionItemTypeEntity.ASSESSMENT_ITEM,
             regCompletionOptionSelection.getSelectionItemType());
-        assertNull(regCompletionOptionSelection.getSelectionItemStatus());
-        assertNull(regCompletionOptionSelection.getSelectionItemStatusInfo());
 
         RegistrationSelection replyAssessmentItemSelection = replyCompletionOptionSelection.getParent();
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regAssessmentItemSelection = regCompletionOptionSelection.getParent();
+        CreateRegistrationSelectionParentEntity regAssessmentItemSelection = regCompletionOptionSelection.getParent();
         assertEquals(replyAssessmentItemSelection.getSelectionItemId(), regAssessmentItemSelection.getSelectionItemId());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType.COMPLETION_OPTION,
+        assertEquals(RegistrationSelectionItemTypeEntity.COMPLETION_OPTION,
             regAssessmentItemSelection.getSelectionItemType());
-        assertNull(regAssessmentItemSelection.getSelectionItemStatus());
-        assertNull(regAssessmentItemSelection.getSelectionItemStatusInfo());
 
         RegistrationSelection replyCourseUnitSelection = replyAssessmentItemSelection.getParent();
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regCourseUnitSelection = regAssessmentItemSelection.getParent();
+        CreateRegistrationSelectionParentEntity regCourseUnitSelection = regAssessmentItemSelection.getParent();
         assertEquals(replyCourseUnitSelection.getSelectionItemId(), regCourseUnitSelection.getSelectionItemId());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType.COURSE_UNIT,
+        assertEquals(RegistrationSelectionItemTypeEntity.COURSE_UNIT,
             regCourseUnitSelection.getSelectionItemType());
-        assertNull(regCourseUnitSelection.getSelectionItemStatus());
-        assertNull(regCourseUnitSelection.getSelectionItemStatusInfo());
         assertNull(regCourseUnitSelection.getParent());
     }
 
     @Test
     public void testSendingAssessmentItemRealisationRegistrationAborted_withoutCompletionOptionSelectionItemId_shouldSucceed() throws JMSException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         AssessmentItemEntity assessmentItemEntity = new AssessmentItemEntity();
@@ -828,12 +827,12 @@ public class RegistrationRouteV8IntegrationTest {
         completionOptionEntity.setAssessmentItems(Arrays.asList(assessmentItemEntity));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntityWithCompletionOptions("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-            Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null),
+            Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null),
             Collections.singletonList(completionOptionEntity));
 
         courseUnitRepository.create(courseUnitEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity ref = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
@@ -865,24 +864,24 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingRealisationWithGroupSelectionsRegistration_shouldSuccess() throws JMSException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-                Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+                Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity ref = EntityInitializer.getStudyElementReferenceForCourseUnit(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.Selection groupSelection = DtoInitializer.getSelection(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetusryhmä 1", null, null),
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionType.CHOOSE_ONE,
+        SelectionEntity groupSelection = EntityInitializer.getSelection(new LocalisedStringEntity("Opetusryhmä 1", null, null),
+            SelectionTypeEntity.CHOOSE_ONE,
                 Arrays.asList(
-                        new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Tentti", null, null), "TESTIRYHMA1", null),
-                        new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetus", null, null), "TESTIRYHMA2", null)));
+                        new SelectionValueEntity(null, null,
+                            new LocalisedStringEntity("Tentti", null, null), "TESTIRYHMA1", null),
+                        new SelectionValueEntity(null, null,
+                            new LocalisedStringEntity("Opetus", null, null), "TESTIRYHMA2", null)));
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
                 Collections.singletonList(ref), Collections.singletonList(cooperationNetwork), Collections.singletonList(groupSelection));
@@ -956,46 +955,45 @@ public class RegistrationRouteV8IntegrationTest {
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStudyRightStatusValue().getCode());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getStartDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getStartDate());
         assertEquals(replyRequest.getHostStudyRight().getStudyRightStatus().getEndDate(), reg.getStudent().getHostStudyRight().getStudyRightStatus().getEndDate());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, reg.getStatus());
+        assertEquals(RegistrationStatusEntity.REGISTERED, reg.getStatus());
 
         RegistrationSelection replyRealisationSelection = req.getSelections().get(0);
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regRealisationSelection = reg.getSelectionsReplies().get(0);
+        RegistrationReplySelectionEntity regRealisationSelection = reg.getSelectionsReplies().get(0);
         assertEquals(replyRealisationSelection.getSelectionItemId(), regRealisationSelection.getSelectionItemId());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType.REALISATION, 
+        assertEquals(RegistrationSelectionItemTypeEntity.REALISATION, 
             regRealisationSelection.getSelectionItemType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.ACCEPTED, 
+        assertEquals(RegistrationSelectionItemStatusEntity.ACCEPTED, 
             regRealisationSelection.getSelectionItemStatus());
         assertEquals("Hyväksytty kurssille.", regRealisationSelection.getSelectionItemStatusInfo());
 
         RegistrationSelection replyCourseUnitSelection = req.getSelections().get(0).getParent();
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection regCourseUnitSelection = reg.getSelections().get(0).getParent();
+        CreateRegistrationSelectionParentEntity regCourseUnitSelection = reg.getSelections().get(0).getParent();
         assertEquals(replyCourseUnitSelection.getSelectionItemId(), regCourseUnitSelection.getSelectionItemId());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType.COURSE_UNIT,
+        assertEquals(RegistrationSelectionItemTypeEntity.COURSE_UNIT,
             regCourseUnitSelection.getSelectionItemType());
-        assertNull(regCourseUnitSelection.getSelectionItemStatus());
         assertNull(regCourseUnitSelection.getParent());
     }
 
     @Test
     public void testSendingRealisationRegistrationWithNotEnoughGroupSelections_shouldFail() throws JMSException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-                Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+                Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity ref = EntityInitializer.getStudyElementReferenceForCourseUnit(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.Selection groupSelection = DtoInitializer.getSelection(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetusryhmä 1", null, null),
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionType.CHOOSE_MANY,
+        SelectionEntity groupSelection = EntityInitializer.getSelection(new LocalisedStringEntity("Opetusryhmä 1", null, null),
+            SelectionTypeEntity.CHOOSE_MANY,
                 Arrays.asList(
-                        new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Tentti", null, null), "TESTIRYHMA1", null),
-                        new fi.uta.ristiinopiskelu.datamodel.dto.current.common.SelectionValue(null, null,
-                            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opetus", null, null), "TESTIRYHMA2", null)));
+                        new SelectionValueEntity(null, null,
+                            new LocalisedStringEntity("Tentti", null, null), "TESTIRYHMA1", null),
+                        new SelectionValueEntity(null, null,
+                            new LocalisedStringEntity("Opetus", null, null), "TESTIRYHMA2", null)));
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
                 Collections.singletonList(ref), Collections.singletonList(cooperationNetwork), Collections.singletonList(groupSelection));
@@ -1026,7 +1024,7 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingAssessmentItemRealisationRegistration_shouldFailAssessmentItemNotInCourseUnit() throws JMSException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         AssessmentItemEntity assessmentItemEntity = new AssessmentItemEntity();
@@ -1037,11 +1035,11 @@ public class RegistrationRouteV8IntegrationTest {
         completionOptionEntity.setAssessmentItems(Arrays.asList(assessmentItemEntity));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntityWithCompletionOptions("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-                Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null), Collections.singletonList(completionOptionEntity));
+                Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null), Collections.singletonList(completionOptionEntity));
 
         courseUnitRepository.create(courseUnitEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference ref = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity ref = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("T1", "T1", receivingOrganisation.getId(),
@@ -1078,21 +1076,21 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingCourseUnitRegistrationMessage_shouldFailCourseUnitDoesNotBelongToGivenNetwork() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity validity =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity();
+        ValidityEntity validity =
+            new ValidityEntity();
         validity.setStart(OffsetDateTime.now().minusDays(30));
 
         NetworkEntity wrongNetworkEntity = EntityInitializer.getNetworkEntity("DIFFERENT-NETWORKID-1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Väärä verkosto", null, null),
+            new LocalisedStringEntity("Väärä verkosto", null, null),
                 testNetwork.getOrganisations(), validity, true);
         networkRepository.create(wrongNetworkEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
                 Collections.singletonList(cooperationNetwork),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -1114,12 +1112,12 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingRegistrationWithoutStudentInfo_shouldFail() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
                 Collections.singletonList(cooperationNetwork),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -1144,20 +1142,20 @@ public class RegistrationRouteV8IntegrationTest {
     @Test
     public void testSendingRegistrationReceivedWithoutExtraInfo_shouldSuccess() throws JMSException, IOException {
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
             Collections.singletonList(cooperationNetwork),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionEntity selection = EntityInitializer.getRegistrationSelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.PENDING);
 
         RegistrationEntity reg = EntityInitializer.getRegistrationEntity(sendingOrganisation.getId(), receivingOrganisation.getId(),
-            Collections.singletonList(selection), null, cooperationNetwork.getId());
+            Collections.singletonList(selection), null, RegistrationStatusEntity.RECEIVED, cooperationNetwork.getId());
         reg = registrationRepository.create(reg);
 
         RegistrationReplyRequest req = new RegistrationReplyRequest();
@@ -1181,11 +1179,11 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingCourseUnitRegistrationStatusMessage_setStatusRejected_shouldSucceed() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-            Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -1240,7 +1238,7 @@ public class RegistrationRouteV8IntegrationTest {
         assertEquals(replyRequest.getRejectionReason().getValue("en"), reg.getRejectionReason().getValue("en"));
         assertEquals(replyRequest.getRejectionReason().getValue("sv"), reg.getRejectionReason().getValue("sv"));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() ==
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.ACCEPTED));
+            RegistrationSelectionItemStatusEntity.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
 
         Message statusMessageReceivedInOrganisation = jmsTemplate.receive(sendingOrganisation.getQueue());
@@ -1254,11 +1252,11 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingCourseUnitRegistrationRequestWithoutStudentOidOrStudentPersonId_shouldSucceed() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-            Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -1297,11 +1295,11 @@ public class RegistrationRouteV8IntegrationTest {
 
     @Test
     public void testSendingCourseUnitRegistrationRequestWithoutStudentPhoneNumberDescription_shouldSucceed() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(testNetwork.getId(), testNetwork.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("OJ1", "OJ1-CODE", receivingOrganisation.getId(),
-            Collections.singletonList(cooperationNetwork), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakso 1", null, null));
+            Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso 1", null, null));
 
         courseUnitRepository.create(courseUnitEntity);
 

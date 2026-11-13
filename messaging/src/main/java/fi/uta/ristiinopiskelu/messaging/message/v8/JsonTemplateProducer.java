@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.messaging.message.v8;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.messaging.exception.JsonTemplateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +17,7 @@ public class JsonTemplateProducer {
     private static final Logger logger = LoggerFactory.getLogger(JsonTemplateProducer.class);
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     public String getTemplate(fi.uta.ristiinopiskelu.messaging.message.v8.MessageType messageType) {
         String json = null;
@@ -33,10 +33,10 @@ public class JsonTemplateProducer {
 
         if(StringUtils.isEmpty(json)) {
             logger.info("Could not get JSON template from groovy script, falling back to basic serialization");
-            Assert.notNull(objectMapper, "ObjectMapper cannot be null");
+            Assert.notNull(jsonMapper, "JsonMapper cannot be null");
 
             try {
-                json = objectMapper.writeValueAsString(messageType.getClazz().getConstructor().newInstance());
+                json = jsonMapper.writeValueAsString(messageType.getClazz().getConstructor().newInstance());
             } catch (Exception e) {
                 throw new IllegalStateException("Error while serializing message type " + messageType + " class", e);
             }

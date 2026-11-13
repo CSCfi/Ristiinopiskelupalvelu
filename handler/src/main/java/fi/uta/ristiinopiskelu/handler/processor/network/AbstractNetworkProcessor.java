@@ -1,9 +1,11 @@
 package fi.uta.ristiinopiskelu.handler.processor.network;
 
+
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
@@ -15,7 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public abstract class AbstractNetworkProcessor implements Processor {
@@ -33,33 +37,48 @@ public abstract class AbstractNetworkProcessor implements Processor {
         List<OrganisationEntity> organisations = getNetworkOrganisations(network);
 
         NetworkCreatedNotification networkCreatedNotification = new NetworkCreatedNotification(OffsetDateTime.now(),
-            NetworkWriteDTO.fromEntity(network));
+            NetworkWriteDTO.from(network));
 
         logger.info("Sending network create notification to organisations " + organisations.stream().map(o -> o.getId() + "/" + o.getOrganisationIdentifier()).collect(Collectors.joining(", ")) +
             " (network: " + network.getId() + "/" + networkCreatedNotification.getNetwork().getId() + ", organisations: " +
-            networkCreatedNotification.getNetwork().getOrganisations().stream().map(o -> o.getOrganisationTkCode()).collect(Collectors.joining(", ")) + ")");
+            networkCreatedNotification.getNetwork().getOrganisations().stream().map(NetworkOrganisation::getOrganisationTkCode).collect(Collectors.joining(", ")) + ")");
 
         // forward
         forwardNotification(null, network, organisations, networkCreatedNotification, MessageType.NETWORK_CREATED_NOTIFICATION);
     }
 
-    protected void sendNetworkUpdatedNotification(String messageId, NetworkEntity network) {
-        List<OrganisationEntity> organisations = getNetworkOrganisations(network);
+    protected void sendNetworkUpdatedNotification(String messageId, NetworkEntity originalNetwork, NetworkEntity updatedNetwork) {
+        List<OrganisationEntity> organisations = getNetworkOrganisations(originalNetwork, updatedNetwork);
 
         NetworkUpdatedNotification networkUpdatedNotification = new NetworkUpdatedNotification(OffsetDateTime.now(),
-            NetworkWriteDTO.fromEntity(network));
+            NetworkWriteDTO.from(updatedNetwork));
 
         logger.info("Sending network updated notification to organisations " + organisations.stream().map(o -> o.getId() + "/" + o.getOrganisationIdentifier()).collect(Collectors.joining(", ")) +
-            " (network: " + network.getId() + "/" + networkUpdatedNotification.getNetwork().getId() + ", organisations: " +
-            networkUpdatedNotification.getNetwork().getOrganisations().stream().map(o -> o.getOrganisationTkCode()).collect(Collectors.joining(", ")) + ")");
+            " (network: " + updatedNetwork.getId() + "/" + networkUpdatedNotification.getNetwork().getId() + ", organisations: " +
+            networkUpdatedNotification.getNetwork().getOrganisations().stream()
+                .map(NetworkOrganisation::getOrganisationTkCode)
+                .collect(Collectors.joining(", ")) + ")");
 
         // forward
-        forwardNotification(messageId, network, organisations, networkUpdatedNotification, MessageType.NETWORK_UPDATED_NOTIFICATION);
+        forwardNotification(messageId, updatedNetwork, organisations, networkUpdatedNotification, MessageType.NETWORK_UPDATED_NOTIFICATION);
     }
 
     private List<OrganisationEntity> getNetworkOrganisations(NetworkEntity network) {
-        return organisationService.findByIds(network.getOrganisations().stream().map(NetworkOrganisation::getOrganisationTkCode)
+        return organisationService.findByIds(network.getOrganisations().stream().map(NetworkOrganisationEntity::getOrganisationTkCode)
             .collect(Collectors.toList()));
+    }
+
+    private List<OrganisationEntity> getNetworkOrganisations(NetworkEntity originalNetwork, NetworkEntity updatedNetwork) {
+        Set<String> organisationIds = new LinkedHashSet<>();
+
+        organisationIds.addAll(originalNetwork.getOrganisations().stream()
+            .map(NetworkOrganisationEntity::getOrganisationTkCode)
+            .toList());
+        organisationIds.addAll(updatedNetwork.getOrganisations().stream()
+            .map(NetworkOrganisationEntity::getOrganisationTkCode)
+            .toList());
+
+        return organisationService.findByIds(organisationIds.stream().toList());
     }
 
     private void forwardNotification(String messageId, NetworkEntity network, List<OrganisationEntity> organisations,

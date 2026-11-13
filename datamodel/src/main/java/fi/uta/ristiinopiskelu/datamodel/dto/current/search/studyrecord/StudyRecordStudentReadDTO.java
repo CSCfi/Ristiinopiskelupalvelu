@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord;
 
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordStudentEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(name = "StudyRecordStudentV9", title = "StudyRecordStudentV9")
@@ -40,5 +41,13 @@ public class StudyRecordStudentReadDTO {
 
     public void setGivenName(String givenName) {
         this.givenName = givenName;
+    }
+
+    public static StudyRecordStudentReadDTO from(StudyRecordStudentEntity student) {
+        if(student == null) {
+            return null;
+        }
+
+        return new StudyRecordStudentReadDTO();
     }
 }

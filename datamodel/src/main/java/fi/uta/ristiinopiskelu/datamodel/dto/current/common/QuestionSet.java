@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.QuestionSetEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.ArrayList;
@@ -51,4 +52,22 @@ public class QuestionSet {
         this.questions = questions;
     }
 
+    public static QuestionSet from(QuestionSetEntity source) {
+        if (source == null) {
+            return null;
+        }
+        QuestionSet target = new QuestionSet();
+        target.setTitle(LocalisedString.from(source.getTitle()));
+        target.setQuestions(source.getQuestions() == null
+            ? null
+            : source.getQuestions().stream().map(LocalisedString::from).toList());
+        return target;
+    }
+
+    public static List<QuestionSet> from(List<QuestionSetEntity> source) {
+        if (source == null) {
+            return null;
+        }
+        return source.stream().map(QuestionSet::from).toList();
+    }
 }

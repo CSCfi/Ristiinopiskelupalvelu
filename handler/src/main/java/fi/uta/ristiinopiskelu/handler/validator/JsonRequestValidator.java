@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.validator;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import fi.uta.ristiinopiskelu.datamodel.entity.GenericEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.ValidationException;
 

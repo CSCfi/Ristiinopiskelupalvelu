@@ -1,14 +1,14 @@
 package fi.uta.ristiinopiskelu.messaging.schema.converter.v8tov9.request;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.TeachingLanguage;
 import fi.uta.ristiinopiskelu.messaging.exception.ObjectConversionException;
 import fi.uta.ristiinopiskelu.messaging.schema.converter.AbstractObjectMappingObjectConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 public abstract class AbstractStudyElementRequestV8ToV9Converter<S, T> extends AbstractObjectMappingObjectConverter<S, T> {
 
@@ -16,10 +16,10 @@ public abstract class AbstractStudyElementRequestV8ToV9Converter<S, T> extends A
 
     @Override
     public T convertObject(Object object) throws ObjectConversionException {
-        JsonNode jsonNode = convertJson(getObjectMapper().valueToTree(object));
+        JsonNode jsonNode = convertJson(getJsonMapper().valueToTree(object));
         try {
-            return getObjectMapper().treeToValue(jsonNode, getTargetType());
-        } catch (JsonProcessingException e) {
+            return getJsonMapper().treeToValue(jsonNode, getTargetType());
+        } catch (JacksonException e) {
             throw new ObjectConversionException("Error while converting object", e);
         }
     }

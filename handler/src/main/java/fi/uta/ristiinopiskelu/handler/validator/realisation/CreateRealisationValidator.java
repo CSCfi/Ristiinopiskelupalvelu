@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.handler.validator.realisation;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
@@ -9,15 +10,15 @@ import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.handler.utils.KeyHelper;
 import fi.uta.ristiinopiskelu.handler.validator.RequestValidator;
+import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.realisation.CreateRealisationRequest;
-import org.modelmapper.ModelMapper;
+import jakarta.validation.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import jakarta.validation.Validator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -26,17 +27,16 @@ import java.util.Optional;
 public class CreateRealisationValidator extends AbstractRealisationValidator implements RequestValidator<CreateRealisationRequest> {
 
     @Autowired
-    public CreateRealisationValidator(ModelMapper modelMapper,
-                                      RealisationService realisationService,
+    public CreateRealisationValidator(RealisationService realisationService,
                                       CourseUnitService courseUnitService,
                                       NetworkService networkService, Validator beanValidator) {
-        super(modelMapper, realisationService, courseUnitService, networkService, beanValidator);
+        super(realisationService, courseUnitService, networkService, beanValidator);
     }
 
     @Override
     public void validateRequest(CreateRealisationRequest request, String organisationId) throws ValidationException {
         if(StringUtils.isEmpty(organisationId)) {
-            throw new MissingMessageHeaderException("Cannot perform create. Organisation Id is missing from header. This should not happen.");
+            throw new MissingMessageHeaderException(MessageHeader.JMS_XUSERID);
         }
 
         List<RealisationWriteDTO> realisations = request.getRealisations();
@@ -56,7 +56,7 @@ public class CreateRealisationValidator extends AbstractRealisationValidator imp
 
     public List<RealisationWriteDTO> validateCreateCourseUnitRealisations(List<RealisationWriteDTO> realisations, String organisationId, CourseUnitWriteDTO courseUnit) throws ValidationException {
         if(StringUtils.isEmpty(organisationId)) {
-            throw new MissingMessageHeaderException("Cannot perform create. Organisation Id is missing from header. This should not happen.");
+            throw new MissingMessageHeaderException(MessageHeader.JMS_XUSERID);
         }
 
         for(RealisationWriteDTO realisation : realisations) {
@@ -96,7 +96,7 @@ public class CreateRealisationValidator extends AbstractRealisationValidator imp
     }
 
     protected void validateHasAtleastOneMatchingCooperationNetwork(CourseUnitWriteDTO courseUnit, RealisationWriteDTO realisation, String organisationId) throws ValidationException {
-        if(!super.hasAtLeastOneMatchingCooperationNetwork(courseUnit, realisation)) {
+        if(!super.hasAtLeastOneMatchingCooperationNetwork(CooperationNetworkEntity.from(courseUnit.getCooperationNetworks()), realisation)) {
             throw new CooperationNetworksMismatchValidationException("Unable to handle " + MessageType.CREATE_COURSEUNIT_REQUEST.name()
                     + ". Given sub realisation " + getRealisationIdString(realisation)
                     + " and given course unit [" + courseUnit.getStudyElementId() + "]" +

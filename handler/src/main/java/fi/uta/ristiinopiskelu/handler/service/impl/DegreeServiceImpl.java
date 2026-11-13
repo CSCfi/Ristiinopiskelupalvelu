@@ -9,7 +9,6 @@ import fi.uta.ristiinopiskelu.handler.service.DegreeService;
 import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
 import fi.uta.ristiinopiskelu.persistence.repository.DegreeRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyElementRepository;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,9 +20,6 @@ public class DegreeServiceImpl extends AbstractStudyElementService<DegreeWriteDT
     @Autowired
     private DegreeRepository degreeRepository;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
     public DegreeServiceImpl() {
         super(DegreeWriteDTO.class, DegreeEntity.class, DegreeReadDTO.class, StudyElementType.DEGREE);
     }
@@ -31,11 +27,6 @@ public class DegreeServiceImpl extends AbstractStudyElementService<DegreeWriteDT
     @Override
     protected StudyElementRepository<DegreeEntity> getRepository() {
         return degreeRepository;
-    }
-
-    @Override
-    public ModelMapper getModelMapper() {
-        return modelMapper;
     }
 
     @Override

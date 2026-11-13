@@ -2,10 +2,12 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseuni
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.AssessmentItemType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Schema(name = "AssessmentItemV9", title = "AssessmentItemV9")
 public class AssessmentItemReadDTO {
@@ -72,5 +74,24 @@ public class AssessmentItemReadDTO {
 
     public void setRealisations(List<CourseUnitRealisationReadDTO> realisations) {
         this.realisations = realisations;
+    }
+
+    public static List<AssessmentItemReadDTO> from(List<AssessmentItemEntity> source) {
+        if (source == null) {
+            return null;
+        }
+
+        return source.stream()
+            .map(item -> {
+                AssessmentItemReadDTO target = new AssessmentItemReadDTO();
+                target.setAssessmentItemId(item.getAssessmentItemId());
+                target.setPrimaryCourseUnitId(item.getPrimaryCourseUnitId());
+                target.setType(item.getType() == null ? null : AssessmentItemType.valueOf(item.getType().name()));
+                target.setCreditsMin(item.getCreditsMin());
+                target.setCreditsMax(item.getCreditsMax());
+                target.setName(LocalisedString.from(item.getName()));
+                target.setRealisations(CourseUnitRealisationReadDTO.from(item.getRealisations()));
+                return target;
+            }).collect(Collectors.toList());
     }
 }

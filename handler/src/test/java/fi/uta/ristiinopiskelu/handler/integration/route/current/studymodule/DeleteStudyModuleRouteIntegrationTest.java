@@ -1,9 +1,15 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current.studymodule;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -26,7 +32,6 @@ import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +49,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith({
@@ -83,9 +87,6 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
     @Autowired
     private ElasticsearchTemplate elasticsearchTemplate;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
     @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
@@ -98,24 +99,23 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         for(String organisationId : organisationIds) {
             if(!organisationService.findById(organisationId).isPresent()) {
                 OrganisationEntity organisation = EntityInitializer.getOrganisationEntity(organisationId, organisationId,
-                    new LocalisedString(organisationId, null, null), this.messageSchemaVersion);
-                organisationService.create(modelMapper.map(organisation, OrganisationEntity.class));
+                    new LocalisedStringEntity(organisationId, null, null), this.messageSchemaVersion);
+                organisationService.create(organisation);
             }
         }
     }
 
-
     @Test
     public void testSendingDeleteStudyModuleMessage_shouldSuccess() throws JMSException, IOException {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-            "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-            new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+            "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+            new LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -134,7 +134,7 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
         // Verify created study module exists
         StudyModuleEntity entityShouldBeNull = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNull(entityShouldBeNull);
     }
@@ -142,11 +142,11 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
     @Test
     public void testSendingDeleteStudyModuleMessageWithCourseUnits_shouldSuccess() throws JMSException {
 
-        StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity("SM1", "SM1_CODE1", "TUNI", Collections.emptyList(), new LocalisedString("test", "test", "test"));
+        StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity("SM1", "SM1_CODE1", "TUNI", Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
 
-        CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "TUNI", Collections.emptyList(), new LocalisedString("test", "test", "test"));
+        CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "TUNI", Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
         courseUnit.setParents(Collections.singletonList(
-            new StudyElementReference("SM1", "TUNI", StudyElementType.STUDY_MODULE)));
+            new StudyElementReferenceEntity("SM1", "TUNI", StudyElementTypeEntity.STUDY_MODULE)));
 
         studyModuleRepository.create(studyModule);
         courseUnitRepository.create(courseUnit);
@@ -175,11 +175,11 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
     @Test
     public void testSendingDeleteStudyModuleMessageWithCourseUnits_shouldFail() throws JMSException {
 
-        StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity("SM1", "SM1_CODE1", "ORG1", Collections.emptyList(), new LocalisedString("test", "test", "test"));
+        StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity("SM1", "SM1_CODE1", "ORG1", Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
 
-        CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "ORG1", Collections.emptyList(), new LocalisedString("test", "test", "test"));
+        CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "ORG1", Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
         courseUnit.setParents(Collections.singletonList(
-            new StudyElementReference("SM1", "ORG1", StudyElementType.STUDY_MODULE)));
+            new StudyElementReferenceEntity("SM1", "ORG1", StudyElementTypeEntity.STUDY_MODULE)));
 
         studyModuleRepository.create(studyModule);
         courseUnitRepository.create(courseUnit);
@@ -207,13 +207,13 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
     @Test
     public void testSendingDeleteStudyModuleMessageWithMultipleCourseUnitReferences_shouldSucceed() throws JMSException {
 
-        StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity("SM1", "SM1_CODE1", "TUNI", Collections.emptyList(), new LocalisedString("test", "test", "test"));
+        StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity("SM1", "SM1_CODE1", "TUNI", Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
 
-        CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "METROP", Collections.emptyList(), new LocalisedString("test", "test", "test"));
+        CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "METROP", Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
 
-        List<StudyElementReference> references = new ArrayList<>();
-        references.add(new StudyElementReference("SM1","TUNI", StudyElementType.STUDY_MODULE));
-        references.add(new StudyElementReference("SM2", "METROP", StudyElementType.STUDY_MODULE));
+        List<StudyElementReferenceEntity> references = new ArrayList<>();
+        references.add(new StudyElementReferenceEntity("SM1","TUNI", StudyElementTypeEntity.STUDY_MODULE));
+        references.add(new StudyElementReferenceEntity("SM2", "METROP", StudyElementTypeEntity.STUDY_MODULE));
 
         courseUnit.setParents(references);
 
@@ -246,15 +246,15 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
     @Test
     public void testSendingDeleteStudyModuleMessage_shouldSuccessAndCreateHistory() throws JMSException, IOException {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-            "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-            new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+            "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+            new LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -273,7 +273,7 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
         // Verify created study module exists
         StudyModuleEntity entityShouldBeNull = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNull(entityShouldBeNull);
 
@@ -296,26 +296,26 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
     @Test
     public void testSendingDeleteStudyModuleMessage_shouldSuccessRemovesCourseUnitRefAndCreatesHistories() throws JMSException, IOException {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
             "ID1", "RAIRAI", organisation.getOrganisationTkCode(), Collections.singletonList(network),
-            new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+            new LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleEntity = studyModuleRepository.create(studyModuleEntity);
 
-        StudyElementReference refToRemove = DtoInitializer.getStudyElementReferenceForStudyModule(
+        StudyElementReferenceEntity refToRemove = EntityInitializer.getStudyElementReferenceForStudyModule(
             studyModuleEntity.getStudyElementId(), studyModuleEntity.getOrganizingOrganisationId());
 
-        StudyElementReference refNotToRemove = DtoInitializer.getStudyElementReferenceForStudyModule(
+        StudyElementReferenceEntity refNotToRemove = EntityInitializer.getStudyElementReferenceForStudyModule(
             "ANOTHER-PARENT1", studyModuleEntity.getOrganizingOrganisationId());
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntityWithParents("CU-1", "CODE-1", organisation.getOrganisationTkCode(),
-            Collections.singletonList(network), new LocalisedString("Jakson nimi 1", "Jakson nimi 1 Englanniksi", null), Arrays.asList(refToRemove, refNotToRemove));
+            Collections.singletonList(network), new LocalisedStringEntity("Jakson nimi 1", "Jakson nimi 1 Englanniksi", null), Arrays.asList(refToRemove, refNotToRemove));
 
         courseUnitRepository.create(courseUnitEntity);
 
@@ -335,7 +335,7 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
         // Verify created study module exists
         StudyModuleEntity entityShouldBeNull = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNull(entityShouldBeNull);
 
@@ -362,10 +362,10 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(1, parentRemovedCourseUnit.getParents().size());
         assertTrue(parentRemovedCourseUnit.getParents().stream().anyMatch(
             p -> p.getReferenceIdentifier().equals(refNotToRemove.getReferenceIdentifier())
-                && p.getReferenceType() == StudyElementType.STUDY_MODULE));
+                && p.getReferenceType() == StudyElementTypeEntity.STUDY_MODULE));
         assertTrue(parentRemovedCourseUnit.getParents().stream().noneMatch(
             p -> p.getReferenceIdentifier().equals(refToRemove.getReferenceIdentifier())
-                && p.getReferenceType() == StudyElementType.STUDY_MODULE));
+                && p.getReferenceType() == StudyElementTypeEntity.STUDY_MODULE));
 
         List<CourseUnitEntity> courseUnitHistoryEntities = HistoryHelper.queryHistoryIndex(elasticsearchTemplate,
             "opintojaksot-history", CourseUnitEntity.class);
@@ -386,9 +386,9 @@ public class DeleteStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(2, courseUnitHistoryEntity.getParents().size());
         assertTrue(courseUnitHistoryEntity.getParents().stream().anyMatch(
             p -> p.getReferenceIdentifier().equals(refNotToRemove.getReferenceIdentifier())
-                && p.getReferenceType() == StudyElementType.STUDY_MODULE));
+                && p.getReferenceType() == StudyElementTypeEntity.STUDY_MODULE));
         assertTrue(courseUnitHistoryEntity.getParents().stream().anyMatch(
             p -> p.getReferenceIdentifier().equals(refToRemove.getReferenceIdentifier())
-                && p.getReferenceType() == StudyElementType.STUDY_MODULE));
+                && p.getReferenceType() == StudyElementTypeEntity.STUDY_MODULE));
     }
 }

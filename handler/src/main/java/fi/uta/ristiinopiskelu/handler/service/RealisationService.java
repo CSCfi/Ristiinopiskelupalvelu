@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation.RealisationReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
@@ -34,7 +34,7 @@ public interface RealisationService extends CompositeIdentifiedService<Realisati
     RealisationSearchResults search(String organisationId, RealisationSearchParameters searchParameters) throws FindFailedException;
 
     RealisationSearchResults searchByIds(String organisationId, String realisationId, String organizingOrganisationId,
-                                         List<StudyStatus> statuses, Pageable pageable);
+                                         List<StudyStatus> statuses, boolean includeInactive, Pageable pageable);
 
     List<RealisationEntity> findByAssessmentItemReference(String referenceIdentifier, String referenceOrganizer, String assessmentItemId);
 }

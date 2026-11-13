@@ -1,10 +1,5 @@
 package fi.uta.ristiinopiskelu.handler.validator.studyelement.studymodule;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
@@ -14,15 +9,18 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.InvalidMessageBodyExc
 import fi.uta.ristiinopiskelu.handler.exception.validation.InvalidMessageHeaderException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.StudyModuleService;
+import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
+import jakarta.validation.Validator;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
-import jakarta.validation.Validator;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -30,46 +28,45 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class UpdateStudyModuleValidatorTest {
 
-    @MockBean
+    @MockitoBean
     private StudyModuleService studyModuleService;
 
-    @MockBean
+    @MockitoBean
     private NetworkService networkService;
 
-    @MockBean
+    @MockitoBean
     private Validator beanValidator;
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private UpdateStudyModuleValidator validator;
 
-    private static final Logger logger = LoggerFactory.getLogger(UpdateStudyModuleValidatorTest.class);
-
     private final String studyModuleUpdateJsonTemplate =
-            "{\n" +
-            "    \"studyModule\": {\n" +
-            "        \"studyElementId\": \"ID1\",\n" +
-            "        \"studyElementIdentifierCode\": \"RAIRAI\"\n" +
-            "    }\n" +
-            "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "studyElementIdentifierCode": "RAIRAI"
+                    }
+                }
+            """;
 
     @BeforeEach
     public void before() {
-        objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .registerModule(new Jdk8Module());
-        validator = spy(new UpdateStudyModuleValidator(new ArrayList<>(), networkService, objectMapper, beanValidator));
+        jsonMapper = new EsConfig().jsonMapper(null);
+        validator = spy(new UpdateStudyModuleValidator(new ArrayList<>(), networkService, jsonMapper, beanValidator));
         doReturn(studyModuleService).when(validator).getServiceForClass(any());
     }
 
     @Test
     public void testValidate_shouldCallAllValidationsOnce() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(studyModuleUpdateJsonTemplate);
-        ((ObjectNode)updateRequest.get("studyModule")).set("parents", objectMapper.convertValue(new ArrayList<StudyElementReference>(), JsonNode.class));
-        ((ObjectNode)updateRequest.get("studyModule")).set("organisationReferences", objectMapper.convertValue(new ArrayList<OrganisationReference>(), JsonNode.class));
-        ((ObjectNode)updateRequest.get("studyModule")).set("cooperationNetworks", objectMapper.convertValue(new ArrayList<CooperationNetwork>(), JsonNode.class));
+        JsonNode updateRequest = jsonMapper.readTree(studyModuleUpdateJsonTemplate);
+        ((ObjectNode)updateRequest.get("studyModule")).set("parents", jsonMapper.convertValue(new ArrayList<StudyElementReference>(), JsonNode.class));
+        ((ObjectNode)updateRequest.get("studyModule")).set("organisationReferences", jsonMapper.convertValue(new ArrayList<OrganisationReference>(), JsonNode.class));
+        ((ObjectNode)updateRequest.get("studyModule")).set("cooperationNetworks", jsonMapper.convertValue(new ArrayList<CooperationNetwork>(), JsonNode.class));
 
         when(studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(any(), any()))
                 .thenReturn(Optional.of(new StudyModuleEntity()));
@@ -86,7 +83,7 @@ public class UpdateStudyModuleValidatorTest {
 
     @Test
     public void testValidate_shouldThrowInvalidMessageHeaderException() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(studyModuleUpdateJsonTemplate);
+        JsonNode updateRequest = jsonMapper.readTree(studyModuleUpdateJsonTemplate);
         assertThrows(InvalidMessageHeaderException.class, () -> validator.validateJson(updateRequest, null));
     }
 
@@ -97,15 +94,15 @@ public class UpdateStudyModuleValidatorTest {
 
     @Test
     public void testValidate_shouldThrowInvalidMessageBodyExceptionNoStudyModule() throws Exception {
-        assertThrows(InvalidMessageBodyException.class, () -> validator.validateJson(objectMapper.createObjectNode(), "TUNI"));
+        assertThrows(InvalidMessageBodyException.class, () -> validator.validateJson(jsonMapper.createObjectNode(), "TUNI"));
     }
 
     @Test
     public void testValidate_shouldThrowEntityNotFoundException() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(studyModuleUpdateJsonTemplate);
-        ((ObjectNode)updateRequest.get("studyModule")).set("parents", objectMapper.convertValue(new ArrayList<StudyElementReference>(), JsonNode.class));
-        ((ObjectNode)updateRequest.get("studyModule")).set("organisationReferences", objectMapper.convertValue(new ArrayList<OrganisationReference>(), JsonNode.class));
-        ((ObjectNode)updateRequest.get("studyModule")).set("cooperationNetworks", objectMapper.convertValue(new ArrayList<CooperationNetwork>(), JsonNode.class));
+        JsonNode updateRequest = jsonMapper.readTree(studyModuleUpdateJsonTemplate);
+        ((ObjectNode)updateRequest.get("studyModule")).set("parents", jsonMapper.convertValue(new ArrayList<StudyElementReference>(), JsonNode.class));
+        ((ObjectNode)updateRequest.get("studyModule")).set("organisationReferences", jsonMapper.convertValue(new ArrayList<OrganisationReference>(), JsonNode.class));
+        ((ObjectNode)updateRequest.get("studyModule")).set("cooperationNetworks", jsonMapper.convertValue(new ArrayList<CooperationNetwork>(), JsonNode.class));
 
         when(studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(any(), any()))
                 .thenReturn(Optional.empty());
@@ -119,7 +116,7 @@ public class UpdateStudyModuleValidatorTest {
 
     @Test
     public void testValidate_shouldCallNoValidation() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(studyModuleUpdateJsonTemplate);
+        JsonNode updateRequest = jsonMapper.readTree(studyModuleUpdateJsonTemplate);
         ((ObjectNode)updateRequest.get("studyModule")).set("parents", null);
 
         when(studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(any(), any()))

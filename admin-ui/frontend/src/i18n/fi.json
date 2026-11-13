@@ -53,6 +53,9 @@
   "pay": "Maksullinen",
   "pricingBasis": "Hinnoittelun pohja",
   "price": "Hinta",
+  "unsaved": "ei tallennettu",
+  "copyToClipboard": "Kopioi leikepöydälle",
+  "copiedToClipboard": "Kopioitu leikepöydälle",
 
   "networkPublished": "Julkaistu",
   "networkIdentifier": "Tunnus",
@@ -78,6 +81,8 @@
   "continuity": "Jatkuvuus",
   "addOrganisation": "Lisää organisaatio",
   "addNetwork": "Lisää uusi verkosto",
+  "noOrganisations": "Ei organisaatioita",
+  "noValues": "Ei arvoja",
 
   "noPermissions": "Ei oikeuksia!",
   "noPermissions2": "Sinulta puuttuu riittävät oikeudet muokata koodistojen tietoja.",

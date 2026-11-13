@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
+import fi.uta.ristiinopiskelu.datamodel.entity.common.SelectionEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
@@ -41,5 +42,23 @@ public class Selection {
 
     public void setSelectionValues(List<SelectionValue> selectionValues) {
         this.selectionValues = selectionValues;
+    }
+
+    public static Selection from(SelectionEntity source) {
+        if (source == null) {
+            return null;
+        }
+        Selection target = new Selection();
+        target.setTitle(LocalisedString.from(source.getTitle()));
+        target.setType(SelectionType.from(source.getType()));
+        target.setSelectionValues(SelectionValue.from(source.getSelectionValues()));
+        return target;
+    }
+
+    public static List<Selection> from(List<SelectionEntity> source) {
+        if (source == null) {
+            return null;
+        }
+        return source.stream().map(Selection::from).toList();
     }
 }

@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.dlqhandler.processor;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.datamodel.entity.DeadLetterQueueEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.DeadLetterQueueRepository;
@@ -18,23 +18,23 @@ public class DeadLetterQueueProcessor implements Processor {
     private String organisationId;
     private OrganisationRepository organisationRepository;
     private DeadLetterQueueRepository deadLetterQueueRepository;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     public DeadLetterQueueProcessor(String organisationId,
                                     OrganisationRepository organisationRepository,
                                     DeadLetterQueueRepository deadLetterQueueRepository,
-                                    ObjectMapper objectMapper) {
+                                    JsonMapper jsonMapper) {
         this.organisationId = organisationId;
         this.organisationRepository = organisationRepository;
         this.deadLetterQueueRepository = deadLetterQueueRepository;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
     }
 
     @Override
     public void process(Exchange exchange) throws Exception {
-        // Read as object first to prevent objectMapper write escaped line breaks to when writing to string
-        Object json = objectMapper.readValue(exchange.getIn().getBody(String.class), Object.class);
-        String message = objectMapper.writeValueAsString(json);
+        // Read as object first to prevent jsonMapper write escaped line breaks to when writing to string
+        Object json = jsonMapper.readValue(exchange.getIn().getBody(String.class), Object.class);
+        String message = jsonMapper.writeValueAsString(json);
         String messageType = exchange.getIn().getHeader(MessageHeader.MESSAGE_TYPE, String.class);
 
         if(StringUtils.isEmpty(messageType)) {

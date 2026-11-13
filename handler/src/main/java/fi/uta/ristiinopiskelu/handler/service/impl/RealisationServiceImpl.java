@@ -1,14 +1,16 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation.RealisationReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
 import fi.uta.ristiinopiskelu.handler.exception.*;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
@@ -21,7 +23,6 @@ import fi.uta.ristiinopiskelu.persistence.querybuilder.RealisationQueryBuilder;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,10 +48,7 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
     private static final Logger logger = LoggerFactory.getLogger(RealisationServiceImpl.class);
 
     @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private ModelMapper modelMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private CourseUnitService courseUnitService;
@@ -71,13 +72,8 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
     }
 
     @Override
-    public ObjectMapper getObjectMapper() {
-        return objectMapper;
-    }
-
-    @Override
-    public ModelMapper getModelMapper() {
-        return modelMapper;
+    public JsonMapper getJsonMapper() {
+        return jsonMapper;
     }
 
     @Override
@@ -89,7 +85,7 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
         }
 
         // Setup entity data
-        realisationEntity.setStatus(realisationEntity.getStatus() != null ? realisationEntity.getStatus() : StudyStatus.ACTIVE);
+        realisationEntity.setStatus(realisationEntity.getStatus() != null ? realisationEntity.getStatus() : StudyStatusEntity.ACTIVE);
         realisationEntity = super.setOrganizingOrganisationId(realisationEntity);
         realisationEntity = super.setCooperationNetworkData(realisationEntity);
         realisationEntity = super.fillMissingOrganisationInfo(realisationEntity);
@@ -113,18 +109,18 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
             }
         } catch (Exception e) {
             rollback(createdRealisationEntities);
-            throw new CreateFailedException("Failed to create realisations.");
+            throw new CreateFailedException(getEntityClass(), e);
         }
 
         return createdRealisationEntities;
     }
 
-    private void addOrUpdateDenormalizedData(RealisationEntity realisationToDenormalize, List<StudyElementReference> references) {
+    private void addOrUpdateDenormalizedData(RealisationEntity realisationToDenormalize, List<StudyElementReferenceEntity> references) {
         if(CollectionUtils.isEmpty(references)) {
             return;
         }
 
-        for(StudyElementReference reference : references) {
+        for(StudyElementReferenceEntity reference : references) {
             CourseUnitEntity referencedCourseUnit = getReferencedCourseUnitEntity(reference);
 
             // This should be validated before calling and should not happen. Cannot throw exception here since it would
@@ -135,20 +131,20 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
                 continue;
             }
 
-            CourseUnitRealisationEntity courseUnitRealisationEntity = modelMapper.map(realisationToDenormalize, CourseUnitRealisationEntity.class);
+            CourseUnitRealisationEntity courseUnitRealisationEntity = CourseUnitRealisationEntity.from(realisationToDenormalize);
             courseUnitRepository.saveHistory(referencedCourseUnit, CourseUnitEntity.class);
             addOrUpdateCourseUnitRealisation(reference, referencedCourseUnit, courseUnitRealisationEntity);
             courseUnitService.update(referencedCourseUnit);
         }
     }
 
-    private void addOrUpdateCourseUnitRealisation(StudyElementReference reference, CourseUnitEntity referencedCourseUnit,
+    private void addOrUpdateCourseUnitRealisation(StudyElementReferenceEntity reference, CourseUnitEntity referencedCourseUnit,
                                                   CourseUnitRealisationEntity newCourseUnitRealisationEntity) {
         Predicate<CourseUnitRealisationEntity> referenceMatchesToDenormalizedData =
             cur -> cur.getRealisationId().equals(newCourseUnitRealisationEntity.getRealisationId())
                 && cur.getOrganizingOrganisationId().equals(newCourseUnitRealisationEntity.getOrganizingOrganisationId());
 
-        if(reference.getReferenceType() == StudyElementType.ASSESSMENT_ITEM) {
+        if(reference.getReferenceType() == StudyElementTypeEntity.ASSESSMENT_ITEM) {
             for(AssessmentItemEntity assessmentItemEntity : referencedCourseUnit.getAssessmentItems()) {
                 if(assessmentItemEntity.getAssessmentItemId().equals(reference.getReferenceAssessmentItemId())) {
                     if(assessmentItemEntity.getRealisations() == null) {
@@ -167,8 +163,8 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
         }
     }
 
-    private CourseUnitEntity getReferencedCourseUnitEntity(StudyElementReference reference) {
-        if(reference.getReferenceType() == StudyElementType.ASSESSMENT_ITEM) {
+    private CourseUnitEntity getReferencedCourseUnitEntity(StudyElementReferenceEntity reference) {
+        if(reference.getReferenceType() == StudyElementTypeEntity.ASSESSMENT_ITEM) {
             return courseUnitService.findByIdAndAssessmentItemIdAndOrganizer(
                 reference.getReferenceIdentifier(), reference.getReferenceAssessmentItemId(), reference.getReferenceOrganizer())
                 .orElse(null);
@@ -209,12 +205,13 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
                 .findByRealisationIdAndOrganizingOrganisationId(realisationId, organisationId)
                 .orElseThrow(() -> new EntityNotFoundException(RealisationEntity.class, realisationId, organisationId));
 
-            List<StudyElementReference> originalStudyElementReferences = originalForUpdating.getStudyElementReferences();
-            StudyStatus originalStudyStatus = originalForUpdating.getStatus();
+            RealisationEntity original = copy(originalForUpdating, RealisationEntity.class);
+            List<StudyElementReferenceEntity> originalStudyElementReferences = original.getStudyElementReferences();
+            StudyStatusEntity originalStudyStatus = original.getStatus();
 
-            realisationRepository.saveHistory(originalForUpdating, RealisationEntity.class);
+            realisationRepository.saveHistory(original, RealisationEntity.class);
 
-            ObjectReader reader = objectMapper.readerForUpdating(originalForUpdating);
+            ObjectReader reader = jsonMapper.readerForUpdating(originalForUpdating);
             RealisationEntity updatedRealisationEntity = reader.readValue(updateJson);
 
             // reset organizing organisation id if it was updated
@@ -233,7 +230,7 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
                 updateJson, updatedRealisationEntity);
 
             return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
-                CompositeIdentifiedEntityType.REALISATION, originalForUpdating, realisationRepository.update(updatedRealisationEntity)));
+                CompositeIdentifiedEntityType.REALISATION, original, realisationRepository.update(updatedRealisationEntity)));
         } catch (Exception e) {
             throw new UpdateFailedException(getEntityClass(), realisationId, e);
         }
@@ -259,9 +256,9 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
     }
 
     private void handleDenormalizedData(String realisationId, String organizingOrganisationId,
-                                        List<StudyElementReference> originalStudyElementReferences, JsonNode updateJson,
+                                        List<StudyElementReferenceEntity> originalStudyElementReferences, JsonNode updateJson,
                                         RealisationEntity updated) {
-        List<StudyElementReference> existingReferences;
+        List<StudyElementReferenceEntity> existingReferences;
 
         if(updateJson.has("studyElementReferences")) {
             // This should not happen, if studyElementReferences are given with update message, it should always be validated
@@ -273,13 +270,13 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
                 return;
             }
 
-            List<StudyElementReference> removedReferences = new ArrayList<>();
+            List<StudyElementReferenceEntity> removedReferences = new ArrayList<>();
             if(!CollectionUtils.isEmpty(originalStudyElementReferences)) {
                 removedReferences = originalStudyElementReferences.stream()
                     .filter(se -> !updated.getStudyElementReferences().contains(se)).collect(Collectors.toList());
             }
 
-            List<StudyElementReference> newReferences = updated.getStudyElementReferences().stream()
+            List<StudyElementReferenceEntity> newReferences = updated.getStudyElementReferences().stream()
                 .filter(se -> !CollectionUtils.isEmpty(originalStudyElementReferences)
                     && !originalStudyElementReferences.contains(se))
                 .collect(Collectors.toList());
@@ -298,12 +295,12 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
         addOrUpdateDenormalizedData(updated, existingReferences);
     }
 
-    private void removeDenormalizedData(String realisationId, String realisationOrganizingOrganisationId, List<StudyElementReference> references) {
+    private void removeDenormalizedData(String realisationId, String realisationOrganizingOrganisationId, List<StudyElementReferenceEntity> references) {
         if(CollectionUtils.isEmpty(references)) {
             return;
         }
 
-        for(StudyElementReference reference : references) {
+        for(StudyElementReferenceEntity reference : references) {
             CourseUnitEntity referencedCourseUnit = getReferencedCourseUnitEntity(reference);
 
             // This should be validated before calling and should not happen. Cannot throw exception here since it would
@@ -322,12 +319,12 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
 
     }
 
-    private void removeCourseUnitRealisation(String realisationId, String realisationOrganizingOrganisationId, StudyElementReference reference, CourseUnitEntity referencedCourseUnit) {
+    private void removeCourseUnitRealisation(String realisationId, String realisationOrganizingOrganisationId, StudyElementReferenceEntity reference, CourseUnitEntity referencedCourseUnit) {
         Predicate<CourseUnitRealisationEntity> referenceMatchesToDenormalizedData =
             cur -> cur.getRealisationId().equals(realisationId)
                 && cur.getOrganizingOrganisationId().equals(realisationOrganizingOrganisationId);
 
-        if(reference.getReferenceType() == StudyElementType.ASSESSMENT_ITEM) {
+        if(reference.getReferenceType() == StudyElementTypeEntity.ASSESSMENT_ITEM) {
             for(AssessmentItemEntity assessmentItemEntity : referencedCourseUnit.getAssessmentItems()) {
                 if(assessmentItemEntity.getAssessmentItemId().equals(reference.getReferenceAssessmentItemId())) {
                     if(!CollectionUtils.isEmpty(assessmentItemEntity.getRealisations())) {
@@ -381,17 +378,23 @@ public class RealisationServiceImpl extends AbstractCompositeIdentifiedService<R
 
     @Override
     public RealisationSearchResults searchByIds(String organisationId, String realisationId, String organizingOrganisationId,
-                                                List<StudyStatus> statuses, Pageable pageable) {
+                                                List<StudyStatus> statuses, boolean includeInactive, Pageable pageable) {
 
         if(StringUtils.hasText(realisationId) && !StringUtils.hasText(organizingOrganisationId)) {
             throw new InvalidSearchParametersException("organizingOrganisationId must be specified if realisationId is specified");
         }
 
         RealisationQueryBuilder realisationQuery = new RealisationQueryBuilder();
-        
-        List<NetworkEntity> networksToSearch = networkService.findAllValidNetworksWhereOrganisationIsValid(organisationId, Pageable.unpaged());
 
-        realisationQuery.filterByCooperationNetworks(organisationId, networksToSearch, null, true, true);
+        List<NetworkEntity> organisationNetworks;
+
+        if(!includeInactive) {
+            organisationNetworks = networkService.findAllValidNetworksWhereOrganisationIsValid(organisationId, Pageable.unpaged());
+        } else {
+            organisationNetworks = networkService.findAllNetworksByOrganisationId(organisationId, Pageable.unpaged());
+        }
+
+        realisationQuery.filterByCooperationNetworks(organisationId, organisationNetworks, null, true, true);
 
         realisationQuery.filterByComposedId(realisationId, null, organizingOrganisationId);
 

@@ -1,8 +1,10 @@
 package fi.uta.ristiinopiskelu.handler.processor.studyrecord;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.StudyRecordStatusEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
@@ -16,10 +18,6 @@ import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.StudyRecordMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.ForwardedStudyRecordReplyRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.studyrecord.StudyRecordReplyRequest;
-import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
-import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
-import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
-import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.slf4j.Logger;
@@ -39,38 +37,22 @@ public class StudyRecordReplyProcessor implements Processor {
     private OrganisationService organisationService;
     private StudyRecordService studyRecordService;
     private JmsMessageForwarder jmsMessageForwarder;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     public StudyRecordReplyProcessor(StudyRecordStatusValidator validator, OrganisationService organisationService,
-                                     StudyRecordService studyRecordService, JmsMessageForwarder jmsMessageForwarder, ObjectMapper objectMapper) {
+                                     StudyRecordService studyRecordService, JmsMessageForwarder jmsMessageForwarder, JsonMapper jsonMapper) {
         this.validator = validator;
         this.organisationService = organisationService;
         this.studyRecordService = studyRecordService;
         this.jmsMessageForwarder = jmsMessageForwarder;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
     }
-
-    @AsyncListener(operation = @AsyncOperation(
-            channelName = "handler",
-            description = "Replies to a study record request",
-            servers = {"production", "staging"},
-            message = @AsyncMessage(
-                    description = "Replies to a study record request"
-            ),
-            payloadType = StudyRecordReplyRequest.class
-    ))
-    @AsyncPublisher(operation = @AsyncOperation(
-            channelName = "<ORGANISATION_QUEUE>",
-            description = "Forwarded study record reply",
-            servers = {"production", "staging"},
-            payloadType = ForwardedStudyRecordReplyRequest.class
-    ))
     @Override
     public void process(Exchange exchange) throws Exception {
-        StudyRecordReplyRequest req = objectMapper.readValue(exchange.getIn().getBody(String.class), StudyRecordReplyRequest.class);
+        StudyRecordReplyRequest req = jsonMapper.readValue(exchange.getIn().getBody(String.class), StudyRecordReplyRequest.class);
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
-        String correlationId = exchange.getIn().getHeader("JMSMessageID", String.class);
+        String correlationId = exchange.getIn().getHeader(MessageHeader.JMS_MESSAGEID, String.class);
 
         logger.info("Handling study record reply request {}", req.toString());
 
@@ -83,8 +65,8 @@ public class StudyRecordReplyProcessor implements Processor {
             .orElseThrow(() -> new EntityNotFoundException(OrganisationEntity.class, studyRecord.getSendingOrganisation()));
 
         // Persist the reply.
-        studyRecord.setStatus(req.getStatus());
-        studyRecord.setRejectionReason(req.getRejectionReason());
+        studyRecord.setStatus(StudyRecordStatusEntity.from(req.getStatus()));
+        studyRecord.setRejectionReason(LocalisedStringEntity.from(req.getRejectionReason()));
 
         List<? extends EntityModificationResult<?>> modificationResults = studyRecordService.update(studyRecord);
         StudyRecordEntity updatedStudyRecord = (StudyRecordEntity) modificationResults.get(0).getCurrent();

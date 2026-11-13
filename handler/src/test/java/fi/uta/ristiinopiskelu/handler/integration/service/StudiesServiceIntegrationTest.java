@@ -1,21 +1,23 @@
 package fi.uta.ristiinopiskelu.handler.integration.service;
 
-
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.InternalStudiesSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchElementType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.handler.service.StudiesService;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
+import fi.uta.ristiinopiskelu.persistence.repository.DegreeRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyModuleRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +36,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,6 +55,9 @@ public class StudiesServiceIntegrationTest {
     private CourseUnitRepository courseUnitRepository;
 
     @Autowired
+    private DegreeRepository degreeRepository;
+
+    @Autowired
     private NetworkRepository networkRepository;
 
     @Autowired
@@ -67,32 +73,31 @@ public class StudiesServiceIntegrationTest {
 
     @BeforeEach
     public void beforeAll() {
-        List<NetworkOrganisation> orgs = new ArrayList<>();
+        List<NetworkOrganisationEntity> orgs = new ArrayList<>();
         List<String> orgIds = Arrays.asList("TUNI", "UEF", "HAAGAH", "METROP", "JYU");
         for(String orgId : orgIds) {
-            orgs.add(new NetworkOrganisation(orgId, false, new Validity(Validity.ContinuityEnum.INDEFINITELY,
+            orgs.add(new NetworkOrganisationEntity(orgId, false, new ValidityEntity(ValidityEntity.ContinuityEntity.INDEFINITELY,
                     OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1))));
         }
 
         invalidValidityNetworks = new ArrayList<>();
 
         invalidValidityNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("INVALID-VALIDITY-PAST1", null, orgs,
-                new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusYears(1)), true)));
+                new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusYears(1)), true)));
         invalidValidityNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("INVALID-VALIDITY-FUTURE1", null, orgs,
-                new Validity(Validity.ContinuityEnum.INDEFINITELY, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().minusYears(1)), true)));
+                new ValidityEntity(ValidityEntity.ContinuityEntity.INDEFINITELY, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().minusYears(1)), true)));
         invalidValidityNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("INVALID-VALIDITY-FUTURE2", null, orgs,
-                new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2)), true)));
+                new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2)), true)));
         invalidValidityNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("INVALID-VALIDITY-STATUS-FALSE", null, orgs,
-                new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)), false)));
+                new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)), false)));
 
         validNetworks = new ArrayList<>();
 
-        validNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("CN1", new LocalisedString("Verkosto 1", null, null), orgs,
-               DtoInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)), true)));
+        validNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("CN1", new LocalisedStringEntity("Verkosto 1", null, null), orgs,
+               EntityInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)), true)));
 
-        validNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("CN2", new LocalisedString("Verkosto 2", null, null), orgs,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true)));
-
+        validNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("CN2", new LocalisedStringEntity("Verkosto 2", null, null), orgs,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true)));
 
         existingNetworks = new ArrayList<>();
         existingNetworks.addAll(invalidValidityNetworks);
@@ -181,6 +186,48 @@ public class StudiesServiceIntegrationTest {
     }
 
     @Test
+    public void testFindAllStudiesByParentReferences_moreThanScrollBatchSize_shouldReturnAll() {
+        String parentIdentifier = "PARENT-1";
+        String parentOrganizer = "TUNI";
+        int documentCount = 1001;
+        List<CourseUnitEntity> courseUnits = IntStream.range(0, documentCount)
+            .mapToObj(index -> {
+                CourseUnitEntity courseUnit = new CourseUnitEntity();
+                courseUnit.setId("PARENT-CHILD-" + index);
+                courseUnit.setStudyElementId("PARENT-CHILD-" + index);
+                courseUnit.setOrganizingOrganisationId(parentOrganizer);
+                courseUnit.setParents(List.of(new StudyElementReferenceEntity(
+                    parentIdentifier, parentOrganizer, StudyElementTypeEntity.STUDY_MODULE)));
+                return courseUnit;
+            })
+            .toList();
+        courseUnitRepository.saveAll(courseUnits);
+
+        StudyModuleEntity studyModule = new StudyModuleEntity();
+        studyModule.setId("PARENT-STUDY-MODULE");
+        studyModule.setStudyElementId("PARENT-STUDY-MODULE");
+        studyModule.setOrganizingOrganisationId(parentOrganizer);
+        studyModule.setParents(List.of(new StudyElementReferenceEntity(
+            parentIdentifier, parentOrganizer, StudyElementTypeEntity.STUDY_MODULE)));
+        studyModuleRepository.save(studyModule);
+
+        DegreeEntity degree = new DegreeEntity();
+        degree.setId("PARENT-DEGREE");
+        degree.setStudyElementId("PARENT-DEGREE");
+        degree.setOrganizingOrganisationId(parentOrganizer);
+        degree.setParents(List.of(new StudyElementReferenceEntity(
+            parentIdentifier, parentOrganizer, StudyElementTypeEntity.STUDY_MODULE)));
+        degreeRepository.save(degree);
+
+        List<StudyElementEntity> results = studiesService.findAllStudiesByParentReferences(
+            parentIdentifier, parentOrganizer);
+
+        assertEquals(documentCount + 2, results.size());
+        assertTrue(results.stream().anyMatch(StudyModuleEntity.class::isInstance));
+        assertTrue(results.stream().anyMatch(DegreeEntity.class::isInstance));
+    }
+
+    @Test
     public void testSearchOrganizingOrganisationFiltering_shouldReturnOnlyOtherOrganizerStudies() {
         String organisationRunningQuery = "TUNI";
         StudiesSearchParameters params = new StudiesSearchParameters();
@@ -194,9 +241,8 @@ public class StudiesServiceIntegrationTest {
         assertEquals(noOwnOrganisationSize, results.getTotalHits());
         assertTrue(results.getResults().stream().noneMatch(se -> se.getOrganisationReferences().stream()
                     .anyMatch(or -> or.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER
-                        && or.getOrganisation().getOrganisationTkCode().equals(organisationRunningQuery))));
+                        && or.getTarget().getOrganisationTkCode().equals(organisationRunningQuery))));
     }
-
 
     @Test
     public void testSearchOrganizingOrganisationFiltering_shouldReturnIncludeOwnOrganizerStudies() {
@@ -207,7 +253,6 @@ public class StudiesServiceIntegrationTest {
 
         assertEquals(allExistingStudyElements.size(), results.getTotalHits());
     }
-
 
     @Test
     public void testSearchStudyElementNetworkValidityFiltering_shouldExcludeAllNonValidNetworks() {
@@ -256,14 +301,14 @@ public class StudiesServiceIntegrationTest {
     public void testSearchOrganisationValidationInNetworkFiltering_shouldReturnOnlyOtherOrganizerStudiesAndExcludeInActiveNetworks() {
         String organisationRunningQuery = "TUNI";
 
-        Validity futureValidity = new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2));
-        Validity pastValidity = new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().minusYears(2), OffsetDateTime.now().minusYears(1));
-        Validity futureValidity2 = new Validity(Validity.ContinuityEnum.INDEFINITELY, OffsetDateTime.now().plusYears(1), null);
+        ValidityEntity futureValidity = new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2));
+        ValidityEntity pastValidity = new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().minusYears(2), OffsetDateTime.now().minusYears(1));
+        ValidityEntity futureValidity2 = new ValidityEntity(ValidityEntity.ContinuityEntity.INDEFINITELY, OffsetDateTime.now().plusYears(1), null);
 
         NetworkEntity networkEntity = validNetworks.get(0);
         networkEntity.getOrganisations().removeIf(no -> no.getOrganisationTkCode().equals(organisationRunningQuery));
 
-        NetworkOrganisation networkOrganisation = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode(organisationRunningQuery);
         networkOrganisation.setValidityInNetwork(futureValidity);
         networkEntity.getOrganisations().add(networkOrganisation);
@@ -284,7 +329,7 @@ public class StudiesServiceIntegrationTest {
 
         networkEntity.getOrganisations().removeIf(no -> no.getOrganisationTkCode().equals(organisationRunningQuery));
 
-        networkOrganisation = new NetworkOrganisation();
+        networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode(organisationRunningQuery);
         networkOrganisation.setValidityInNetwork(pastValidity);
         networkEntity.getOrganisations().add(networkOrganisation);
@@ -297,7 +342,7 @@ public class StudiesServiceIntegrationTest {
 
         networkEntity.getOrganisations().removeIf(no -> no.getOrganisationTkCode().equals(organisationRunningQuery));
 
-        networkOrganisation = new NetworkOrganisation();
+        networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode(organisationRunningQuery);
         networkOrganisation.setValidityInNetwork(futureValidity2);
         networkEntity.getOrganisations().add(networkOrganisation);
@@ -395,7 +440,6 @@ public class StudiesServiceIntegrationTest {
                 se -> se.getName().getValue("sv").toLowerCase().contains(svSearchParameters.getQuery().toLowerCase())));
     }
 
-
     @Test
     public void testOrganisationFiltering_shouldReturnStudyElementsWithOnlyGivenOrganisations() {
         String organisationRunningQuery = "TUNI";
@@ -412,7 +456,7 @@ public class StudiesServiceIntegrationTest {
         assertEquals(studyElementsThatShouldReturn.size(), searchResults.getTotalHits());
         assertTrue(searchResults.getResults().stream()
                 .allMatch(se -> se.getOrganisationReferences().stream()
-                        .anyMatch(or -> searchParameters.getOrganizingOrganisationIdentifiers().contains(or.getOrganisation().getOrganisationTkCode())
+                        .anyMatch(or -> searchParameters.getOrganizingOrganisationIdentifiers().contains(or.getTarget().getOrganisationTkCode())
                                 && or.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER)));
 
         // Test with includeOwn = true. we shouldn't get any own studies since organizingOrganisationIdentifiers is defined
@@ -424,8 +468,8 @@ public class StudiesServiceIntegrationTest {
         assertEquals(studyElementsThatShouldReturn.size(), includeOwnSearchResults.getTotalHits());
         assertTrue(includeOwnSearchResults.getResults().stream().allMatch(se ->
                 se.getOrganisationReferences().stream().anyMatch(or ->
-                        (searchParameters.getOrganizingOrganisationIdentifiers().contains(or.getOrganisation().getOrganisationTkCode())
-                                || or.getOrganisation().getOrganisationTkCode().equals(organisationRunningQuery))
+                        (searchParameters.getOrganizingOrganisationIdentifiers().contains(or.getTarget().getOrganisationTkCode())
+                                || or.getTarget().getOrganisationTkCode().equals(organisationRunningQuery))
                         && or.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER)));
     }
 
@@ -511,24 +555,24 @@ public class StudiesServiceIntegrationTest {
         String organisationRunningQuery = "TUNI";
 
         CourseUnitEntity courseUnitWithoutNetwork = EntityInitializer.getCourseUnitEntity("CU-101", "CUCODE-101", organisationRunningQuery,
-                null, new LocalisedString("Ilman verkostoa", "No network", null));
+                null, new LocalisedStringEntity("Ilman verkostoa", "No network", null));
 
-        Organisation organisation = DtoInitializer.getOrganisation(organisationRunningQuery, organisationRunningQuery);
-        OrganisationReference organisationReference = new OrganisationReference();
-        organisationReference.setOrganisationRole(OrganisationRole.ROLE_MAIN_ORGANIZER);
-        organisationReference.setOrganisation(organisation);
+        OrganisationDataEntity organisation = EntityInitializer.getOrganisation(organisationRunningQuery, organisationRunningQuery);
+        OrganisationReferenceEntity organisationReference = new OrganisationReferenceEntity();
+        organisationReference.setOrganisationRole(OrganisationRoleEntity.ROLE_MAIN_ORGANIZER);
+        organisationReference.setTarget(organisation);
         courseUnitWithoutNetwork.setOrganisationReferences(Collections.singletonList(organisationReference));
 
-        courseUnitWithoutNetwork.setStatus(StudyStatus.ACTIVE);
+        courseUnitWithoutNetwork.setStatus(StudyStatusEntity.ACTIVE);
         courseUnitWithoutNetwork.setValidityStartDate(LocalDate.now().minusYears(1));
         courseUnitWithoutNetwork.setValidityEndDate(LocalDate.now().plusYears(1));
 
         allExistingStudyElements.add(courseUnitRepository.create(courseUnitWithoutNetwork));
 
         CourseUnitEntity courseUnitWithoutNetwork2 = EntityInitializer.getCourseUnitEntity("CU-102", "CUCODE-102", organisationRunningQuery,
-                Collections.emptyList(), new LocalisedString("Ilman verkostoa", "No network", null));
+                Collections.emptyList(), new LocalisedStringEntity("Ilman verkostoa", "No network", null));
         courseUnitWithoutNetwork2.setOrganisationReferences(Collections.singletonList(organisationReference));
-        courseUnitWithoutNetwork2.setStatus(StudyStatus.ACTIVE);
+        courseUnitWithoutNetwork2.setStatus(StudyStatusEntity.ACTIVE);
         courseUnitWithoutNetwork2.setValidityStartDate(LocalDate.now().minusYears(1));
         courseUnitWithoutNetwork2.setValidityEndDate(LocalDate.now().plusYears(1));
 
@@ -555,12 +599,12 @@ public class StudiesServiceIntegrationTest {
         String organisationRunningQuery = "TUNI";
 
         // Setup TUNI's validity in network CN-1 into future
-        Validity futureValidity = new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2));
+        ValidityEntity futureValidity = new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2));
 
         NetworkEntity networkEntity = validNetworks.get(0);
         networkEntity.getOrganisations().removeIf(no -> no.getOrganisationTkCode().equals(organisationRunningQuery));
 
-        NetworkOrganisation networkOrganisation = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode(organisationRunningQuery);
         networkOrganisation.setValidityInNetwork(futureValidity);
         networkEntity.getOrganisations().add(networkOrganisation);
@@ -592,7 +636,7 @@ public class StudiesServiceIntegrationTest {
         assertEquals(1, searchResults.getTotalHits());
         assertEquals("CU9", searchResults.getResults().get(0).getStudyElementId());
         assertEquals("CU9-ID1", searchResults.getResults().get(0).getStudyElementIdentifierCode());
-        assertEquals("UEF", searchResults.getResults().get(0).getOrganisationReferences().get(0).getOrganisation().getOrganisationTkCode());
+        assertEquals("UEF", searchResults.getResults().get(0).getOrganisationReferences().get(0).getTarget().getOrganisationTkCode());
     }
 
     @Test
@@ -601,17 +645,17 @@ public class StudiesServiceIntegrationTest {
         String parameterNetworkId = "feb71594-0297-41ac-aae6-fcb8b20383d5";
         String wrongNetworkId = "7d816732-1c9c-49f6-b221-92a9ff3831ac";
 
-        NetworkOrganisation orgTuni = new NetworkOrganisation("NEW_ORGANISATION", false, new Validity(Validity.ContinuityEnum.INDEFINITELY,
+        NetworkOrganisationEntity orgTuni = new NetworkOrganisationEntity("NEW_ORGANISATION", false, new ValidityEntity(ValidityEntity.ContinuityEntity.INDEFINITELY,
                 OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)));
 
-        NetworkOrganisation orgUef = new NetworkOrganisation("UEF", false, new Validity(Validity.ContinuityEnum.INDEFINITELY,
+        NetworkOrganisationEntity orgUef = new NetworkOrganisationEntity("UEF", false, new ValidityEntity(ValidityEntity.ContinuityEntity.INDEFINITELY,
                 OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)));
 
-        networkRepository.save(EntityInitializer.getNetworkEntity(parameterNetworkId, new LocalisedString("Verkosto 1", null, null), Arrays.asList(orgTuni, orgUef),
-                DtoInitializer.getFixedValidity(OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(1)), false));
+        networkRepository.save(EntityInitializer.getNetworkEntity(parameterNetworkId, new LocalisedStringEntity("Verkosto 1", null, null), Arrays.asList(orgTuni, orgUef),
+                EntityInitializer.getFixedValidity(OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(1)), false));
 
-        networkRepository.save(EntityInitializer.getNetworkEntity(wrongNetworkId, new LocalisedString("Verkosto 2", null, null), Arrays.asList(orgTuni, orgUef),
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true));
+        networkRepository.save(EntityInitializer.getNetworkEntity(wrongNetworkId, new LocalisedStringEntity("Verkosto 2", null, null), Arrays.asList(orgTuni, orgUef),
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true));
 
         this.generateStudyModule(wrongNetworkId, LocalDate.of(2019, 10, 18), LocalDate.of(2019, 11, 4), "YVQRjW4B5SA-v7gmeav7", "A123", "UEF",
                 "Testi Metro Erillinen A123 (qa1) 21.11.2019",  "Testi Metro Erillinen A123 (qa1) 21.11.2019", null, LocalDate.of(2018, 8, 1), LocalDate.of(2022, 7, 31));
@@ -640,7 +684,7 @@ public class StudiesServiceIntegrationTest {
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity denormalizedData = EntityInitializer.getCourseUnitRealisation("R1", "RCODE1", organisationRunningQuery,
-            new LocalisedString("Toteutus 1", null, null), LocalDate.now().minusMonths(1), null, null, null);
+            new LocalisedStringEntity("Toteutus 1", null, null), LocalDate.now().minusMonths(1), null, null, null);
 
         courseUnitWithRealisation.setRealisations(Collections.singletonList(denormalizedData));
         courseUnitRepository.update(courseUnitWithRealisation);
@@ -659,14 +703,13 @@ public class StudiesServiceIntegrationTest {
         courseUnitWithAiRealisation.setCompletionOptions(Arrays.asList(completionOptionEntity, dummyCompletionOption));
         courseUnitRepository.update(courseUnitWithAiRealisation);
 
-
         // Generate course unit with realisations that are available in future
         CourseUnitEntity courseUnitWithRealisationInFuture = this.generateCourseUnit("CN2", LocalDate.now().minusYears(1), LocalDate.now().plusYears(1),
             "CU104", "CU104-ID1", "UEF","KURSSINIMI", "höpö course 2", "höpö kurs 2",
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity futureRealisation = EntityInitializer.getCourseUnitRealisation("R1", "RCODE1", organisationRunningQuery,
-            new LocalisedString("Toteutus 1", null, null), LocalDate.now().plusMonths(1), LocalDate.now().plusMonths(3), null, null);
+            new LocalisedStringEntity("Toteutus 1", null, null), LocalDate.now().plusMonths(1), LocalDate.now().plusMonths(3), null, null);
 
         courseUnitWithRealisationInFuture.setRealisations(Collections.singletonList(futureRealisation));
         courseUnitRepository.update(courseUnitWithRealisationInFuture);
@@ -699,14 +742,13 @@ public class StudiesServiceIntegrationTest {
         assertTrue(courseUnitResults.stream().anyMatch(cu -> cu.getStudyElementId().equals(courseUnitWithRealisation.getStudyElementId())));
         assertTrue(courseUnitResults.stream().anyMatch(cu -> cu.getStudyElementId().equals(courseUnitWithAiRealisation.getStudyElementId())));
 
-
         // Generate course unit with realisation with end time (still currently valid)
         CourseUnitEntity courseUnitWithRealisation2 = this.generateCourseUnit("CN2", LocalDate.now().minusYears(1), LocalDate.now().plusYears(1),
             "CU106", "CU106-ID1", "UEF","KURSSINIMI", "höpö course 2", "höpö kurs 2",
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity denormalizedDataWithEndTime = EntityInitializer.getCourseUnitRealisation("R3", "RCODE3", organisationRunningQuery,
-            new LocalisedString("Toteutus 3", null, null), LocalDate.now().minusMonths(1), LocalDate.now().plusMonths(1), null, null);
+            new LocalisedStringEntity("Toteutus 3", null, null), LocalDate.now().minusMonths(1), LocalDate.now().plusMonths(1), null, null);
 
         courseUnitWithRealisation2.setRealisations(Collections.singletonList(denormalizedDataWithEndTime));
         courseUnitRepository.update(courseUnitWithRealisation2);
@@ -725,14 +767,13 @@ public class StudiesServiceIntegrationTest {
         courseUnitWithAiRealisation2.setCompletionOptions(Arrays.asList(completionOptionEntity, dummyCompletionOption));
         courseUnitRepository.update(courseUnitWithAiRealisation2);
 
-
         // Generate course unit with realisations in past
         CourseUnitEntity courseUnitWithRealisationInPast = this.generateCourseUnit("CN2", LocalDate.now().minusYears(1), LocalDate.now().plusYears(1),
             "CU108", "CU108-ID1", "UEF","KURSSINIMI", "höpö course 2", "höpö kurs 2",
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity realisationInPast = EntityInitializer.getCourseUnitRealisation("R4", "RCODE4", organisationRunningQuery,
-            new LocalisedString("Toteutus 3", null, null), LocalDate.now().minusMonths(2), LocalDate.now().minusMonths(1), null, null);
+            new LocalisedStringEntity("Toteutus 3", null, null), LocalDate.now().minusMonths(2), LocalDate.now().minusMonths(1), null, null);
 
         courseUnitWithRealisationInPast.setRealisations(Collections.singletonList(realisationInPast));
         courseUnitRepository.update(courseUnitWithRealisationInPast);
@@ -770,7 +811,6 @@ public class StudiesServiceIntegrationTest {
         assertTrue(courseUnitResults.stream().anyMatch(cu -> cu.getStudyElementId().equals(courseUnitWithRealisation2.getStudyElementId())));
         assertTrue(courseUnitResults.stream().anyMatch(cu -> cu.getStudyElementId().equals(courseUnitWithAiRealisation2.getStudyElementId())));
 
-
         // Search by realisation start date and end date
         searchParameters = new StudiesSearchParameters();
         searchParameters.setRealisationStartDate(LocalDate.now().minusDays(1));
@@ -800,8 +840,7 @@ public class StudiesServiceIntegrationTest {
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity denormalizedData = EntityInitializer.getCourseUnitRealisation("R1", "RCODE1", organisationRunningQuery,
-            new LocalisedString("Toteutus 1", null, null), null, null, OffsetDateTime.now().minusMonths(1), null);
-
+            new LocalisedStringEntity("Toteutus 1", null, null), null, null, OffsetDateTime.now().minusMonths(1), null);
 
         courseUnitWithRealisation.setRealisations(Collections.singletonList(denormalizedData));
         courseUnitRepository.update(courseUnitWithRealisation);
@@ -820,14 +859,13 @@ public class StudiesServiceIntegrationTest {
         courseUnitWithAiRealisation.setCompletionOptions(Arrays.asList(completionOptionEntity, dummyCompletionOption));
         courseUnitRepository.update(courseUnitWithAiRealisation);
 
-
         // Generate course unit with realisations that are available in future
         CourseUnitEntity courseUnitWithRealisationInFuture = this.generateCourseUnit("CN2", LocalDate.now().minusYears(1), LocalDate.now().plusYears(1),
             "CU104", "CU104-ID1", "UEF","KURSSINIMI", "höpö course 2", "höpö kurs 2",
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity futureRealisation = EntityInitializer.getCourseUnitRealisation("R1", "RCODE1", organisationRunningQuery,
-            new LocalisedString("Toteutus 1", null, null),null, null,  OffsetDateTime.now().plusMonths(1), OffsetDateTime.now().plusMonths(3));
+            new LocalisedStringEntity("Toteutus 1", null, null),null, null,  OffsetDateTime.now().plusMonths(1), OffsetDateTime.now().plusMonths(3));
 
         courseUnitWithRealisationInFuture.setRealisations(Collections.singletonList(futureRealisation));
         courseUnitRepository.update(courseUnitWithRealisationInFuture);
@@ -860,14 +898,13 @@ public class StudiesServiceIntegrationTest {
         assertTrue(courseUnitResults.stream().anyMatch(cu -> cu.getStudyElementId().equals(courseUnitWithRealisation.getStudyElementId())));
         assertTrue(courseUnitResults.stream().anyMatch(cu -> cu.getStudyElementId().equals(courseUnitWithAiRealisation.getStudyElementId())));
 
-
         // Generate course unit with realisation with end time (still currently valid)
         CourseUnitEntity courseUnitWithRealisation2 = this.generateCourseUnit("CN2", LocalDate.now().minusYears(1), LocalDate.now().plusYears(1),
             "CU106", "CU106-ID1", "UEF","KURSSINIMI", "höpö course 2", "höpö kurs 2",
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity denormalizedDataWithEndTime = EntityInitializer.getCourseUnitRealisation("R3", "RCODE3", organisationRunningQuery,
-            new LocalisedString("Toteutus 3", null, null),null, null,  OffsetDateTime.now().minusMonths(1), OffsetDateTime.now().plusMonths(1));
+            new LocalisedStringEntity("Toteutus 3", null, null),null, null,  OffsetDateTime.now().minusMonths(1), OffsetDateTime.now().plusMonths(1));
 
         courseUnitWithRealisation2.setRealisations(Collections.singletonList(denormalizedDataWithEndTime));
         courseUnitRepository.update(courseUnitWithRealisation2);
@@ -886,14 +923,13 @@ public class StudiesServiceIntegrationTest {
         courseUnitWithAiRealisation2.setCompletionOptions(Arrays.asList(completionOptionEntity, dummyCompletionOption));
         courseUnitRepository.update(courseUnitWithAiRealisation2);
 
-
         // Generate course unit with realisations in past
         CourseUnitEntity courseUnitWithRealisationInPast = this.generateCourseUnit("CN2", LocalDate.now().minusYears(1), LocalDate.now().plusYears(1),
             "CU108", "CU108-ID1", "UEF","KURSSINIMI", "höpö course 2", "höpö kurs 2",
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity realisationInPast = EntityInitializer.getCourseUnitRealisation("R4", "RCODE4", organisationRunningQuery,
-            new LocalisedString("Toteutus 3", null, null), null, null, OffsetDateTime.now().minusMonths(2), OffsetDateTime.now().minusMonths(1));
+            new LocalisedStringEntity("Toteutus 3", null, null), null, null, OffsetDateTime.now().minusMonths(2), OffsetDateTime.now().minusMonths(1));
 
         courseUnitWithRealisationInPast.setRealisations(Collections.singletonList(realisationInPast));
         courseUnitRepository.update(courseUnitWithRealisationInPast);
@@ -931,7 +967,6 @@ public class StudiesServiceIntegrationTest {
         assertTrue(courseUnitResults.stream().anyMatch(cu -> cu.getStudyElementId().equals(courseUnitWithRealisation2.getStudyElementId())));
         assertTrue(courseUnitResults.stream().anyMatch(cu -> cu.getStudyElementId().equals(courseUnitWithAiRealisation2.getStudyElementId())));
 
-
         // Search by realisation start date and end date
         searchParameters = new StudiesSearchParameters();
         searchParameters.setRealisationEnrollmentStartDateTime(OffsetDateTime.now().minusDays(1));
@@ -961,7 +996,7 @@ public class StudiesServiceIntegrationTest {
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity realisationCoffeeName = EntityInitializer.getCourseUnitRealisation("R1", "RCODE1", organisationRunningQuery,
-            new LocalisedString("KAHVIA ja pullaa", "coffee REAL", "asd kafFE "), null, null, OffsetDateTime.now().minusMonths(1), null);
+            new LocalisedStringEntity("KAHVIA ja pullaa", "coffee REAL", "asd kafFE "), null, null, OffsetDateTime.now().minusMonths(1), null);
 
         courseUnitWithRealisationCoffeeName.setRealisations(Collections.singletonList(realisationCoffeeName));
         courseUnitRepository.update(courseUnitWithRealisationCoffeeName);
@@ -971,7 +1006,7 @@ public class StudiesServiceIntegrationTest {
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity realisationCoffeeCode = EntityInitializer.getCourseUnitRealisation("R2", "COFFEEEEEEEE", organisationRunningQuery,
-            new LocalisedString("CH", null, null),null, null,  OffsetDateTime.now().plusMonths(1), OffsetDateTime.now().plusMonths(3));
+            new LocalisedStringEntity("CH", null, null),null, null,  OffsetDateTime.now().plusMonths(1), OffsetDateTime.now().plusMonths(3));
 
         courseUnitWithRealisationCoffeeCode.setRealisations(Collections.singletonList(realisationCoffeeCode));
         courseUnitRepository.update(courseUnitWithRealisationCoffeeCode);
@@ -982,7 +1017,7 @@ public class StudiesServiceIntegrationTest {
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity realisationCoffeeName2 = EntityInitializer.getCourseUnitRealisation("R3", "CODE", organisationRunningQuery,
-            new LocalisedString("gg KAHVIA ja pullaa cc", "coffee REAL fast", "asd kafFE"), null, null, OffsetDateTime.now().minusMonths(1), null);
+            new LocalisedStringEntity("gg KAHVIA ja pullaa cc", "coffee REAL fast", "asd kafFE"), null, null, OffsetDateTime.now().minusMonths(1), null);
 
         AssessmentItemEntity dummyAssessmentItem = EntityInitializer.getAssessmentItemEntity("AI-2", "CU103");
         AssessmentItemEntity assessmentItemEntityWithRealisation = EntityInitializer.getAssessmentItemEntity("AI-1", "CU103");
@@ -998,7 +1033,7 @@ public class StudiesServiceIntegrationTest {
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity realisation2 = EntityInitializer.getCourseUnitRealisation("R4", "AAAAAAAAAAACOFFEE", organisationRunningQuery,
-            new LocalisedString("Toteutus 1", null, null),null, null,  OffsetDateTime.now().plusMonths(1), OffsetDateTime.now().plusMonths(3));
+            new LocalisedStringEntity("Toteutus 1", null, null),null, null,  OffsetDateTime.now().plusMonths(1), OffsetDateTime.now().plusMonths(3));
 
         dummyAssessmentItem = EntityInitializer.getAssessmentItemEntity("AI-3", "CU103");
         assessmentItemEntityWithRealisation = EntityInitializer.getAssessmentItemEntity("AI-4", "CU103");
@@ -1015,7 +1050,7 @@ public class StudiesServiceIntegrationTest {
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitRealisationEntity realisationOtherName = EntityInitializer.getCourseUnitRealisation("R1", "RCODE1", organisationRunningQuery,
-            new LocalisedString("jotain muuta", "anti-caffeine", "nothing"), null, null, OffsetDateTime.now().minusMonths(1), null);
+            new LocalisedStringEntity("jotain muuta", "anti-caffeine", "nothing"), null, null, OffsetDateTime.now().minusMonths(1), null);
 
         courseUnitWithRealisationOther.setRealisations(Collections.singletonList(realisationOtherName));
         courseUnitRepository.update(courseUnitWithRealisationOther);
@@ -1077,7 +1112,6 @@ public class StudiesServiceIntegrationTest {
         assertTrue(courseUnitResults.stream().anyMatch(cu -> cu.getStudyElementId().equals(courseUnitWithRealisationCoffeeName.getStudyElementId())));
         assertTrue(courseUnitResults.stream().noneMatch(cu -> cu.getStudyElementId().equals(courseUnitWithRealisationOther.getStudyElementId())));
 
-
         // Search by realisation start date now
         searchParameters = new StudiesSearchParameters();
         searchParameters.setRealisationQuery("jotain muu");
@@ -1102,19 +1136,19 @@ public class StudiesServiceIntegrationTest {
                                     String id, String code, String organizingOrganisationId,
                                     String nameFi, String nameEn, String nameSv,
                                     LocalDate courseUnitStartDate, LocalDate courseUnitEndDate) {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                networkId, new LocalisedString("Verkosto", null, null), true, networkStartDate, networkEndDate);
-        LocalisedString originalName = new LocalisedString(nameFi, nameEn, nameSv);
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                networkId, new LocalisedStringEntity("Verkosto", null, null), true, networkStartDate, networkEndDate);
+        LocalisedStringEntity originalName = new LocalisedStringEntity(nameFi, nameEn, nameSv);
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 id, code, organizingOrganisationId, Collections.singletonList(network), originalName);
 
-        Organisation organisation = DtoInitializer.getOrganisation(organizingOrganisationId, organizingOrganisationId);
-        OrganisationReference organisationReference = new OrganisationReference();
-        organisationReference.setOrganisationRole(OrganisationRole.ROLE_MAIN_ORGANIZER);
-        organisationReference.setOrganisation(organisation);
+        OrganisationDataEntity organisation = EntityInitializer.getOrganisation(organizingOrganisationId, organizingOrganisationId);
+        OrganisationReferenceEntity organisationReference = new OrganisationReferenceEntity();
+        organisationReference.setOrganisationRole(OrganisationRoleEntity.ROLE_MAIN_ORGANIZER);
+        organisationReference.setTarget(organisation);
         courseUnit.setOrganisationReferences(Collections.singletonList(organisationReference));
 
-        courseUnit.setStatus(StudyStatus.ACTIVE);
+        courseUnit.setStatus(StudyStatusEntity.ACTIVE);
         courseUnit.setValidityStartDate(courseUnitStartDate);
         courseUnit.setValidityEndDate(courseUnitEndDate);
         return courseUnitRepository.create(courseUnit);
@@ -1124,19 +1158,19 @@ public class StudiesServiceIntegrationTest {
                                                 String id, String code, String organizingOrganisationId,
                                                 String nameFi, String nameEn, String nameSv,
                                                 LocalDate courseUnitStartDate, LocalDate courseUnitEndDate) {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                networkId, new LocalisedString("Verkosto", null, null), true, networkStartDate, networkEndDate);
-        LocalisedString originalName = new LocalisedString(nameFi, nameEn, nameSv);
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                networkId, new LocalisedStringEntity("Verkosto", null, null), true, networkStartDate, networkEndDate);
+        LocalisedStringEntity originalName = new LocalisedStringEntity(nameFi, nameEn, nameSv);
         StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity(
                 id, code, organizingOrganisationId, Collections.singletonList(network), originalName);
 
-        Organisation organisation = DtoInitializer.getOrganisation(organizingOrganisationId, organizingOrganisationId);
-        OrganisationReference organisationReference = new OrganisationReference();
-        organisationReference.setOrganisationRole(OrganisationRole.ROLE_MAIN_ORGANIZER);
-        organisationReference.setOrganisation(organisation);
+        OrganisationDataEntity organisation = EntityInitializer.getOrganisation(organizingOrganisationId, organizingOrganisationId);
+        OrganisationReferenceEntity organisationReference = new OrganisationReferenceEntity();
+        organisationReference.setOrganisationRole(OrganisationRoleEntity.ROLE_MAIN_ORGANIZER);
+        organisationReference.setTarget(organisation);
         studyModule.setOrganisationReferences(Collections.singletonList(organisationReference));
 
-        studyModule.setStatus(StudyStatus.ACTIVE);
+        studyModule.setStatus(StudyStatusEntity.ACTIVE);
         studyModule.setValidityStartDate(courseUnitStartDate);
         studyModule.setValidityEndDate(courseUnitEndDate);
         return studyModuleRepository.create(studyModule);

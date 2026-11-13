@@ -23,7 +23,8 @@ public class StudyRecordControllerV8 extends AbstractController {
         tags = "studyrecords")
     @PostMapping(value = "/search/amounts")
     public Long findStudyRecordAmounts(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                        @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordAmountSearchParameters searchParams) {
+                                           @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                       @RequestBody StudyRecordAmountSearchParameters searchParams) {
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordAmountSearchParameters currentSearchParams =
             super.mapToDto(searchParams, fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.StudyRecordAmountSearchParameters.class);

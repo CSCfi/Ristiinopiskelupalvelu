@@ -1,11 +1,5 @@
 package fi.uta.ristiinopiskelu.handler.processor.courseunit;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
@@ -20,66 +14,56 @@ import fi.uta.ristiinopiskelu.handler.validator.studyelement.courseunit.UpdateCo
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
+import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.support.DefaultExchange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
-import java.text.SimpleDateFormat;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
+import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class UpdateCourseUnitProcessorTest {
-    
-    private static final Logger logger = LoggerFactory.getLogger(UpdateCourseUnitProcessorTest.class);
 
-    @MockBean
+    @MockitoBean
     private CourseUnitService courseUnitService;
 
-    @MockBean
+    @MockitoBean
     private NetworkService networkService;
 
-    @MockBean
+    @MockitoBean
     private OrganisationService organisationService;
 
-    @MockBean
+    @MockitoBean
     private JmsMessageForwarder jmsMessageForwarder;
 
-    @MockBean
+    @MockitoBean
     private MessageSchemaService messageSchemaService;
 
-    @MockBean
+    @MockitoBean
     private UpdateCourseUnitValidator validator;
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private UpdateCourseUnitProcessor processor;
 
     @BeforeEach
     public void before() {
-        objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .registerModule(new Jdk8Module());
-
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        objectMapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
-        objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
-
+        jsonMapper = new EsConfig().jsonMapper(null);
         processor = mock(UpdateCourseUnitProcessor.class, withSettings()
             .useConstructor(courseUnitService, networkService, organisationService, validator,
-                jmsMessageForwarder, objectMapper, messageSchemaService)
+                jmsMessageForwarder, jsonMapper, messageSchemaService)
             .defaultAnswer(CALLS_REAL_METHODS));
     }
 
@@ -93,16 +77,18 @@ public class UpdateCourseUnitProcessorTest {
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
         exchange.getIn().setHeader(MessageHeader.JMS_XUSERID, "TUNI");
         exchange.getIn().setBody(
-                "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"12345\",\n" +
-                "        \"studyElementIdentifierCode\": \"4CO19KBIOP\",\n" +
-                "        \"abbreviation\": \"Biop\",\n" +
-                "        \"teachingLanguage\": [\n" +
-                "            \"fi\"\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}"
+                """
+                    {
+                        "courseUnit": {
+                            "studyElementId": "12345",
+                            "studyElementIdentifierCode": "4CO19KBIOP",
+                            "abbreviation": "Biop",
+                            "teachingLanguage": [
+                                "fi"
+                            ]
+                        }
+                    }
+                """
         );
 
         when(courseUnitService.update(any(JsonNode.class), any(String.class))).thenReturn(

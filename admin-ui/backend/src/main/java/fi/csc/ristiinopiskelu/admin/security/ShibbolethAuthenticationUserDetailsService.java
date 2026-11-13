@@ -1,6 +1,7 @@
 package fi.csc.ristiinopiskelu.admin.security;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Role;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.RoleEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.UserRoleEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,10 +31,10 @@ public class ShibbolethAuthenticationUserDetailsService implements Authenticatio
 
         if(!CollectionUtils.isEmpty(userRoles)) {
             List<UserRoleEntity> adminRoles = userRoles.stream()
-                    .filter(ur -> ur.getRole() == Role.ADMIN)
+                    .filter(ur -> ur.getRole() == RoleEntity.ADMIN)
                     .toList();
             List<UserRoleEntity> superUserRoles = userRoles.stream()
-                    .filter(ur -> ur.getRole() == Role.SUPERUSER)
+                    .filter(ur -> ur.getRole() == RoleEntity.SUPERUSER)
                     .toList();
 
             if(adminRoles.size() > 1 || superUserRoles.size() > 1) {

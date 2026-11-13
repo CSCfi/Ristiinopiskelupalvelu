@@ -1,13 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.integration.service;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.studymodule.StudyModuleReadDTO;
@@ -18,6 +11,9 @@ import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
@@ -29,7 +25,6 @@ import fi.uta.ristiinopiskelu.handler.service.StudyModuleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,9 +41,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(EmbeddedElasticsearchInitializer.class)
 @SpringBootTest(classes = TestEsConfig.class)
@@ -69,9 +62,6 @@ public class StudyModuleServiceIntegrationTest {
     @Autowired
     private NetworkService networkService;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
     @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
@@ -82,20 +72,20 @@ public class StudyModuleServiceIntegrationTest {
         for(String organisationId : organisationIds) {
             if(!organisationService.findById(organisationId).isPresent()) {
                 OrganisationEntity organisation = EntityInitializer.getOrganisationEntity(organisationId, organisationId,
-                    new LocalisedString(organisationId, null, null), this.messageSchemaVersion);
-                organisationService.create(modelMapper.map(organisation, OrganisationEntity.class));
+                    new LocalisedStringEntity(organisationId, null, null), this.messageSchemaVersion);
+                organisationService.create(organisation);
             }
         }
 
         if(!networkService.findById("CN-1").isPresent()) {
-            Validity validity = new Validity();
-            validity.setContinuity(Validity.ContinuityEnum.FIXED);
+            ValidityEntity validity = new ValidityEntity();
+            validity.setContinuity(ValidityEntity.ContinuityEntity.FIXED);
             validity.setStart(OffsetDateTime.now().minusYears(1));
             validity.setEnd(OffsetDateTime.now().plusYears(2));
 
-            List<NetworkOrganisation> networkOrganisations = organisationIds.stream()
-                .map(orgId -> new NetworkOrganisation(orgId, true, validity)).collect(Collectors.toList());
-            NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", new LocalisedString("Verkosto", null, null),
+            List<NetworkOrganisationEntity> networkOrganisations = organisationIds.stream()
+                .map(orgId -> new NetworkOrganisationEntity(orgId, true, validity)).collect(Collectors.toList());
+            NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", new LocalisedStringEntity("Verkosto", null, null),
                 networkOrganisations, validity, true);
             networkService.create(networkEntity);
         }
@@ -123,8 +113,8 @@ public class StudyModuleServiceIntegrationTest {
             Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5), null);
         studyModule.setStatus(StudyStatus.ACTIVE);
 
-        CourseUnitEntity courseUnitEntity = (CourseUnitEntity) courseUnitService.create(modelMapper.map(courseUnit, CourseUnitEntity.class)).get(0).getCurrent();
-        StudyModuleEntity studyModuleEntity = (StudyModuleEntity) studyModuleService.create(modelMapper.map(studyModule, StudyModuleEntity.class)).get(0).getCurrent();
+        CourseUnitEntity courseUnitEntity = (CourseUnitEntity) courseUnitService.create(CourseUnitEntity.from(courseUnit)).get(0).getCurrent();
+        StudyModuleEntity studyModuleEntity = (StudyModuleEntity) studyModuleService.create(StudyModuleEntity.from(studyModule)).get(0).getCurrent();
 
         assertEquals(courseUnit.getStudyElementId(), courseUnitEntity.getStudyElementId());
         assertEquals(courseUnit.getStudyElementIdentifierCode(), courseUnitEntity.getStudyElementIdentifierCode());
@@ -160,7 +150,7 @@ public class StudyModuleServiceIntegrationTest {
             Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5), null);
         studyModule.setStatus(StudyStatus.ACTIVE);
 
-        StudyModuleEntity studyModuleEntity = (StudyModuleEntity) studyModuleService.create(modelMapper.map(studyModule, StudyModuleEntity.class)).get(0).getCurrent();
+        StudyModuleEntity studyModuleEntity = (StudyModuleEntity) studyModuleService.create(StudyModuleEntity.from(studyModule)).get(0).getCurrent();
 
         assertEquals(studyModule.getStudyElementId(), studyModuleEntity.getStudyElementId());
         assertEquals(studyModule.getStudyElementIdentifierCode(), studyModuleEntity.getStudyElementIdentifierCode());
@@ -198,7 +188,7 @@ public class StudyModuleServiceIntegrationTest {
         studyModule.setValidityStartDate(LocalDate.now().minusYears(2));
         studyModule.setValidityEndDate(LocalDate.now().minusYears(1));
 
-        StudyModuleEntity studyModuleEntity = (StudyModuleEntity) studyModuleService.create(modelMapper.map(studyModule, StudyModuleEntity.class)).get(0).getCurrent();
+        StudyModuleEntity studyModuleEntity = (StudyModuleEntity) studyModuleService.create(StudyModuleEntity.from(studyModule)).get(0).getCurrent();
 
         assertEquals(studyModule.getStudyElementId(), studyModuleEntity.getStudyElementId());
         assertEquals(studyModule.getStudyElementIdentifierCode(), studyModuleEntity.getStudyElementIdentifierCode());

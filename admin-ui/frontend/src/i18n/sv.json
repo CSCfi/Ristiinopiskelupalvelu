@@ -53,6 +53,9 @@
   "pay": "Avgiftsbelagd",
   "pricingBasis": "Prissättningsgrund",
   "price": "Pris",
+  "unsaved": "ej sparad",
+  "copyToClipboard": "Kopiera till urklipp",
+  "copiedToClipboard": "Kopierad till urklipp",
 
   "networkPublished": "Publicerad",
   "networkIdentifier": "Id",
@@ -78,6 +81,8 @@
   "continuity": "Kontinuitet",
   "addOrganisation": "Lägg till en organisation",
   "addNetwork": "Lägg till en ny nätverk",
+  "noOrganisations": "Inga organisationer",
+  "noValues": "Inga värden",
 
   "noPermissions": "Inga rättigheter!",
   "noPermissions2": "Du har inte tillräckliga rättigheter för att redigera kodlistor.",

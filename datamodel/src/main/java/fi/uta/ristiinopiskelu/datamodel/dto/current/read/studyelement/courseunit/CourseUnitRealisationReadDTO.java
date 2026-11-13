@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Schema(name = "CourseUnitRealisationV9", title = "CourseUnitRealisationV9")
 public class CourseUnitRealisationReadDTO {
@@ -151,8 +152,8 @@ public class CourseUnitRealisationReadDTO {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof CourseUnitRealisationEntity)) return false;
-        CourseUnitRealisationEntity that = (CourseUnitRealisationEntity) o;
+        if (!(o instanceof CourseUnitRealisationReadDTO)) return false;
+        CourseUnitRealisationReadDTO that = (CourseUnitRealisationReadDTO) o;
         return isEnrollmentClosed() == that.isEnrollmentClosed() &&
             Objects.equals(getRealisationId(), that.getRealisationId()) &&
             Objects.equals(getRealisationIdentifierCode(), that.getRealisationIdentifierCode()) &&
@@ -170,5 +171,30 @@ public class CourseUnitRealisationReadDTO {
     @Override
     public int hashCode() {
         return Objects.hash(getRealisationId(), getRealisationIdentifierCode(), getOrganizingOrganisationId(), getName(), getEnrollmentStartDateTime(), getEnrollmentEndDateTime(), getStartDate(), getEndDate(), isEnrollmentClosed(), getCooperationNetworks(), getTeachingLanguage(), getStatus());
+    }
+
+    public static List<CourseUnitRealisationReadDTO> from(List<CourseUnitRealisationEntity> source) {
+        if (source == null) {
+            return null;
+        }
+
+        return source.stream()
+            .map(cur -> {
+                CourseUnitRealisationReadDTO dto = new CourseUnitRealisationReadDTO();
+                dto.setRealisationId(cur.getRealisationId());
+                dto.setRealisationIdentifierCode(cur.getRealisationIdentifierCode());
+                dto.setName(LocalisedString.from(cur.getName()));
+                dto.setEnrollmentStartDateTime(cur.getEnrollmentStartDateTime());
+                dto.setEnrollmentEndDateTime(cur.getEnrollmentEndDateTime());
+                dto.setStartDate(cur.getStartDate());
+                dto.setEndDate(cur.getEndDate());
+                dto.setCooperationNetworks(CooperationNetwork.from(cur.getCooperationNetworks()));
+                dto.setTeachingLanguage(cur.getTeachingLanguage());
+                dto.setStatus(StudyStatus.from(cur.getStatus()));
+                dto.setMinEduGuidanceArea(MinEduGuidanceArea.from(cur.getMinEduGuidanceArea()));
+                dto.setEnrollmentClosed(cur.isEnrollmentClosed());
+                dto.setOrganizingOrganisationId(cur.getOrganizingOrganisationId());
+                return dto;
+            }).collect(Collectors.toList());
     }
 }

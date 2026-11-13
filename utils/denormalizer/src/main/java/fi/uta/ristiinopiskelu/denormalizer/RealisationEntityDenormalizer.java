@@ -1,14 +1,13 @@
 package fi.uta.ristiinopiskelu.denormalizer;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
 import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +32,6 @@ public class RealisationEntityDenormalizer implements Denormalizer<RealisationEn
     @Autowired
     private CourseUnitRepository courseUnitRepository;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
     @Override
     public void denormalize() {
         List<RealisationEntity> realisationEntities = StreamSupport.stream(realisationRepository.findAll(Pageable.unpaged()).spliterator(), false)
@@ -46,12 +42,12 @@ public class RealisationEntityDenormalizer implements Denormalizer<RealisationEn
         }
     }
 
-    private void addOrUpdateDenormalizedData(RealisationEntity realisationToDenormalize, List<StudyElementReference> references) {
+    private void addOrUpdateDenormalizedData(RealisationEntity realisationToDenormalize, List<StudyElementReferenceEntity> references) {
         if(CollectionUtils.isEmpty(references)) {
             return;
         }
 
-        for(StudyElementReference reference : references) {
+        for(StudyElementReferenceEntity reference : references) {
             CourseUnitEntity referencedCourseUnit = getReferencedCourseUnitEntity(reference);
 
             // This should be validated before calling and should not happen. Cannot throw exception here since it would
@@ -62,20 +58,20 @@ public class RealisationEntityDenormalizer implements Denormalizer<RealisationEn
                 continue;
             }
 
-            CourseUnitRealisationEntity courseUnitRealisationEntity = modelMapper.map(realisationToDenormalize, CourseUnitRealisationEntity.class);
+            CourseUnitRealisationEntity courseUnitRealisationEntity = toCourseUnitRealisationEntity(realisationToDenormalize);
             addOrUpdateCourseUnitRealisation(reference, referencedCourseUnit, courseUnitRealisationEntity);
             courseUnitRepository.update(referencedCourseUnit);
         }
     }
 
 
-    private void addOrUpdateCourseUnitRealisation(StudyElementReference reference, CourseUnitEntity referencedCourseUnit,
+    private void addOrUpdateCourseUnitRealisation(StudyElementReferenceEntity reference, CourseUnitEntity referencedCourseUnit,
                                                   CourseUnitRealisationEntity newCourseUnitRealisationEntity) {
         Predicate<CourseUnitRealisationEntity> referenceMatchesToDenormalizedData =
             cur -> cur.getRealisationId().equals(newCourseUnitRealisationEntity.getRealisationId())
                 && cur.getOrganizingOrganisationId().equals(newCourseUnitRealisationEntity.getOrganizingOrganisationId());
 
-        if(reference.getReferenceType() == StudyElementType.ASSESSMENT_ITEM) {
+        if(reference.getReferenceType() == StudyElementTypeEntity.ASSESSMENT_ITEM) {
             for(AssessmentItemEntity assessmentItemEntity : referencedCourseUnit.getAssessmentItems()) {
                 if(assessmentItemEntity.getAssessmentItemId().equals(reference.getReferenceAssessmentItemId())) {
                     if(assessmentItemEntity.getRealisations() == null) {
@@ -104,8 +100,8 @@ public class RealisationEntityDenormalizer implements Denormalizer<RealisationEn
         }
     }
 
-    private CourseUnitEntity getReferencedCourseUnitEntity(StudyElementReference reference) {
-        if(reference.getReferenceType() == StudyElementType.ASSESSMENT_ITEM) {
+    private CourseUnitEntity getReferencedCourseUnitEntity(StudyElementReferenceEntity reference) {
+        if(reference.getReferenceType() == StudyElementTypeEntity.ASSESSMENT_ITEM) {
             return courseUnitRepository.findByIdAndAssessmentItemIdAndOrganizer(
                 reference.getReferenceIdentifier(), reference.getReferenceAssessmentItemId(), reference.getReferenceOrganizer())
                 .orElse(null);
@@ -114,5 +110,23 @@ public class RealisationEntityDenormalizer implements Denormalizer<RealisationEn
                 reference.getReferenceIdentifier(), reference.getReferenceOrganizer())
                 .orElse(null);
         }
+    }
+
+    private CourseUnitRealisationEntity toCourseUnitRealisationEntity(RealisationEntity source) {
+        CourseUnitRealisationEntity target = new CourseUnitRealisationEntity();
+        target.setRealisationId(source.getRealisationId());
+        target.setRealisationIdentifierCode(source.getRealisationIdentifierCode());
+        target.setOrganizingOrganisationId(source.getOrganizingOrganisationId());
+        target.setName(source.getName());
+        target.setEnrollmentStartDateTime(source.getEnrollmentStartDateTime());
+        target.setEnrollmentEndDateTime(source.getEnrollmentEndDateTime());
+        target.setStartDate(source.getStartDate());
+        target.setEndDate(source.getEndDate());
+        target.setEnrollmentClosed(source.isEnrollmentClosed());
+        target.setCooperationNetworks(source.getCooperationNetworks());
+        target.setTeachingLanguage(source.getTeachingLanguage());
+        target.setStatus(source.getStatus());
+        target.setMinEduGuidanceArea(source.getMinEduGuidanceArea());
+        return target;
     }
 }

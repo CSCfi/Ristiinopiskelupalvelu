@@ -5,7 +5,7 @@
 
     <groupId>fi.csc.ristiinopiskelu</groupId>
     <artifactId>admin-ui-frontend</artifactId>
-    <version>9.0.28</version>
+    <version>9.0.35</version>
     <packaging>pom</packaging>
 
     <name>admin-ui-frontend</name>
@@ -14,15 +14,16 @@
     <parent>
         <groupId>fi.csc.ristiinopiskelu</groupId>
         <artifactId>admin-ui-parent</artifactId>
-        <version>9.0.28</version>
-        <relativePath>../</relativePath>
+        <version>9.0.35</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>21</java.version>
-        <frontend-maven-plugin.version>1.10.0</frontend-maven-plugin.version>
+        <frontend-maven-plugin.version>2.0.0</frontend-maven-plugin.version>
+        <npm.package.version>${project.version}</npm.package.version>
     </properties>
 
     <build>
@@ -39,8 +40,8 @@
                             <goal>install-node-and-npm</goal>
                         </goals>
                         <configuration>
-                            <nodeVersion>v16.13.2</nodeVersion>
-                            <npmVersion>8.1.2</npmVersion>
+                            <nodeVersion>v24.11.1</nodeVersion>
+                            <npmVersion>11.6.2</npmVersion>
                         </configuration>
                     </execution>
                     <!-- Install all project dependencies -->
@@ -54,6 +55,15 @@
                         <!-- Optional configuration which provides for running any npm command -->
                         <configuration>
                             <arguments>install</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm run lint</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run lint</arguments>
                         </configuration>
                     </execution>
                     <!-- Build and minify static files -->
@@ -94,4 +104,51 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>ci</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend-maven-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>sync npm package version</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>generate-resources</phase>
+                                <configuration>
+                                    <arguments>version ${npm.package.version} --no-git-tag-version --allow-same-version</arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create npm sbom</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <arguments>run create-sbom</arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>npm publish</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>deploy</phase>
+                                <configuration>
+                                    <arguments>publish --tag latest</arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

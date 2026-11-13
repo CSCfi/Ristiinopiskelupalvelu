@@ -20,6 +20,8 @@ spring:
 tomcat:
   ajp:
     port: 8099
+    secret-required: false
+    secret:
 
 general:
   message-schema:

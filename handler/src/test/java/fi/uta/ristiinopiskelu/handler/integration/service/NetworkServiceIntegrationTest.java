@@ -1,14 +1,14 @@
 package fi.uta.ristiinopiskelu.handler.integration.service;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LanguageEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
-import org.apache.http.HttpStatus;
-import org.elasticsearch.client.ResponseException;
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,11 +35,11 @@ public class NetworkServiceIntegrationTest {
     public void testUpdate_shouldUpdateNetwork() {
         NetworkEntity origEntity = new NetworkEntity();
         origEntity.setId("ABCD-NETWORK-1");
-        origEntity.setName(new LocalisedString("Testiverkosto","TestiverkostoEN","TestiverkostoSV"));
+        origEntity.setName(new LocalisedStringEntity("Testiverkosto","TestiverkostoEN","TestiverkostoSV"));
         networkService.create(origEntity);
         origEntity = networkService.findById(origEntity.getId()).get();
 
-        LocalisedString newName = new LocalisedString("Testiverkosto MOD","TestiverkostoEN MOD","TestiverkostoSV MOD");
+        LocalisedStringEntity newName = new LocalisedStringEntity("Testiverkosto MOD","TestiverkostoEN MOD","TestiverkostoSV MOD");
         origEntity.setId("ABCD-NETWORK-1");
         origEntity.setName(newName);
 
@@ -47,20 +47,20 @@ public class NetworkServiceIntegrationTest {
 
         NetworkEntity updatedEntity = networkService.findById("ABCD-NETWORK-1").orElse(null);
         assertNotNull(updatedEntity);
-        assertEquals(updatedEntity.getName().getValue(Language.FI), newName.getValue(Language.FI));
+        assertEquals(updatedEntity.getName().getValue(LanguageEntity.FI), newName.getValue(LanguageEntity.FI));
         assertEquals(2L, updatedEntity.getVersion());
     }
     
     @Test
     public void testUpdate_shouldNotUpdateBecauseOptimisticLock() {
-        LocalisedString origName = new LocalisedString("Testiverkosto","TestiverkostoEN","TestiverkostoSV");
+        LocalisedStringEntity origName = new LocalisedStringEntity("Testiverkosto","TestiverkostoEN","TestiverkostoSV");
         NetworkEntity origEntity = new NetworkEntity();
         origEntity.setId("ABCD-NETWORK-2");
         origEntity.setName(origName);
 
         final NetworkEntity created = (NetworkEntity) networkService.create(origEntity).get(0).getCurrent();
 
-        LocalisedString newName = new LocalisedString("Testiverkosto MOD","TestiverkostoEN MOD","TestiverkostoSV MOD");
+        LocalisedStringEntity newName = new LocalisedStringEntity("Testiverkosto MOD","TestiverkostoEN MOD","TestiverkostoSV MOD");
         created.setVersion(0L); // Set version one step lower so VersionConflictEngineException should be thrown
         created.setId("ABCD-NETWORK-2");
         created.setName(newName);
@@ -68,14 +68,14 @@ public class NetworkServiceIntegrationTest {
         UpdateFailedException exception = Assertions.assertThrows(UpdateFailedException.class,
             () -> networkService.update(created));
         assertTrue(exception.getCause() instanceof VersionConflictException);
-        assertTrue(exception.getCause().getCause() instanceof ResponseException);
-        ResponseException responseException = (ResponseException) exception.getCause().getCause();
-        assertEquals(HttpStatus.SC_CONFLICT, responseException.getResponse().getStatusLine().getStatusCode());
+        assertTrue(exception.getCause().getCause() instanceof ElasticsearchException);
+        ElasticsearchException elasticsearchException = (ElasticsearchException) exception.getCause().getCause();
+        assertEquals(HttpStatus.SC_CONFLICT, elasticsearchException.status());
                 
         NetworkEntity updatedEntity = networkService.findById("ABCD-NETWORK-2").orElse(null);
         assertNotNull(updatedEntity);
-        assertEquals(updatedEntity.getName().getValue(Language.FI), origName.getValue(Language.FI));
-        assertNotEquals(updatedEntity.getName().getValue(Language.FI), newName.getValue(Language.FI));
+        assertEquals(updatedEntity.getName().getValue(LanguageEntity.FI), origName.getValue(LanguageEntity.FI));
+        assertNotEquals(updatedEntity.getName().getValue(LanguageEntity.FI), newName.getValue(LanguageEntity.FI));
         assertEquals(1L, updatedEntity.getVersion());
     }
 }

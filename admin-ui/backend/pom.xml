@@ -5,7 +5,7 @@
 
     <groupId>fi.csc.ristiinopiskelu</groupId>
     <artifactId>admin-ui-backend</artifactId>
-    <version>9.0.28</version>
+    <version>9.0.35</version>
     <packaging>jar</packaging>
 
     <name>admin-ui-backend</name>
@@ -14,8 +14,8 @@
     <parent>
         <groupId>fi.csc.ristiinopiskelu</groupId>
         <artifactId>admin-ui-parent</artifactId>
-        <version>9.0.28</version>
-        <relativePath>../</relativePath>
+        <version>9.0.35</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <properties>
@@ -39,7 +39,7 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
         <dependency>
@@ -87,7 +87,12 @@
 
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>elasticsearch</artifactId>
+            <artifactId>testcontainers</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-elasticsearch</artifactId>
         </dependency>
     </dependencies>
 

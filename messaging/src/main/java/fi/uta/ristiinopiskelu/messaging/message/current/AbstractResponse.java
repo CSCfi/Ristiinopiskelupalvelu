@@ -1,11 +1,13 @@
 package fi.uta.ristiinopiskelu.messaging.message.current;
 
 import fi.uta.ristiinopiskelu.messaging.message.Message;
+import fi.uta.ristiinopiskelu.messaging.message.ErrorCode;
 
 public abstract class AbstractResponse implements Message {
     
     private Status status;
     private String message;
+    private Integer errorCode;
 
     public AbstractResponse() {
         
@@ -17,6 +19,11 @@ public abstract class AbstractResponse implements Message {
         }
         this.status = status;
         this.message = message;
+    }
+
+    public AbstractResponse(Status status, String message, ErrorCode errorCode) {
+        this(status, message);
+        this.errorCode = errorCode != null ? errorCode.getCode() : null;
     }
 
     public Status getStatus() {
@@ -33,5 +40,13 @@ public abstract class AbstractResponse implements Message {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public Integer getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(Integer errorCode) {
+        this.errorCode = errorCode;
     }
 }

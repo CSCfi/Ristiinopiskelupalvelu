@@ -3,6 +3,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
+import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.util.CollectionUtils;
 
@@ -336,11 +337,47 @@ public class RealisationReadDTO {
         if(!CollectionUtils.isEmpty(this.getOrganisationReferences())) {
             for(OrganisationReference ref : this.getOrganisationReferences()) {
                 if (ref.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER) {
-                    return ref.getOrganisation().getOrganisationTkCode();
+                    return ref.getTarget().getOrganisationTkCode();
                 }
             }
         }
 
         return null;
+    }
+
+    public static RealisationReadDTO from(RealisationEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        RealisationReadDTO target = new RealisationReadDTO();
+        target.setRealisationId(source.getRealisationId());
+        target.setRealisationIdentifierCode(source.getRealisationIdentifierCode());
+        target.setSelections(Selection.from(source.getSelections()));
+        target.setQuestionSets(QuestionSet.from(source.getQuestionSets()));
+        target.setEnrollmentStartDateTime(source.getEnrollmentStartDateTime());
+        target.setEnrollmentEndDateTime(source.getEnrollmentEndDateTime());
+        target.setStartDate(source.getStartDate());
+        target.setEndDate(source.getEndDate());
+        target.setPersonReferences(PersonReference.from(source.getPersonReferences()));
+        target.setMinSeats(source.getMinSeats());
+        target.setMaxSeats(source.getMaxSeats());
+        target.setLocation(Address.from(source.getLocation()));
+        target.setOrganisationSpecificDescriptions(Description.from(source.getOrganisationSpecificDescriptions()));
+        target.setStudyElementReferences(StudyElementReference.from(source.getStudyElementReferences()));
+        target.setName(LocalisedString.from(source.getName()));
+        target.setOrganisationReferences(OrganisationReference.from(source.getOrganisationReferences()));
+        target.setGroupSelections(Selection.from(source.getGroupSelections()));
+        target.setCooperationNetworks(CooperationNetwork.from(source.getCooperationNetworks()));
+        target.setCreatedTime(source.getCreatedTime());
+        target.setUpdateTime(source.getUpdateTime());
+        target.setGroupQuotas(GroupQuota.from(source.getGroupQuotas()));
+        target.setStatus(StudyStatus.from(source.getStatus()));
+        target.setCreditsMin(source.getCreditsMin());
+        target.setCreditsMax(source.getCreditsMax());
+        target.setTeachingLanguage(source.getTeachingLanguage());
+        target.setMinEduGuidanceArea(MinEduGuidanceArea.from(source.getMinEduGuidanceArea()));
+        target.setEnrollmentClosed(source.isEnrollmentClosed());
+        return target;
     }
 }

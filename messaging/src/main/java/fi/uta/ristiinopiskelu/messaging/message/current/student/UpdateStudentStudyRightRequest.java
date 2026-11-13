@@ -2,6 +2,8 @@ package fi.uta.ristiinopiskelu.messaging.message.current.student;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentStudyRight;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudentEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudentStudyRightEntity;
 import fi.uta.ristiinopiskelu.messaging.message.current.AbstractPersonIdentifiableRequest;
 
 public class UpdateStudentStudyRightRequest extends AbstractPersonIdentifiableRequest {
@@ -40,4 +42,15 @@ public class UpdateStudentStudyRightRequest extends AbstractPersonIdentifiableRe
     public String getPersonOid() {
         return oid;
     }
+
+    public static StudentEntity toStudentEntity(UpdateStudentStudyRightRequest source) {
+        if (source == null) {
+            return null;
+        }
+
+        StudentEntity target = new StudentEntity();
+        target.setHomeStudyRight(StudentStudyRightEntity.from(source.getHomeStudyRight()));
+        return target;
+    }
+
 }

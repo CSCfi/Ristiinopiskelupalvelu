@@ -1,91 +1,105 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.AddressEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Address
- * 
+ *
  * @author Eero Manninen <eero.manninen@studyo.fi>
- * 
- *         Based on
- *         https://wiki.eduuni.fi/download/attachments/70202805/CSC6_curriculum_api_1.0.0-oas3_swagger.json?version=1&modificationDate=1531828139937&api=v2
+ * <p>
+ * Based on
+ * https://wiki.eduuni.fi/download/attachments/70202805/CSC6_curriculum_api_1.0.0-oas3_swagger.json?version=1&modificationDate=1531828139937&api=v2
  */
 @Schema(name = "AddressV9", title = "AddressV9")
 public class Address {
 
-  @JsonProperty("street")
-  private String street = null;
+    @JsonProperty("street")
+    private String street = null;
 
-  @JsonProperty("postalCode")
-  private String postalCode = null;
+    @JsonProperty("postalCode")
+    private String postalCode = null;
 
-  @JsonProperty("postOffice")
-  private String postOffice = null;
-  
-  @JsonProperty("country")
-  private Country country = null;
+    @JsonProperty("postOffice")
+    private String postOffice = null;
 
-  /**
-   * M2 4.1.5/6.1
-   * 
-   * @return street
-   **/
+    @JsonProperty("country")
+    private Country country = null;
 
-  @Schema(description = "M2 4.1.5/6.1")
-  public String getStreet() {
-    return street;
-  }
+    /**
+     * M2 4.1.5/6.1
+     *
+     * @return street
+     **/
 
-  public void setStreet(String street) {
-    this.street = street;
-  }
+    @Schema(description = "M2 4.1.5/6.1")
+    public String getStreet() {
+        return street;
+    }
 
-  public Address postalCode(String postalCode) {
-    this.postalCode = postalCode;
-    return this;
-  }
+    public void setStreet(String street) {
+        this.street = street;
+    }
 
-  /**
-   * In Finland they are numbers < 100 000
-   * 
-   * @return postalCode
-   **/
-  @Schema(description = "In Finland they are numbers < 100 000")
-  public String getPostalCode() {
-    return postalCode;
-  }
+    public Address postalCode(String postalCode) {
+        this.postalCode = postalCode;
+        return this;
+    }
 
-  public void setPostalCode(String postalCode) {
-    this.postalCode = postalCode;
-  }
+    /**
+     * In Finland they are numbers < 100 000
+     *
+     * @return postalCode
+     **/
+    @Schema(description = "In Finland they are numbers < 100 000")
+    public String getPostalCode() {
+        return postalCode;
+    }
 
-  /**
-   * M2 4.1.5/6.3
-   * 
-   * @return postOffice
-   **/
+    public void setPostalCode(String postalCode) {
+        this.postalCode = postalCode;
+    }
 
-  @Schema(description = "M2 4.1.5/6.3")
-  public String getPostOffice() {
-    return postOffice;
-  }
+    /**
+     * M2 4.1.5/6.3
+     *
+     * @return postOffice
+     **/
 
-  public void setPostOffice(String postOffice) {
-    this.postOffice = postOffice;
-  }
+    @Schema(description = "M2 4.1.5/6.3")
+    public String getPostOffice() {
+        return postOffice;
+    }
 
-  /**
-   * M2 4.1.5/6.4
-   * 
-   * @return country
-   **/
-  @Schema(description = "M2 4.1.5/6.4")
-  public Country getCountry() {
-    return country;
-  }
+    public void setPostOffice(String postOffice) {
+        this.postOffice = postOffice;
+    }
 
-  public void setCountry(Country country) {
-    this.country = country;
-  }
+    /**
+     * M2 4.1.5/6.4
+     *
+     * @return country
+     **/
+    @Schema(description = "M2 4.1.5/6.4")
+    public Country getCountry() {
+        return country;
+    }
+
+    public void setCountry(Country country) {
+        this.country = country;
+    }
+
+    public static Address from(AddressEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        Address target = new Address();
+        target.setStreet(source.getStreet());
+        target.setPostalCode(source.getPostalCode());
+        target.setPostOffice(source.getPostOffice());
+        target.setCountry(source.getCountry() == null ? null : Country.fromValue(source.getCountry().getCode()));
+        return target;
+    }
 }

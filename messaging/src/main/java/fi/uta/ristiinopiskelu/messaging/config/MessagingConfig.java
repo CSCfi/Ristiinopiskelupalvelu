@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.messaging.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.messaging.MessageTypeClassProvider;
 import fi.uta.ristiinopiskelu.messaging.jms.VersionedMessageTypeAwareDelegatingMessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -18,7 +18,7 @@ import org.springframework.jms.support.converter.MessageConverter;
 public class MessagingConfig {
 
     @Bean
-    public MessageConverter mappingJackson2MessageConverter(ObjectMapper objectMapper, MessageTypeClassProvider messageTypeClassProvider) {
-        return new VersionedMessageTypeAwareDelegatingMessageConverter(objectMapper, messageTypeClassProvider);
+    public MessageConverter mappingJackson2MessageConverter(JsonMapper jsonMapper, MessageTypeClassProvider messageTypeClassProvider) {
+        return new VersionedMessageTypeAwareDelegatingMessageConverter(jsonMapper, messageTypeClassProvider);
     }
 }

@@ -1,5 +1,7 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CompositeIdentifiedEntityTypeEntity;
+
 public enum CompositeIdentifiedEntityType {
 
     STUDY_MODULE,
@@ -15,5 +17,15 @@ public enum CompositeIdentifiedEntityType {
         }
 
         throw new IllegalArgumentException("Cannot match StudyElementType '" + studyElementType.name() + "' to CompositeIdentifiedEntityType");
+    }
+
+    public static CompositeIdentifiedEntityType from(CompositeIdentifiedEntityTypeEntity typeEntity) {
+        for(CompositeIdentifiedEntityType type : CompositeIdentifiedEntityType.values()) {
+            if(type.name().equals(typeEntity.name())) {
+                return type;
+            }
+        }
+
+        throw new IllegalArgumentException("Cannot match CompositeIdentifiedEntityTypeEntity '" + typeEntity.name() + "' to CompositeIdentifiedEntityType");
     }
 }

@@ -53,6 +53,9 @@
   "pay": "Pay",
   "pricingBasis": "Pricing basis",
   "price": "Price",
+  "unsaved": "unsaved",
+  "copyToClipboard": "Copy to clipboard",
+  "copiedToClipboard": "Copied to clipboard",
 
   "networkPublished": "Published",
   "networkIdentifier": "Identifier",
@@ -78,6 +81,8 @@
   "continuity": "Continuity",
   "addOrganisation": "Add organisation",
   "addNetwork": "Add new network",
+  "noOrganisations": "No organisations",
+  "noValues": "No values",
 
   "noPermissions": "No permission! ",
   "noPermissions2": "You do not have permission to modify the code list information",

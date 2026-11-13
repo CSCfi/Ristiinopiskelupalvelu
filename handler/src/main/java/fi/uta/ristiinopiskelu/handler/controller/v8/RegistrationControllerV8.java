@@ -28,7 +28,8 @@ public class RegistrationControllerV8 extends AbstractController {
         "tilojen lukumääriä annetuista verkostoista.", tags = "registrations")
     @PostMapping(value = "/search/status/amounts")
     public RegistrationStatusAmountSearchResults search(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                            @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody RegistrationStatusAmountSearchParameters searchParams) {
+                                                            @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                        @RequestBody RegistrationStatusAmountSearchParameters searchParams) {
         fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationStatusAmountSearchResults result =
             registrationService.searchStatusAmounts(SSL_CLIENT_S_DN_O,
                 super.mapToDto(searchParams, fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationStatusAmountSearchParameters.class));
@@ -39,7 +40,8 @@ public class RegistrationControllerV8 extends AbstractController {
         "annetuilla hakuehdoilla.", tags = "registrations")
     @PostMapping(value = "/search/amounts")
     public List<RegistrationAmountSearchResult> search(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                           @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody RegistrationAmountSearchParameters searchParams) {
+                                                           @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                       @RequestBody RegistrationAmountSearchParameters searchParams) {
         fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchResults results =
             registrationService.searchAmounts(SSL_CLIENT_S_DN_O,
                 super.mapToDto(searchParams, fi.uta.ristiinopiskelu.datamodel.dto.current.search.registration.RegistrationAmountSearchParameters.class));

@@ -4,7 +4,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelectionParent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentStudyRight;
@@ -43,7 +44,7 @@ public class DtoInitializer {
 
     public static OrganisationReference getOrganisationReference(Organisation organisation, OrganisationRole role) {
         OrganisationReference organisationReference = new OrganisationReference();
-        organisationReference.setOrganisation(organisation);
+        organisationReference.setTarget(organisation);
         organisationReference.setPercent(new BigDecimal(100));
         organisationReference.setOrganisationRole(role);
         return organisationReference;
@@ -159,9 +160,9 @@ public class DtoInitializer {
         return studyElement;
     }
 
-    private static RegistrationSelection getRegistrationSelection(String studyElementId, RegistrationSelectionItemType type,
-                                                                 RegistrationSelectionItemStatus status, RegistrationSelection parent, List<String> subGroupSelections) {
-        RegistrationSelection selection = new RegistrationSelection();
+    private static CreateRegistrationSelection getRegistrationSelection(String studyElementId, RegistrationSelectionItemType type,
+                                                                        RegistrationSelectionItemStatus status, CreateRegistrationSelectionParent parent, List<String> subGroupSelections) {
+        CreateRegistrationSelection selection = new CreateRegistrationSelection();
         selection.setSelectionItemId(studyElementId);
         selection.setSelectionItemType(type);
         selection.setSelectionItemStatus(status);
@@ -170,30 +171,39 @@ public class DtoInitializer {
         return selection;
     }
 
-    public static RegistrationSelection getRegistrationSelectionCourseUnitParent(String studyElementId) {
-        return getRegistrationSelection(studyElementId, RegistrationSelectionItemType.COURSE_UNIT,
-                null, null, null);
+    private static CreateRegistrationSelectionParent getRegistrationSelectionParent(String studyElementId, RegistrationSelectionItemType type,
+                                                                                    CreateRegistrationSelectionParent parent) {
+        CreateRegistrationSelectionParent selection = new CreateRegistrationSelectionParent();
+        selection.setSelectionItemId(studyElementId);
+        selection.setSelectionItemType(type);
+        selection.setParent(parent);
+        return selection;
     }
 
-    public static RegistrationSelection getRegistrationSelectionCourseUnit(String studyElementId, RegistrationSelectionItemStatus status) {
+    public static CreateRegistrationSelectionParent getRegistrationSelectionCourseUnitParent(String studyElementId) {
+        return getRegistrationSelectionParent(studyElementId, RegistrationSelectionItemType.COURSE_UNIT, null);
+    }
+
+    public static CreateRegistrationSelectionParent getRegistrationSelectionAssessmentItemParent(String studyElementId, CreateRegistrationSelectionParent parent) {
+        return getRegistrationSelectionParent(studyElementId, RegistrationSelectionItemType.ASSESSMENT_ITEM, parent);
+    }
+
+    public static CreateRegistrationSelectionParent getRegistrationSelectionCompletionOptionParent(String studyElementId, CreateRegistrationSelectionParent parent) {
+        return getRegistrationSelectionParent(studyElementId, RegistrationSelectionItemType.COMPLETION_OPTION, parent);
+    }
+
+    public static CreateRegistrationSelection getRegistrationSelectionCourseUnit(String studyElementId, RegistrationSelectionItemStatus status) {
         return getRegistrationSelection(studyElementId, RegistrationSelectionItemType.COURSE_UNIT,
                 status, null, null);
     }
 
-    public static RegistrationSelection getRegistrationSelectionRealisation(String studyElementId, RegistrationSelectionItemStatus status,
-                                                                            RegistrationSelection parent, List<String> subGroupSelections) {
-        return getRegistrationSelection(studyElementId, RegistrationSelectionItemType.REALISATION,
-                status, parent, subGroupSelections);
+    public static CreateRegistrationSelection getRegistrationSelectionRealisation(String studyElementId, RegistrationSelectionItemStatus status,
+                                                                                  CreateRegistrationSelectionParent parent, List<String> subGroupSelections) {
+        return getRegistrationSelection(studyElementId, RegistrationSelectionItemType.REALISATION, status, parent, subGroupSelections);
     }
 
-    public static RegistrationSelection getRegistrationSelectionAssessmentItem(String studyElementId, RegistrationSelection parent) {
-        return getRegistrationSelection(studyElementId, RegistrationSelectionItemType.ASSESSMENT_ITEM,
-                null, parent, null);
-    }
-
-    public static RegistrationSelection getRegistrationSelectionCompletionOption(String studyElementId, RegistrationSelection parent) {
-        return getRegistrationSelection(studyElementId, RegistrationSelectionItemType.COMPLETION_OPTION,
-                null, parent, null);
+    public static CreateRegistrationSelection getRegistrationSelectionAssessmentItem(String studyElementId, CreateRegistrationSelectionParent parent) {
+        return getRegistrationSelection(studyElementId, RegistrationSelectionItemType.ASSESSMENT_ITEM, null, parent, null);
     }
 
     public static Selection getSelection(LocalisedString title, SelectionType type, List<SelectionValue> selectionValues) {

@@ -1,16 +1,16 @@
 package fi.uta.ristiinopiskelu.handler.integration.controller.current;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation.RealisationReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.MinEduGuidanceAreaEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -19,12 +19,14 @@ import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -46,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudiesControllerV9IntegrationTest {
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private NetworkRepository networkRepository;
@@ -59,9 +61,9 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         String url = "/api/v9/studies/realisations";
 
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
 
         RealisationEntity realisationEntity = createRealisation("TOT-1", "UEF", null, allNetworks);
@@ -72,18 +74,18 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         requestParams.set("organizingOrganisationId", "UEF");
         MvcResult result = getMvcResult(url, requestParams);
 
-        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<RealisationReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(realisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
 
         // change realisation status to CANCELLED
-        realisationEntity.setStatus(StudyStatus.CANCELLED);
+        realisationEntity.setStatus(StudyStatusEntity.CANCELLED);
         realisationRepository.update(realisationEntity);
 
         // now it should not be visible anymore with default params
         result = getMvcResult(url, requestParams);
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(0, actualResult.size());
 
@@ -91,7 +93,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         requestParams.set("statuses", "CANCELLED");
 
         result = getMvcResult(url, requestParams);
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(realisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
@@ -100,7 +102,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         requestParams.set("statuses", "ACTIVE,ARCHIVED,CANCELLED");
 
         result = getMvcResult(url, requestParams);
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(realisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
@@ -112,8 +114,8 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         createNetworkWithOrganisations("CN-1", "UEF");
         createNetworkWithOrganisations("CN-2", "HAAGAH");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork coopNetwork2 = createCooperationNetwork("CN-2");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork2 = createCooperationNetwork("CN-2");
 
         RealisationEntity realisationEntity1 = createRealisation("TOT-1", "UEF", null, Collections.singletonList(coopNetwork));
         RealisationEntity realisationEntity2 = createRealisation("TOT-2", "UEF", null, Collections.singletonList(coopNetwork));
@@ -125,7 +127,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
         MvcResult result = getMvcResult(url, requestParams);
 
-        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<RealisationReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(4, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -141,9 +143,9 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         String url = "/api/v9/studies/realisations/search";
 
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
 
         RealisationEntity activeRealisationEntity = createRealisation("TOT-1", "UEF",
@@ -151,12 +153,12 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         RealisationEntity cancelledRealisationEntity = createRealisation("TOT-2", "UEF",
             null, allNetworks);
-        cancelledRealisationEntity.setStatus(StudyStatus.CANCELLED);
+        cancelledRealisationEntity.setStatus(StudyStatusEntity.CANCELLED);
         realisationRepository.update(cancelledRealisationEntity);
 
         RealisationEntity archivedRealisationEntity = createRealisation("TOT-3", "UEF",
             null, allNetworks);
-        archivedRealisationEntity.setStatus(StudyStatus.ARCHIVED);
+        archivedRealisationEntity.setStatus(StudyStatusEntity.ARCHIVED);
         realisationRepository.update(archivedRealisationEntity);
 
         // just default values
@@ -166,36 +168,36 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         searchParams.setIncludePast(true);
         searchParams.setOngoingEnrollment(false);
 
-        MvcResult result = getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        MvcResult result = getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
 
-        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<RealisationReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(activeRealisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
 
         // only archived
         searchParams.setStatuses(Collections.singletonList(StudyStatus.ARCHIVED));
-        result = getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(archivedRealisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
 
         // only cancelled
         searchParams.setStatuses(Collections.singletonList(StudyStatus.CANCELLED));
-        result = getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(cancelledRealisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
 
         // all statuses
         searchParams.setStatuses(Arrays.asList(StudyStatus.ACTIVE, StudyStatus.CANCELLED, StudyStatus.ARCHIVED));
-        result = getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(3, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -211,8 +213,8 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         createNetworkWithOrganisations("CN-1", "UEF");
         createNetworkWithOrganisations("CN-2", "JYU");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork coopNetwork2= createCooperationNetwork("CN-2");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork2= createCooperationNetwork("CN-2");
 
         RealisationEntity realisationEntity = createRealisation("R1", "UEF", null, Collections.singletonList(coopNetwork));
         RealisationEntity realisationEntity2 = createRealisation("R2", "UEF", null, Collections.singletonList(coopNetwork));
@@ -222,11 +224,11 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         searchParams.setIncludeOwn(true);
         searchParams.setOngoingEnrollment(false);
 
-        MvcResult result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        MvcResult result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<RealisationReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(2, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("realisationId", is(realisationEntity.getRealisationId())),
@@ -238,11 +240,11 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         searchParams.setOngoingEnrollment(false);
         searchParams.setNetworkIdentifiers(Arrays.asList("CN-2"));
 
-        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(0, actualResult.size());
     }
 
@@ -251,7 +253,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         String url = "/api/v9/studies/realisations";
 
         createNetworkWithOrganisations("CN-1", "UEF", "HAAGAH", "TUNI", "JYU");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         RealisationEntity realisationEntity1 = createRealisation("TOT-1", "UEF", null, Collections.singletonList(coopNetwork));
         RealisationEntity realisationEntity2 = createRealisation("TOT-2", "HAAGAH", null, Collections.singletonList(coopNetwork));
@@ -262,7 +264,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
         MvcResult result = getMvcResult(url, requestParams);
 
-        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<RealisationReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(4, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -279,7 +281,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         result = getMvcResult(url, requestParams, "HAAGAH");
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -293,7 +295,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         result = getMvcResult(url, requestParams, "TUNI");
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -307,7 +309,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         result = getMvcResult(url, requestParams, "JYU");
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -321,7 +323,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         result = getMvcResult(url, requestParams, "UEF");
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -334,7 +336,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         String url = "/api/v9/studies/realisations";
 
         createNetworkWithOrganisations("CN-1", "UEF", "TUNI", "JYU");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         RealisationEntity realisationEntity1 = createRealisation("TOT-1", "UEF", null, Collections.singletonList(coopNetwork));
         RealisationEntity realisationEntity2 = createRealisation("TOT-2", "UEF", null, null);
@@ -345,7 +347,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
         MvcResult result = getMvcResult(url, requestParams, "UEF");
 
-        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<RealisationReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(4, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -360,7 +362,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         result = getMvcResult(url, requestParams, "TUNI");
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(3, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -376,7 +378,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         result = getMvcResult(url, requestParams, "JYU");
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(0, actualResult.size());
     }
@@ -389,7 +391,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         networkEntity.setPublished(false);
         networkRepository.update(networkEntity);
 
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         RealisationEntity realisationEntity1 = createRealisation("TOT-1", "UEF", null, Collections.singletonList(coopNetwork));
         RealisationEntity realisationEntity2 = createRealisation("TOT-2", "UEF", null, null);
@@ -400,7 +402,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
         MvcResult result = getMvcResult(url, requestParams, "UEF");
 
-        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<RealisationReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(2, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("realisationId", is(realisationEntity1.getRealisationId())),
@@ -409,14 +411,14 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         // just default values as TUNI
         result = getMvcResult(url, requestParams, "TUNI");
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(realisationEntity3.getRealisationId(), actualResult.get(0).getRealisationId());
 
         // just default values as JYU
         result = getMvcResult(url, requestParams, "JYU");
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(realisationEntity4.getRealisationId(), actualResult.get(0).getRealisationId());
@@ -427,7 +429,7 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         result = getMvcResult(url, requestParams, "JYU");
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(0, actualResult.size());
     }
@@ -437,18 +439,18 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         String url = "/api/v9/studies/realisations/search";
 
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         RealisationEntity realisationEntity = createRealisation("R1", "UEF", null, Collections.singletonList(coopNetwork));
-        realisationEntity.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.EDUCATION, MinEduGuidanceArea.SERVICES));
+        realisationEntity.setMinEduGuidanceArea(List.of(MinEduGuidanceAreaEntity.EDUCATION, MinEduGuidanceAreaEntity.SERVICES));
         realisationRepository.update(realisationEntity);
 
         RealisationEntity realisationEntity2 = createRealisation("R2", "UEF", null, Collections.singletonList(coopNetwork));
-        realisationEntity2.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.MEDICAL_SCIENCE, MinEduGuidanceArea.SERVICES));
+        realisationEntity2.setMinEduGuidanceArea(List.of(MinEduGuidanceAreaEntity.MEDICAL_SCIENCE, MinEduGuidanceAreaEntity.SERVICES));
         realisationRepository.update(realisationEntity2);
 
         RealisationEntity realisationEntity3 = createRealisation("R3", "JYU", null, Collections.singletonList(coopNetwork));
-        realisationEntity3.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.HUMANITIES, MinEduGuidanceArea.SERVICES, MinEduGuidanceArea.ARTS_AND_CULTURE));
+        realisationEntity3.setMinEduGuidanceArea(List.of(MinEduGuidanceAreaEntity.HUMANITIES, MinEduGuidanceAreaEntity.SERVICES, MinEduGuidanceAreaEntity.ARTS_AND_CULTURE));
         realisationRepository.update(realisationEntity3);
 
         RealisationSearchParameters searchParams = new RealisationSearchParameters();
@@ -456,11 +458,11 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         searchParams.setOngoingEnrollment(false);
         searchParams.setMinEduGuidanceAreas(List.of(MinEduGuidanceArea.SERVICES));
 
-        MvcResult result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        MvcResult result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<RealisationReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(3, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("realisationId", is(realisationEntity.getRealisationId())),
@@ -470,11 +472,11 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         
         searchParams.setMinEduGuidanceAreas(List.of(MinEduGuidanceArea.HUMANITIES));
 
-        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("realisationId", is(realisationEntity3.getRealisationId()))
@@ -482,11 +484,11 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         searchParams.setMinEduGuidanceAreas(List.of(MinEduGuidanceArea.HUMANITIES, MinEduGuidanceArea.EDUCATION));
 
-        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(2, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("realisationId", is(realisationEntity.getRealisationId())),
@@ -495,11 +497,11 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
 
         searchParams.setMinEduGuidanceAreas(null);
 
-        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(3, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("realisationId", is(realisationEntity.getRealisationId())),
@@ -513,10 +515,10 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         String url = "/api/v9/studies/realisations/search";
 
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         RealisationEntity realisationEntity = createRealisation("R1", "UEF", null, Collections.singletonList(coopNetwork));
-        realisationEntity.setName(new LocalisedString("realiFi", null, "realiSv"));
+        realisationEntity.setName(new LocalisedStringEntity("realiFi", null, "realiSv"));
         realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
         realisationEntity.setEnrollmentEndDateTime(OffsetDateTime.now().plusMonths(1));
         realisationRepository.update(realisationEntity);
@@ -527,31 +529,31 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         searchParams.setQuery("realiSv");
         searchParams.setLanguage(Language.FI);
 
-        MvcResult result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        MvcResult result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        List<RealisationReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<RealisationReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(0, actualResult.size());
 
         // Target wrong language with langIndependent specifically set to false (should return no results)
         searchParams.setLangIndependent(false);
 
-        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(0, actualResult.size());
 
         // Target the right language (should return the realisation)
         searchParams.setLanguage(Language.SV);
 
-        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertEquals(realisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
 
@@ -559,22 +561,22 @@ public class StudiesControllerV9RealisationIntegrationTest extends AbstractStudi
         searchParams.setLanguage(Language.FI);
         searchParams.setLangIndependent(true);
 
-        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertEquals(realisationEntity.getRealisationId(), actualResult.get(0).getRealisationId());
 
         // Finally use query that matches no language (should return no results)
         searchParams.setQuery("realiFoo");
 
-        result = this.getMvcResult(url, objectMapper.writeValueAsString(searchParams));
+        result = this.getMvcResult(url, jsonMapper.writeValueAsString(searchParams));
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(0, actualResult.size());
     }
 }

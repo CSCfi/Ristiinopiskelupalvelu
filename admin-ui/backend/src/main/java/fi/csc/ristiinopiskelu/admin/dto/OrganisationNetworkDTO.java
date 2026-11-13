@@ -2,6 +2,11 @@ package fi.csc.ristiinopiskelu.admin.dto;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
+import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import org.springframework.util.CollectionUtils;
+
+import java.util.Collections;
+import java.util.List;
 
 public class OrganisationNetworkDTO {
     
@@ -41,5 +46,28 @@ public class OrganisationNetworkDTO {
 
     public void setValidity(Validity validity) {
         this.validity = validity;
+    }
+
+    public static OrganisationNetworkDTO from(NetworkEntity network) {
+        if(network == null) {
+            return null;
+        }
+
+        OrganisationNetworkDTO dto = new OrganisationNetworkDTO();
+        dto.setId(network.getId());
+        dto.setName(LocalisedString.from(network.getName()));
+        dto.setAbbreviation(network.getAbbreviation());
+        dto.setValidity(Validity.from(network.getValidity()));
+        return dto;
+    }
+
+    public static List<OrganisationNetworkDTO> from(List<NetworkEntity> networks) {
+        if(CollectionUtils.isEmpty(networks)) {
+            return Collections.emptyList();
+        }
+
+        return networks.stream()
+            .map(OrganisationNetworkDTO::from)
+            .toList();
     }
 }

@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.dlqhandler.route;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.dlqhandler.processor.DeadLetterQueueProcessor;
 import fi.uta.ristiinopiskelu.persistence.repository.DeadLetterQueueRepository;
@@ -20,7 +20,7 @@ public class DeadLetterQueueRoute extends AbstractRoute {
     private static final Logger logger = LoggerFactory.getLogger(DeadLetterQueueRoute.class);
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private OrganisationRepository organisationRepository;
@@ -36,7 +36,7 @@ public class DeadLetterQueueRoute extends AbstractRoute {
         for(OrganisationEntity organisation : organisations) {
             routes.add(new RouteConfiguration(
                     organisation.getQueue(),
-                    new DeadLetterQueueProcessor(organisation.getId(), organisationRepository, deadLetterQueueRepository, objectMapper)));
+                    new DeadLetterQueueProcessor(organisation.getId(), organisationRepository, deadLetterQueueRepository, jsonMapper)));
         }
 
         return routes;

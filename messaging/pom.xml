@@ -5,7 +5,7 @@
 
     <groupId>fi.uta.ristiinopiskelu</groupId>
     <artifactId>messaging</artifactId>
-    <version>9.0.28</version>
+    <version>9.0.35</version>
     <packaging>jar</packaging>
 
     <name>messaging</name>
@@ -14,8 +14,8 @@
     <parent>
         <groupId>fi.uta.ristiinopiskelu</groupId>
         <artifactId>parent</artifactId>
-        <version>9.0.28</version>
-        <relativePath>../</relativePath>
+        <version>9.0.35</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <dependencies>
@@ -44,18 +44,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jdk8</artifactId>
             <scope>provided</scope>
         </dependency>
 

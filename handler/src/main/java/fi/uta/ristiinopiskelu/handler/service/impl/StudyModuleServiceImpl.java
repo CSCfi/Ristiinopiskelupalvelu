@@ -1,11 +1,8 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.studymodule.StudyModuleReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
@@ -15,12 +12,15 @@ import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
 import fi.uta.ristiinopiskelu.handler.exception.DeleteFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.StudyElementEntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.StudyElementReferenceIdentifiersMissingValidationException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.StudyElementReferenceNotInSameNetworkValidationException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.StudyModuleDeleteBlockedByCourseUnitsValidationException;
 import fi.uta.ristiinopiskelu.handler.service.StudyModuleService;
 import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
 import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
@@ -28,13 +28,14 @@ import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyElementRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyModuleRepository;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,9 +56,6 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
     @Autowired
     private NetworkRepository networkRepository;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
     public StudyModuleServiceImpl() {
         super(StudyModuleWriteDTO.class, StudyModuleEntity.class, StudyModuleReadDTO.class, StudyElementType.STUDY_MODULE);
     }
@@ -65,11 +63,6 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
     @Override
     protected StudyElementRepository<StudyModuleEntity> getRepository() {
         return studyModuleRepository;
-    }
-
-    @Override
-    public ModelMapper getModelMapper() {
-        return modelMapper;
     }
 
     @Override
@@ -84,7 +77,7 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
                 for(CourseUnitEntity courseUnit : courseUnits) {
                     CourseUnitEntity original = copy(courseUnit, CourseUnitEntity.class);
 
-                    Predicate<StudyElementReference> matches =
+                    Predicate<StudyElementReferenceEntity> matches =
                             ser -> ser.getReferenceIdentifier().equals(studyElementId) &&
                                 ser.getReferenceOrganizer().equals(organizingOrganisationId);
 
@@ -94,7 +87,11 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
                         CompositeIdentifiedEntityType.COURSE_UNIT, original, courseUnitRepository.update(courseUnit)));
                 }
             } else {
-                throw new DeleteFailedException("Study module cannot be deleted if it has course units and deleteCourseUnits is false.");
+                throw new DeleteFailedException(getEntityClass(),
+                    new StudyModuleDeleteBlockedByCourseUnitsValidationException(
+                        "Study module cannot be deleted because it has course units and deleteCourseUnits is false " +
+                            "[studyElementId: %s, organizingOrganisationId: %s]"
+                                .formatted(studyElementId, organizingOrganisationId)));
             }
         }
 
@@ -125,12 +122,12 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
         List<CooperationNetwork> studyModuleCooperationNetworks = new ArrayList<>();
 
         if(json.has("cooperationNetworks")) {
-            studyModuleCooperationNetworks.addAll(getObjectMapper().convertValue(json.get("cooperationNetworks"), new TypeReference<List<CooperationNetwork>>() {}));
+            studyModuleCooperationNetworks.addAll(getJsonMapper().convertValue(json.get("cooperationNetworks"), new TypeReference<List<CooperationNetwork>>() {}));
         }
 
         try {
             if(json.has("subElements")) {
-                List<AbstractStudyElementWriteDTO> subElements = getObjectMapper().convertValue(json.get("subElements"), new TypeReference<>(){});
+                List<AbstractStudyElementWriteDTO> subElements = getJsonMapper().convertValue(json.get("subElements"), new TypeReference<>(){});
                 modificationResults.addAll(updateStudyModuleReferences(id, organisationId, studyModuleCooperationNetworks, subElements));
             }
         } catch (Exception e) {
@@ -175,7 +172,7 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
 
         // Key entity to add to, value is reference to add
         // This is done as complex as is because we need to get given onlyEnrollableWithParent if it was set to verify if reference has been updated
-        HashMap<StudyElementEntity, StudyElementReference> refsToAddAndStudyElementEntities =
+        HashMap<StudyElementEntity, StudyElementReferenceEntity> refsToAddAndStudyElementEntities =
             getReferencesAndStudyElementsToAddRefTo(parentStudyModuleId, organisationId, parentCooperationNetworks,
                 studyElementsWithAddedOrUpdatedReferences);
 
@@ -201,7 +198,7 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
                         existingParent -> existingParent.getReferenceIdentifier().equals(subElement.getStudyElementId())
                                 && existingParent.getOnlyEnrollableWithParent() == finalOnlyEnrollableWhenParent
                                 && existingParent.getReferenceOrganizer().equals(subElement.getOrganizingOrganisationId())
-                                && existingParent.getReferenceType() == StudyElementType.STUDY_MODULE)
+                                && existingParent.getReferenceType() == StudyElementTypeEntity.STUDY_MODULE)
                 );
 
             if(!parentReferenceExists) {
@@ -213,11 +210,11 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
     }
 
     // Could throw exceptions so do not save anything to elastic before calling this method
-    private HashMap<StudyElementEntity, StudyElementReference> getReferencesAndStudyElementsToAddRefTo(String parentStudyModuleId,
-                                                                                                       String organisationId,
-                                                                                                       List<CooperationNetwork> parentNetworks,
-                                                                                                       List<AbstractStudyElementWriteDTO> newOrUpdatedReference) {
-        HashMap<StudyElementEntity, StudyElementReference> refsToAddAndStudyElementEntities = new HashMap<>();
+    private HashMap<StudyElementEntity, StudyElementReferenceEntity> getReferencesAndStudyElementsToAddRefTo(String parentStudyModuleId,
+                                                                                                             String organisationId,
+                                                                                                             List<CooperationNetwork> parentNetworks,
+                                                                                                             List<AbstractStudyElementWriteDTO> newOrUpdatedReference) {
+        HashMap<StudyElementEntity, StudyElementReferenceEntity> refsToAddAndStudyElementEntities = new HashMap<>();
         for(AbstractStudyElementWriteDTO newReference : newOrUpdatedReference) {
             StudyElementEntity entity = getRepositoryForStudyElementWriteDTO(newReference).findByStudyElementIdAndOrganizingOrganisationId(
                     newReference.getStudyElementId(), newReference.getOrganizingOrganisationId())
@@ -243,21 +240,21 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
                 }
             }
 
-            StudyElementReference parentReference = getParentReference(parentStudyModuleId, organisationId, StudyElementType.STUDY_MODULE, newReference);
+            StudyElementReferenceEntity parentReference = getParentReference(parentStudyModuleId, organisationId, StudyElementType.STUDY_MODULE, newReference);
             refsToAddAndStudyElementEntities.put(entity, parentReference);
         }
 
         return refsToAddAndStudyElementEntities;
     }
 
-    private List<CompositeIdentifiedEntityModificationResult> upsertStudyElementReferences(HashMap<StudyElementEntity, StudyElementReference> refsToAddAndStudyElementEntities) {
+    private List<CompositeIdentifiedEntityModificationResult> upsertStudyElementReferences(HashMap<StudyElementEntity, StudyElementReferenceEntity> refsToAddAndStudyElementEntities) {
         List<CompositeIdentifiedEntityModificationResult> modificationResults = new ArrayList<>();
 
-        for(Map.Entry<StudyElementEntity, StudyElementReference> refToAddAndStudyElementEntity : refsToAddAndStudyElementEntities.entrySet()) {
+        for(Map.Entry<StudyElementEntity, StudyElementReferenceEntity> refToAddAndStudyElementEntity : refsToAddAndStudyElementEntities.entrySet()) {
             StudyElementEntity entityToUpdate = refToAddAndStudyElementEntity.getKey();
             StudyElementEntity original = copy(entityToUpdate, entityToUpdate.getClass());
 
-            StudyElementReference studyElementReference = refToAddAndStudyElementEntity.getValue();
+            StudyElementReferenceEntity studyElementReference = refToAddAndStudyElementEntity.getValue();
 
             getRepositoryForEntityClass(entityToUpdate.getClass()).saveHistory(entityToUpdate, entityToUpdate.getClass());
 
@@ -267,13 +264,13 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
 
             entityToUpdate.getParents().removeIf(
                 p -> p.getReferenceIdentifier().equals(studyElementReference.getReferenceIdentifier())
-                    && p.getReferenceType().equals(StudyElementType.STUDY_MODULE)
+                    && p.getReferenceType().equals(StudyElementTypeEntity.STUDY_MODULE)
                     && p.getReferenceOrganizer().equals(studyElementReference.getReferenceOrganizer()));
 
             entityToUpdate.getParents().add(studyElementReference);
 
             modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
-                entityToUpdate.getType(), original, getRepositoryForEntityClass(entityToUpdate.getClass()).update(entityToUpdate)));
+                CompositeIdentifiedEntityType.from(entityToUpdate.getType()), original, getRepositoryForEntityClass(entityToUpdate.getClass()).update(entityToUpdate)));
         }
 
         return modificationResults;
@@ -292,15 +289,15 @@ public class StudyModuleServiceImpl extends AbstractStudyElementService<StudyMod
         // Delete removed references
         for(StudyElementEntity refRemoved : refRemovedStudyElements) {
             StudyElementEntity original = copy(refRemoved, refRemoved.getClass());
-            Predicate<StudyElementReference> removePredicate =
+            Predicate<StudyElementReferenceEntity> removePredicate =
                     p -> p.getReferenceIdentifier().equals(parentStudyModuleId)
-                            && p.getReferenceType().equals(StudyElementType.STUDY_MODULE)
+                            && p.getReferenceType().equals(StudyElementTypeEntity.STUDY_MODULE)
                             && p.getReferenceOrganizer().equals(organisationId);
 
             getRepositoryForEntityClass(refRemoved.getClass()).saveHistory(refRemoved, refRemoved.getClass());
             refRemoved.getParents().removeIf(removePredicate);
             modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
-                refRemoved.getType(), original, getRepositoryForEntityClass(refRemoved.getClass()).update(refRemoved)));
+                CompositeIdentifiedEntityType.from(refRemoved.getType()), original, getRepositoryForEntityClass(refRemoved.getClass()).update(refRemoved)));
         }
 
         return modificationResults;

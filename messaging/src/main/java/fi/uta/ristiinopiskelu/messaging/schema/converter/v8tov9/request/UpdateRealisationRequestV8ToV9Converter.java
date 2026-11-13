@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.messaging.schema.converter.v8tov9.request;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import fi.uta.ristiinopiskelu.messaging.exception.ObjectConversionException;
 import fi.uta.ristiinopiskelu.messaging.message.current.realisation.UpdateRealisationRequest;
 import org.springframework.stereotype.Component;

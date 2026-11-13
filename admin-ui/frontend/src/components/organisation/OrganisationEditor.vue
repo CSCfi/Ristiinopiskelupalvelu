@@ -1,19 +1,21 @@
 <template>
   <div v-if="currentOrganisation">
-    <v-alert class="alert" :value="success" type="success">
+    <v-alert class="alert" v-if="success" type="success">
       {{ $t('organisation.saveSuccess') }}
     </v-alert>
-    <v-alert class="alert" :value="error" type="error">
+    <v-alert class="alert" v-if="error" type="error">
       {{ $t('organisation.saveError') }}
     </v-alert>
-    <v-alert class="alert" :value="errorEmptyFields" type="error">
+    <v-alert class="alert" v-if="errorEmptyFields" type="error">
       {{ $t('organisation.requiredFieldsMissing') }}
     </v-alert>
 
     <v-form id="organisation-form" ref="organisationForm" :lazy-validation="false">
-      <v-btn small color="success" :disabled="saving" class="save right" @click="saveOrganisation">
-        {{ !newOrganisation ? $t('save') : $t('saveNew') }}
-      </v-btn>
+      <div class="d-flex justify-end mb-4 pr-3">
+        <v-btn small color="success" :disabled="saving" class="save-btn" @click="saveOrganisation">
+          {{ !newOrganisation ? $t('save') : $t('saveNew') }}
+        </v-btn>
+      </div>
 
       <v-text-field
         :readonly="!isSuperUser || !newOrganisation"
@@ -126,6 +128,7 @@
         :disabled="!isSuperUser"
         v-model="notificationsEnabled"
         :label="$t('organisation.notificationsEnabled')"
+        :color="isSuperUser ? 'primary' : undefined"
       ></v-switch>
       <v-text-field
         v-model="currentOrganisation.queue"
@@ -141,6 +144,8 @@
       <v-select
         v-model="currentOrganisation.schemaVersion"
         :items="schemaVersions"
+        item-title="text"
+        item-value="value"
         filled
         :label="$t('organisation.schemaVersion')"
         :rules="[requiredRule]"
@@ -159,17 +164,19 @@
         :rows-per-page-text="$t('organisation.networks.results-per-page-text')"
         class="elevation-1"
       >
-        <template v-slot:items="props">
-          <td>{{ props.item.id }}</td>
-          <td>{{ props.item.abbreviation }}</td>
-          <td>{{ props.item.name.values.fi }}</td>
-          <td>{{ props.item.name.values.en }}</td>
-          <td>{{ props.item.name.values.sv }}</td>
-          <td>{{ props.item.validity.continuity }}</td>
-          <td>{{ props.item.validity.start }}</td>
-          <td>{{ props.item.validity.end }}</td>
+        <template #item="{ item }">
+          <tr>
+            <td>{{ item.id }}</td>
+            <td>{{ item.abbreviation }}</td>
+            <td>{{ item.name?.values?.fi }}</td>
+            <td>{{ item.name?.values?.en }}</td>
+            <td>{{ item.name?.values?.sv }}</td>
+            <td>{{ item.validity?.continuity }}</td>
+            <td>{{ item.validity?.start }}</td>
+            <td>{{ item.validity?.end }}</td>
+          </tr>
         </template>
-        <template v-slot:pageText="props">
+        <template #pageText="props">
           {{ props.pageStart }} - {{ props.pageStop }} / {{ props.itemsLength }}
         </template>
       </v-data-table>
@@ -177,200 +184,199 @@
   </div>
 </template>
 
-<script>
-import axios from 'axios';
-import LocalisedTextField from '../LocalisedTextField';
-import NestedObjectTextField from '../NestedObjectTextField';
-import NestedObjectSelect from '../NestedObjectSelect';
+<script setup>
+import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import cloneDeep from 'lodash/cloneDeep';
+import LocalisedTextField from '../LocalisedTextField.vue';
+import NestedObjectTextField from '../NestedObjectTextField.vue';
+import NestedObjectSelect from '../NestedObjectSelect.vue';
+import { useOrganisationStore } from '../../stores/organisations';
 
-export default {
-  components: {
-    LocalisedTextField,
-    NestedObjectTextField,
-    NestedObjectSelect
+const props = defineProps({
+  active: {
+    default: ''
   },
-  computed: {
-    notificationsEnabled: {
-      get: function() {
-        return !this.currentOrganisation.notificationsEnabled
-          ? false
-          : this.currentOrganisation.notificationsEnabled;
-      },
-      set: function(newValue) {
-        this.currentOrganisation.notificationsEnabled = newValue;
-      }
-    }
+  locale: {
+    type: String,
+    default: 'fi'
   },
-  props: {
-    active: {
-      default() {
-        return '';
-      }
-    },
-    locale: {
-      default() {
-        return 'fi';
-      }
-    },
-    newOrganisation: {
-      default() {
-        return false;
-      }
-    },
-    isSuperUser: {
-      default() {
-        return false;
-      },
-      type: Boolean
-    },
-    selectedOrganisation: Object
+  newOrganisation: {
+    type: Boolean,
+    default: false
   },
-  data() {
-    return {
-      currentOrganisation: this.selectedOrganisation,
-      success: false,
-      error: false,
-      errorEmptyFields: false,
-      countries: [],
-      schemaVersions: [],
-      saving: false
-    };
+  isSuperUser: {
+    type: Boolean,
+    default: false
   },
-  watch: {
-    selectedOrganisation: function() {
-      this.currentOrganisation = this.selectedOrganisation;
-    },
-    locale: function() {
-      this.localizeTexts();
-    }
-  },
-  created: async function() {
-    this.localizeTexts();
-    this.loadSchemaVersions();
-  },
-  methods: {
-    nameRequired(name) {
-      if (!name) {
-        return this.$t('nameRequired');
-      }
+  selectedOrganisation: {
+    type: Object,
+    default: () => null
+  }
+});
 
-      let noNamesGiven = true;
+const emit = defineEmits(['savedOrganisation']);
+const { t } = useI18n();
+const organisationStore = useOrganisationStore();
 
-      Object.keys(name.values).forEach(function(key) {
-        if (name.values[key]) {
-          noNamesGiven = false;
-          return;
-        }
-      });
-      return noNamesGiven ? this.$t('nameRequired') : false;
-    },
-    requiredRule(value) {
-      return !!value || this.$t('requiredField');
-    },
-    emailRule(value) {
-      return /.+@.+\..+/.test(value) || this.$t('emailNotValid');
-    },
-    validate() {
-      if (this.$refs.organisationForm.validate()) {
-        return true;
+const organisationForm = ref(null);
+const currentOrganisation = ref(cloneDeep(props.selectedOrganisation));
+const success = ref(false);
+const error = ref(false);
+const errorEmptyFields = ref(false);
+const countries = ref([]);
+const schemaVersions = ref([]);
+const saving = ref(false);
+
+const notificationsEnabled = computed({
+  get() {
+    return !currentOrganisation.value?.notificationsEnabled
+      ? false
+      : currentOrganisation.value.notificationsEnabled;
+  },
+  set(newValue) {
+    if (!currentOrganisation.value) return;
+    currentOrganisation.value.notificationsEnabled = newValue;
+  }
+});
+
+watch(
+  () => props.selectedOrganisation,
+  newOrg => {
+    currentOrganisation.value = cloneDeep(newOrg);
+  }
+);
+
+watch(
+  () => props.locale,
+  () => {
+    localizeTexts();
+  }
+);
+
+onMounted(() => {
+  localizeTexts();
+  loadSchemaVersions();
+});
+
+const nameRequired = name => {
+  if (!name || !name.values) {
+    return t('nameRequired');
+  }
+
+  const hasValue = Object.values(name.values).some(val => !!val);
+  return hasValue ? true : t('nameRequired');
+};
+
+const requiredRule = value => !!value || t('requiredField');
+
+const emailRule = value => /.+@.+\..+/.test(value) || t('emailNotValid');
+
+const validate = async () => {
+  if (!organisationForm.value) {
+    return false;
+  }
+  const validationResult = await organisationForm.value.validate();
+  const isValid =
+    typeof validationResult === 'boolean'
+      ? validationResult
+      : validationResult?.valid ?? false;
+
+  if (isValid) {
+    return true;
+  }
+
+  errorEmptyFields.value = true;
+  setTimeout(() => {
+    errorEmptyFields.value = false;
+  }, 4000);
+  return false;
+};
+
+const saveOrganisation = async () => {
+  saving.value = true;
+  if (await validate()) {
+    try {
+      let response;
+      if (!props.newOrganisation) {
+        const { networks, ...orgData } = currentOrganisation.value || {};
+        response = await organisationStore.updateOrganisation(currentOrganisation.value.id, {
+          ...orgData
+        });
       } else {
-        this.errorEmptyFields = true;
-        setTimeout(() => {
-          this.errorEmptyFields = false;
-        }, 4000);
-        return false;
+        response = await organisationStore.addOrganisation(currentOrganisation.value);
       }
-    },
-    async saveOrganisation() {
-      this.saving = true;
-      if (this.validate()) {
-        try {
-          let response;
-          if (!this.newOrganisation) {
-            // eslint-disable-next-line no-unused-vars
-            const { networks, ...orgData } = this.currentOrganisation;
-            response = await axios.put(
-              '/admin-ui/api/organisations/' + this.currentOrganisation.id,
-              orgData
-            );
-          } else {
-            response = await axios.post('/admin-ui/api/organisations/', this.currentOrganisation);
-          }
-          this.$emit('savedOrganisation', response.data);
-          this.success = true;
-          setTimeout(() => {
-            this.success = false;
-          }, 5000);
-        } catch (err) {
-          this.error = true;
-          setTimeout(() => {
-            this.error = false;
-          }, 5000);
-        }
-      }
-      this.saving = false;
-    },
-    localizeTexts() {
-      this.countries = [
-        { text: '', value: null },
-        { text: this.$t('organisation.country.finland'), value: '246' },
-        { text: this.$t('organisation.country.sweden'), value: '222' }
-      ];
-    },
-    async loadSchemaVersions() {
-      try {
-        const schemaVersionsResponse = await axios.get(
-          '/admin-ui/api/organisations/schemaversions'
-        );
-        if (schemaVersionsResponse.data) {
-          this.schemaVersions = schemaVersionsResponse.data.map(sv => {
-            return {
-              text: sv,
-              value: sv
-            };
-          });
-        }
-      } catch (err) {
-        console.log(`Unable to load schema version values`);
-      }
-    },
-    getOrganisationNetworkHeaders() {
-      return [
-        {
-          text: this.$t('organisation.networks.id'),
-          value: 'id'
-        },
-        {
-          text: this.$t('organisation.networks.abbreviation'),
-          value: 'abbreviation'
-        },
-        {
-          text: this.$t('organisation.networks.name.fi'),
-          value: 'name.values.fi'
-        },
-        {
-          text: this.$t('organisation.networks.name.en'),
-          value: 'name.values.en'
-        },
-        {
-          text: this.$t('organisation.networks.name.sv'),
-          value: 'name.values.sv'
-        },
-        {
-          text: this.$t('organisation.networks.validity.continuity'),
-          value: 'validity.continuity'
-        },
-        {
-          text: this.$t('organisation.networks.validity.start'),
-          value: 'validity.start'
-        },
-        {
-          text: this.$t('organisation.networks.validity.end'),
-          value: 'validity.end'
-        }
-      ];
+      currentOrganisation.value = cloneDeep(response);
+      emit('savedOrganisation', response);
+      success.value = true;
+      setTimeout(() => {
+        success.value = false;
+      }, 5000);
+    } catch (err) {
+      error.value = true;
+      setTimeout(() => {
+        error.value = false;
+      }, 5000);
     }
   }
+  saving.value = false;
+};
+
+const localizeTexts = () => {
+  countries.value = [
+    { text: '', value: null },
+    { text: t('organisation.country.finland'), value: '246' },
+    { text: t('organisation.country.sweden'), value: '222' }
+  ];
+};
+
+const loadSchemaVersions = async () => {
+  try {
+    const versions = await organisationStore.fetchSchemaVersions();
+    schemaVersions.value = versions.map(sv => ({
+      text: sv,
+      value: sv
+    }));
+  } catch (err) {
+    console.log(`Unable to load schema version values`);
+  }
+};
+
+const getOrganisationNetworkHeaders = () => {
+  return [
+    {
+      title: t('organisation.networks.id'),
+      key: 'id'
+    },
+    {
+      title: t('organisation.networks.abbreviation'),
+      key: 'abbreviation'
+    },
+    {
+      title: t('organisation.networks.name.fi'),
+      key: 'name.values.fi'
+    },
+    {
+      title: t('organisation.networks.name.en'),
+      key: 'name.values.en'
+    },
+    {
+      title: t('organisation.networks.name.sv'),
+      key: 'name.values.sv'
+    },
+    {
+      title: t('organisation.networks.validity.continuity'),
+      key: 'validity.continuity'
+    },
+    {
+      title: t('organisation.networks.validity.start'),
+      key: 'validity.start'
+    },
+    {
+      title: t('organisation.networks.validity.end'),
+      key: 'validity.end'
+    }
+  ];
 };
 </script>
 
@@ -385,13 +391,13 @@ export default {
   padding: 8px 0px;
 }
 .btn-right {
-  width: 30%;
-  float: right;
+  width: auto;
+  float: none;
 }
 .header-left {
-  width: 60%;
-  float: left;
-  margin-top: 8px;
+  width: auto;
+  float: none;
+  margin: 0;
 }
 .error-validation {
   border: 1px solid rgb(255, 88, 88) !important;
@@ -405,5 +411,14 @@ label {
 }
 .theme--light.v-select .v-select__selection--disabled {
   color: inherit
+}
+.layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.save-btn {
+  margin-left: 8px;
 }
 </style>

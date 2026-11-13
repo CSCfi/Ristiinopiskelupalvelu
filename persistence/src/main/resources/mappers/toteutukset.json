@@ -93,6 +93,9 @@
         },
         "referenceAssessmentItemId": {
           "type": "keyword"
+        },
+        "onlyEnrollableWithParent": {
+          "type": "boolean"
         }
       }
     },

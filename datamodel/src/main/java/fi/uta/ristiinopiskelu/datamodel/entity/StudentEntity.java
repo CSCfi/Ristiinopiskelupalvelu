@@ -1,7 +1,7 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentMessageType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.UpdateStatus;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.student.StudentMessageTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.student.UpdateStatusEntity;
 import lombok.*;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -19,11 +19,11 @@ import java.util.List;
 public class StudentEntity extends GenericEntity {
 
     private StudentStudyRightEntity homeStudyRight;
-    private List<UpdateStatus> statuses;
+    private List<UpdateStatusEntity> statuses;
 
     @Field(type = FieldType.Date, pattern = {"uuuu-MM-dd'T'HH:mm:ss.SSSXXX"})
     private OffsetDateTime timestamp;
 
     private String homeOrganisationTkCode;
-    private StudentMessageType messageType;
+    private StudentMessageTypeEntity messageType;
 }

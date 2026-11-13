@@ -1,7 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.processor;
 
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AcknowledgementProcessor implements Processor {
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private OrganisationService organisationService;
     private AcknowledgementValidator validator;
     private JmsMessageForwarder messageForwarder;
@@ -29,17 +29,17 @@ public class AcknowledgementProcessor implements Processor {
     @Autowired
     public AcknowledgementProcessor(OrganisationService organisationService,
                                     AcknowledgementValidator acknowledgementValidator,
-                                    ObjectMapper objectMapper,
+                                    JsonMapper jsonMapper,
                                     JmsMessageForwarder messageForwarder){
         this.organisationService = organisationService;
         this.validator = acknowledgementValidator;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.messageForwarder = messageForwarder;
     }
 
     @Override
     public void process(Exchange exchange) throws Exception {
-        Acknowledgement ack = objectMapper.readValue(exchange.getIn().getBody(String.class), Acknowledgement.class);
+        Acknowledgement ack = jsonMapper.readValue(exchange.getIn().getBody(String.class), Acknowledgement.class);
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
         String correlationId = exchange.getIn().getHeader("ripaCorrelationID", String.class);
 

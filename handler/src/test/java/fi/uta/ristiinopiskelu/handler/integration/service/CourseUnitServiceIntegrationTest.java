@@ -1,14 +1,16 @@
 package fi.uta.ristiinopiskelu.handler.integration.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
@@ -49,12 +51,12 @@ public class CourseUnitServiceIntegrationTest {
     private RealisationService realisationService;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Test
-    public void testDenormalisation_denormalizedRealisationsStillPersistentAfterCourseUnitUpdate_shouldSucceed() throws JsonProcessingException {
+    public void testDenormalisation_denormalizedRealisationsStillPersistentAfterCourseUnitUpdate_shouldSucceed() throws JacksonException {
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("UEF", "uef-queue",
-            new LocalisedString("uef", null, null), 8);
+            new LocalisedStringEntity("uef", null, null), 8);
         organisationRepository.create(organisationEntity);
 
         Organisation organisation = DtoInitializer.getOrganisation("UEF", "UEF");
@@ -80,7 +82,7 @@ public class CourseUnitServiceIntegrationTest {
 
         assertNotNull(courseUnitEntity);
         assertEquals(1, courseUnitEntity.getRealisations().size());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntity.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, courseUnitEntity.getStatus());
         assertEquals("test", courseUnitEntity.getName().getValue("fi"));
         assertThat(courseUnitEntity.getRealisations(), containsInAnyOrder(
             hasProperty("realisationId", is(realisation.getRealisationId()))
@@ -93,14 +95,16 @@ public class CourseUnitServiceIntegrationTest {
         assertEquals(realisation.getRealisationId(), realisationEntities.get(0).getRealisationId());
 
         String updateMessage =
-            "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"CU1\",\n" +
-                "        \"status\": \"ARCHIVED\"\n" +
-                "   }\n" +
-                "}";
+            """
+                {
+                    "courseUnit": {
+                        "studyElementId": "CU1",
+                        "status": "ARCHIVED"
+                   }
+                }
+            """;
 
-        JsonNode updateJsonNode = objectMapper.readTree(updateMessage);
+        JsonNode updateJsonNode = jsonMapper.readTree(updateMessage);
         courseUnitService.update(updateJsonNode.get("courseUnit"), "UEF");
 
         courseUnitEntity = courseUnitRepository.findByStudyElementIdAndOrganizingOrganisationId(
@@ -108,7 +112,7 @@ public class CourseUnitServiceIntegrationTest {
 
         assertNotNull(courseUnitEntity);
         assertEquals(1, courseUnitEntity.getRealisations().size());
-        assertEquals(StudyStatus.ARCHIVED, courseUnitEntity.getStatus());
+        assertEquals(StudyStatusEntity.ARCHIVED, courseUnitEntity.getStatus());
         assertEquals("test", courseUnitEntity.getName().getValue("fi"));
         assertThat(courseUnitEntity.getRealisations(), containsInAnyOrder(
             hasProperty("realisationId", is(realisation.getRealisationId()))
@@ -120,15 +124,17 @@ public class CourseUnitServiceIntegrationTest {
         assertEquals(realisation.getRealisationId(), realisationEntities.get(0).getRealisationId());
 
         updateMessage =
-            "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"CU1\",\n" +
-                "        \"status\": \"ARCHIVED\",\n" +
-                "        \"realisations\": null\n" +
-                "   }\n" +
-                "}";
+            """
+                {
+                    "courseUnit": {
+                        "studyElementId": "CU1",
+                        "status": "ARCHIVED",
+                        "realisations": null
+                   }
+                }
+            """;
 
-        updateJsonNode = objectMapper.readTree(updateMessage);
+        updateJsonNode = jsonMapper.readTree(updateMessage);
         courseUnitService.update(updateJsonNode.get("courseUnit"), "UEF");
 
         courseUnitEntity = courseUnitRepository.findByStudyElementIdAndOrganizingOrganisationId(
@@ -136,7 +142,7 @@ public class CourseUnitServiceIntegrationTest {
 
         assertNotNull(courseUnitEntity);
         assertEquals(1, courseUnitEntity.getRealisations().size());
-        assertEquals(StudyStatus.ARCHIVED, courseUnitEntity.getStatus());
+        assertEquals(StudyStatusEntity.ARCHIVED, courseUnitEntity.getStatus());
         assertEquals("test", courseUnitEntity.getName().getValue("fi"));
         assertThat(courseUnitEntity.getRealisations(), containsInAnyOrder(
             hasProperty("realisationId", is(realisation.getRealisationId()))

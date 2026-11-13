@@ -6,6 +6,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Optionality;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyModuleType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -91,5 +93,17 @@ public class StudyModuleReadDTO extends AbstractStudyElementReadDTO {
 
     public void setCredits(BigDecimal credits) {
         this.credits = credits;
+    }
+
+    public static StudyModuleReadDTO from(StudyModuleEntity source) {
+        StudyModuleReadDTO target = new StudyModuleReadDTO();
+        StudyElementEntity.copyStudyElementEntityToReadDto(source, target);
+        target.setAmountValueMin(source.getAmountValueMin());
+        target.setAmountValueMax(source.getAmountValueMax());
+        target.setOptionality(Optionality.from(source.getOptionality()));
+        target.setOptionalityFurtherInformation(LocalisedString.from(source.getOptionalityFurtherInformation()));
+        target.setStudyModuleType(StudyModuleType.from(source.getStudyModuleType()));
+        target.setCredits(source.getCredits());
+        return target;
     }
 }

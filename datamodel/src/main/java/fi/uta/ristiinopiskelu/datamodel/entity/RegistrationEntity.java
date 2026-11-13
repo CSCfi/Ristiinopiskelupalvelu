@@ -1,9 +1,10 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Description;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.DescriptionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.CreateRegistrationSelectionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationReplySelectionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationStatusEntity;
 import lombok.*;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -34,12 +35,14 @@ public class RegistrationEntity extends GenericEntity implements Serializable {
 
     @Field(type = FieldType.Date, pattern = {"uuuu-MM-dd'T'HH:mm:ss.SSSXXX"})
     private OffsetDateTime receivingDateTime;
-    
-    private RegistrationStatus status;
+
+    private Long receivingTimestamp;
+    private Long receivingSequence;
+    private RegistrationStatusEntity status;
     private String statusInfo;
     private RegistrationStudentEntity student;
-    private List<RegistrationSelection> selections;
-    private List<RegistrationSelection> selectionsReplies;
-    private List<Description> descriptions;
-    private LocalisedString rejectionReason;
+    private List<CreateRegistrationSelectionEntity> selections;
+    private List<RegistrationReplySelectionEntity> selectionsReplies;
+    private List<DescriptionEntity> descriptions;
+    private LocalisedStringEntity rejectionReason;
 }

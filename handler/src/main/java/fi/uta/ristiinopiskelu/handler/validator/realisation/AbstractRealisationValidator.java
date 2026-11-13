@@ -1,11 +1,11 @@
 package fi.uta.ristiinopiskelu.handler.validator.realisation;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
@@ -13,12 +13,10 @@ import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.handler.validator.AbstractObjectValidator;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import jakarta.validation.Validator;
-import org.modelmapper.ModelMapper;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -27,14 +25,12 @@ public abstract class AbstractRealisationValidator extends AbstractObjectValidat
     protected RealisationService realisationService;
     protected CourseUnitService courseUnitService;
     protected NetworkService networkService;
-    protected ModelMapper modelMapper;
 
     protected AbstractRealisationValidator() {}
 
-    public AbstractRealisationValidator(ModelMapper modelMapper, RealisationService realisationService,
+    public AbstractRealisationValidator(RealisationService realisationService,
                                         CourseUnitService courseUnitService, NetworkService networkService, Validator beanValidator) {
         super(beanValidator);
-        this.modelMapper = modelMapper;
         this.courseUnitService = courseUnitService;
         this.realisationService = realisationService;
         this.networkService = networkService;
@@ -56,13 +52,13 @@ public abstract class AbstractRealisationValidator extends AbstractObjectValidat
             }
 
             // Verifying create course unit message realisation, there is no need to verify reference
-            CourseUnitWriteDTO referencedCourseUnit = getCourseUnitByReference(studyElementReference);
+            CourseUnitEntity referencedCourseUnit = getCourseUnitByReference(studyElementReference);
             if(referencedCourseUnit == null) {
                 notFoundStudyElementRef.add(getStudyElementReferenceString(studyElementReference));
                 continue;
             }
 
-            if(!hasAtLeastOneMatchingCooperationNetwork(referencedCourseUnit, realisation)) {
+            if(!hasAtLeastOneMatchingCooperationNetwork(referencedCourseUnit.getCooperationNetworks(), realisation)) {
                 noMatchingCooperationNetworks.add(getStudyElementReferenceString(studyElementReference));
             }
 
@@ -87,31 +83,27 @@ public abstract class AbstractRealisationValidator extends AbstractObjectValidat
         }
     }
 
-    protected boolean hasAtLeastOneMatchingCooperationNetwork(CourseUnitWriteDTO courseUnit, RealisationWriteDTO realisation) {
-        if(CollectionUtils.isEmpty(courseUnit.getCooperationNetworks())
+    protected boolean hasAtLeastOneMatchingCooperationNetwork(List<CooperationNetworkEntity> cooperationNetworks, RealisationWriteDTO realisation) {
+        if(CollectionUtils.isEmpty(cooperationNetworks)
                 || CollectionUtils.isEmpty(realisation.getCooperationNetworks())) {
             return false;
         }
 
-        return courseUnit.getCooperationNetworks().stream()
+        return cooperationNetworks.stream()
                 .anyMatch(cuNetwork -> realisation.getCooperationNetworks().stream()
                         .anyMatch(realisationNetwork -> realisationNetwork.getId().equals(cuNetwork.getId())));
     }
 
-    protected CourseUnitWriteDTO getCourseUnitByReference(StudyElementReference studyElementReference) {
-        Optional<CourseUnitEntity> courseUnitEntity;
+    protected CourseUnitEntity getCourseUnitByReference(StudyElementReference studyElementReference) {
         if(studyElementReference.getReferenceType() == StudyElementType.ASSESSMENT_ITEM) {
-            courseUnitEntity = courseUnitService.findByIdAndAssessmentItemIdAndOrganizer(
-                    studyElementReference.getReferenceIdentifier(),
-                    studyElementReference.getReferenceAssessmentItemId(), studyElementReference.getReferenceOrganizer());
-        } else {
-            courseUnitEntity = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                    studyElementReference.getReferenceIdentifier(),
-                    studyElementReference.getReferenceOrganizer());
+            return courseUnitService.findByIdAndAssessmentItemIdAndOrganizer(studyElementReference.getReferenceIdentifier(),
+                    studyElementReference.getReferenceAssessmentItemId(), studyElementReference.getReferenceOrganizer())
+                .orElse(null);
         }
 
-        return courseUnitEntity.map(cu -> modelMapper.map(cu, CourseUnitWriteDTO.class)).orElse(null);
-
+        return courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(studyElementReference.getReferenceIdentifier(),
+                studyElementReference.getReferenceOrganizer())
+            .orElse(null);
     }
 
     protected void validateOrganisation(RealisationWriteDTO realisation, String organisationId, MessageType messageType) throws ValidationException {
@@ -137,7 +129,7 @@ public abstract class AbstractRealisationValidator extends AbstractObjectValidat
 
         OrganisationReference organizingOrganisation = organizerOrganisationReferences.stream().findFirst().get();
 
-        if(!organizingOrganisation.getOrganisation().getOrganisationTkCode().equals(organisationId)) {
+        if(!organizingOrganisation.getTarget().getOrganisationTkCode().equals(organisationId)) {
             throw new OrganizingOrganisationMismatchValidationException("Unable to handle: " + messageType +
                     ". Realisation with " + getRealisationIdString(realisation) +
                     " organizer does not match JMS header organisation id.");
@@ -158,7 +150,7 @@ public abstract class AbstractRealisationValidator extends AbstractObjectValidat
                         " contains unknown cooperation network (" + cooperationNetwork.getId() + ")");
             }
 
-            Predicate<NetworkOrganisation> isOrganisationInNetwork = networkOrg ->
+            Predicate<NetworkOrganisationEntity> isOrganisationInNetwork = networkOrg ->
                     networkOrg.getOrganisationTkCode().equals(organisationId);
 
             if(networkEntity.getOrganisations().stream().noneMatch(isOrganisationInNetwork)) {

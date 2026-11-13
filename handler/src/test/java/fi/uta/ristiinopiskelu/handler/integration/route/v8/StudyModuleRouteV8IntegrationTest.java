@@ -33,7 +33,6 @@ import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +51,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith({
@@ -97,9 +95,6 @@ public class StudyModuleRouteV8IntegrationTest {
     @Autowired
     private ElasticsearchTemplate elasticsearchTemplate;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
     private int messageSchemaVersion = 8;
 
     @BeforeEach
@@ -111,8 +106,8 @@ public class StudyModuleRouteV8IntegrationTest {
         for(String organisationId : organisationIds) {
             if(!organisationService.findById(organisationId).isPresent()) {
                 OrganisationEntity organisation = EntityInitializer.getOrganisationEntity(organisationId, organisationId,
-                        new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString(organisationId, null, null), this.messageSchemaVersion);
-                organisationService.create(modelMapper.map(organisation, OrganisationEntity.class));
+                        new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity(organisationId, null, null), this.messageSchemaVersion);
+                organisationService.create(organisation);
             }
         }
     }
@@ -122,7 +117,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
@@ -159,7 +154,7 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(studyModule.getStudyElementId(), result.getStudyElementId());
         assertEquals(studyModule.getStudyElementIdentifierCode(), result.getStudyElementIdentifierCode());
         assertNotNull(result.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ARCHIVED, result.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ARCHIVED.name(), result.getStatus().name());
     }
 
     @Test
@@ -167,7 +162,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -212,7 +207,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
@@ -237,21 +232,21 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity createdCourseUnitEntity = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdCourseUnitEntity);
         assertNotNull(createdCourseUnitEntity.getCreatedTime());
         assertEquals(1, createdCourseUnitEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdCourseUnitEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), createdCourseUnitEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, createdCourseUnitEntity.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, createdCourseUnitEntity.getParents().get(0).getReferenceType());
         assertNotNull(createdCourseUnitEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdCourseUnitEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdCourseUnitEntity.getStatus().name());
 
         List<StudyModuleEntity> savedStudyModules = StreamSupport.stream(studyModuleRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertTrue(savedStudyModules != null);
@@ -268,7 +263,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
@@ -313,7 +308,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), null, true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -346,65 +341,65 @@ public class StudyModuleRouteV8IntegrationTest {
 
         // Verify parent studymodule created
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         // Verify cooperation network data was gathered from network index
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork studyModuleNetwork = createdStudyModuleEntity.getCooperationNetworks().get(0);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity studyModuleNetwork = createdStudyModuleEntity.getCooperationNetworks().get(0);
         assertEquals(networkEntity.getName().getValue("fi"), studyModuleNetwork.getName().getValue("fi"));
         assertEquals(networkEntity.getName().getValue("en"), studyModuleNetwork.getName().getValue("en"));
         assertEquals(networkEntity.getName().getValue("sv"), studyModuleNetwork.getName().getValue("sv"));
 
         // Verify sub course unit created
         CourseUnitEntity createdCourseUnitEntity = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                subCourseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subCourseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdCourseUnitEntity);
         assertNotNull(createdCourseUnitEntity.getCreatedTime());
         assertEquals(1, createdCourseUnitEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdCourseUnitEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), createdCourseUnitEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, createdCourseUnitEntity.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, createdCourseUnitEntity.getParents().get(0).getReferenceType());
         assertNotNull(createdCourseUnitEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdCourseUnitEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdCourseUnitEntity.getStatus().name());
 
         // Verify cooperation network data was gathered from network index
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork subCourseUnitNetwork = createdCourseUnitEntity.getCooperationNetworks().get(0);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity subCourseUnitNetwork = createdCourseUnitEntity.getCooperationNetworks().get(0);
         assertEquals(networkEntity.getName().getValue("fi"), subCourseUnitNetwork.getName().getValue("fi"));
         assertEquals(networkEntity.getName().getValue("en"), subCourseUnitNetwork.getName().getValue("en"));
         assertEquals(networkEntity.getName().getValue("sv"), subCourseUnitNetwork.getName().getValue("sv"));
 
         // Verify sub studyModule created
         StudyModuleEntity createdSubStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModuleEntity);
         assertNotNull(createdSubStudyModuleEntity.getCreatedTime());
         assertEquals(1, createdSubStudyModuleEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdSubStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdSubStudyModuleEntity.getStatus().name());
 
         // Verify cooperation network data was gathered from network index
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork subStudyModuleNetwork = createdSubStudyModuleEntity.getCooperationNetworks().get(0);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity subStudyModuleNetwork = createdSubStudyModuleEntity.getCooperationNetworks().get(0);
         assertEquals(networkEntity.getName().getValue("fi"), subStudyModuleNetwork.getName().getValue("fi"));
         assertEquals(networkEntity.getName().getValue("en"), subStudyModuleNetwork.getName().getValue("en"));
         assertEquals(networkEntity.getName().getValue("sv"), subStudyModuleNetwork.getName().getValue("sv"));
 
         // Verify sub sub course unit created
         CourseUnitEntity createdSubSubCourseUnitEntity = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                subSubCourseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subSubCourseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubSubCourseUnitEntity);
         assertNotNull(createdSubSubCourseUnitEntity.getCreatedTime());
         assertEquals(1, createdSubSubCourseUnitEntity.getParents().size());
         assertEquals(createdSubStudyModuleEntity.getStudyElementId(), createdSubSubCourseUnitEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdSubStudyModuleEntity.getOrganizingOrganisationId(), createdSubSubCourseUnitEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, createdSubSubCourseUnitEntity.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, createdSubSubCourseUnitEntity.getParents().get(0).getReferenceType());
         assertNotNull(createdSubSubCourseUnitEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdSubSubCourseUnitEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdSubSubCourseUnitEntity.getStatus().name());
 
         // Verify cooperation network data was gathered from network index
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork subSubStudyModuleNetwork = createdSubSubCourseUnitEntity.getCooperationNetworks().get(0);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity subSubStudyModuleNetwork = createdSubSubCourseUnitEntity.getCooperationNetworks().get(0);
         assertEquals(networkEntity.getName().getValue("fi"), subSubStudyModuleNetwork.getName().getValue("fi"));
         assertEquals(networkEntity.getName().getValue("en"), subSubStudyModuleNetwork.getName().getValue("en"));
         assertEquals(networkEntity.getName().getValue("sv"), subSubStudyModuleNetwork.getName().getValue("sv"));
@@ -415,7 +410,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -455,20 +450,20 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(subStudyModule.getStudyElementIdentifierCode(), result.get(1).getStudyElementIdentifierCode());
 
         StudyModuleEntity createdParentStudyModule = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdParentStudyModule);
         assertNotNull(createdParentStudyModule.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdParentStudyModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdParentStudyModule.getStatus().name());
 
         StudyModuleEntity createdSubStudyModule = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModule);
         assertNotNull(createdSubStudyModule.getCreatedTime());
         assertEquals(1, createdSubStudyModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdSubStudyModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdParentStudyModule.getOrganizingOrganisationId(), createdSubStudyModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, createdSubStudyModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdSubStudyModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, createdSubStudyModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdSubStudyModule.getStatus().name());
     }
 
     @Test
@@ -476,7 +471,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
             networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -526,20 +521,20 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(subStudyModule.getStudyElementIdentifierCode(), result.get(1).getStudyElementIdentifierCode());
 
         StudyModuleEntity createdParentStudyModule = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdParentStudyModule);
         assertNotNull(createdParentStudyModule.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdParentStudyModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdParentStudyModule.getStatus().name());
 
         StudyModuleEntity createdSubStudyModule = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModule);
         assertNotNull(createdSubStudyModule.getCreatedTime());
         assertEquals(1, createdSubStudyModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdSubStudyModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdParentStudyModule.getOrganizingOrganisationId(), createdSubStudyModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, createdSubStudyModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdSubStudyModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, createdSubStudyModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdSubStudyModule.getStatus().name());
     }
 
     @Test
@@ -547,7 +542,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -711,15 +706,15 @@ public class StudyModuleRouteV8IntegrationTest {
 
     @Test
     public void testSendingDeleteStudyModuleMessage_shouldSuccess() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializerV8.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializerV8.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-                "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+                "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -738,23 +733,23 @@ public class StudyModuleRouteV8IntegrationTest {
 
         // Verify created study module exists
         StudyModuleEntity entityShouldBeNull = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNull(entityShouldBeNull);
     }
 
     @Test
     public void testSendingUpdateStudyModuleMessage_shouldSuccess() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference organisationReference =
             DtoInitializer.getOrganisationReference(organisation, fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-                "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+                "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -767,27 +762,29 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(studyModuleEntity.getName().getValue("fi"), entity.getName().getValue("fi"));
 
         String updateJson =
-                "{\n" +
-                        "\t\"studyModule\": {\n" +
-                        "\t\t\"studyElementId\": \"ID1\",\n" +
-                        "\t\t\"status\": \"ARCHIVED\",\n" +
-                        "\t\t\"name\": {\n" +
-                        "\t\t\t\"values\": {\n" +
-                        "\t\t\t\t\"fi\": \"Kokonaisuuden nimi 2\",\n" +
-                        "\t\t\t\t\"en\": \"Kokonaisuuden nimi 2 Englanniksi\",\n" +
-                        "\t\t\t\t\"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\"\n" +
-                        "\t\t\t}\n" +
-                        "\t\t}\n" +
-                        "\t}\n" +
-                        "}";
+                """
+                    {
+                    	"studyModule": {
+                    		"studyElementId": "ID1",
+                    		"status": "ARCHIVED",
+                    		"name": {
+                    			"values": {
+                    				"fi": "Kokonaisuuden nimi 2",
+                    				"en": "Kokonaisuuden nimi 2 Englanniksi",
+                    				"sv": "Kokonaisuuden nimi 2 Ruotsiksi"
+                    			}
+                    		}
+                    	}
+                    }
+                """;
 
-        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getCreatedTime());
@@ -796,17 +793,17 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ARCHIVED, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ARCHIVED.name(), updatedEntity.getStatus().name());
     }
 
     @Test
     public void testSendingUpdateStudyModuleMessage_noCooperationNetworkNameOrStatusGiven_shouldFillCooperationNetworkFields() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(networkEntity.getId(),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("HEIHEI", null, null),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(networkEntity.getId(),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("HEIHEI", null, null),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
@@ -814,9 +811,9 @@ public class StudyModuleRouteV8IntegrationTest {
             fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-                "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
-        studyModuleEntity.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+                "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+        studyModuleEntity.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -833,31 +830,33 @@ public class StudyModuleRouteV8IntegrationTest {
                         && network.getName().getValue("sv").equals(createdCn.getName().getValue("sv"))));
 
         String updateJson =
-                "{\n" +
-                "    \"studyModule\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"cooperationNetworks\": [\n" +
-                "            {\n" +
-                "                \"id\": \"" + networkEntity.getId() +"\",\n" +
-                "                \"enrollable\": true\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "studyModule": {
+                            "studyElementId": "ID1",
+                            "cooperationNetworks": [
+                                {
+                                    "id": "%s",
+                                    "enrollable": true
+                                }
+                            ]
+                        }
+                    }
+                """.formatted(networkEntity.getId());
 
-        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getCreatedTime());
         assertEquals(updatedEntity.getCreatedTime(), entity.getCreatedTime());
         assertNotNull(updatedEntity.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
         assertTrue(updatedEntity.getCooperationNetworks().stream()
                 .allMatch(updatedCn -> networkEntity.getId().equals(updatedCn.getId())
                         && networkEntity.getName().getValue("fi").equals(updatedCn.getName().getValue("fi"))
@@ -868,8 +867,8 @@ public class StudyModuleRouteV8IntegrationTest {
 
     @Test
     public void testSendingUpdateStudyModuleMessageWithEmptyCooperationNetworks_shouldSuccess() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true,
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
@@ -877,8 +876,8 @@ public class StudyModuleRouteV8IntegrationTest {
             fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-                "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+                "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -891,30 +890,30 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(studyModuleEntity.getName().getValue("fi"), entity.getName().getValue("fi"));
 
         String updateJson =
-                "{\n" +
-                        "\t\"studyModule\": {\n" +
-                        "\t\t\"studyElementId\": \"ID1\",\n" +
-                        "\t\t\"status\": \"ARCHIVED\",\n" +
-                        "\t\t\"name\": {\n" +
-                        "\t\t\t\"values\": {\n" +
-                        "\t\t\t\t\"fi\": \"Kokonaisuuden nimi 2\",\n" +
-                        "\t\t\t\t\"en\": \"Kokonaisuuden nimi 2 Englanniksi\",\n" +
-                        "\t\t\t\t\"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\"\n" +
-                        "\t\t\t\t}\n" +
-                        "\t\t\t},\n" +
-                        "\t\t\"cooperationNetworks\": [\n" +
-                        "\t\t\t]\n" +
-                        "\t\t}\n" +
-                        "\t}\n" +
-                        "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "status": "ARCHIVED",
+                        "name": {
+                            "values": {
+                                "fi": "Kokonaisuuden nimi 2",
+                                "en": "Kokonaisuuden nimi 2 Englanniksi",
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi"
+                            }
+                        },
+                        "cooperationNetworks": []
+                    }
+                }
+            """;
 
-        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getCreatedTime());
@@ -923,13 +922,13 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ARCHIVED, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ARCHIVED.name(), updatedEntity.getStatus().name());
     }
 
     @Test
     public void testSendingUpdateStudyModuleMessage_teachingLanguageInAllCapsOrInvalid_shouldSuccess() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true,
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
@@ -937,8 +936,8 @@ public class StudyModuleRouteV8IntegrationTest {
             fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-            "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+            "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -951,26 +950,27 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(studyModuleEntity.getName().getValue("fi"), entity.getName().getValue("fi"));
 
         String updateJson =
-            "{\n" +
-                "\t\"studyModule\": {\n" +
-                "\t\t\"studyElementId\": \"ID1\",\n" +
-                "\t\t\"teachingLanguage\": [\n" +
-                "\t\t\t\t\"EN\"\n" +
-                "\t\t\t],\n" +
-                "\t\t\"languagesOfCompletion\": [\n" +
-                "\t\t\t\t\"SV\"\n" +
-                "\t\t\t]\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "teachingLanguage": [
+                            "EN"
+                        ],
+                        "languagesOfCompletion": [
+                            "SV"
+                        ]
+                    }
+                }
+            """;
 
-        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getCreatedTime());
@@ -980,26 +980,27 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("sv", updatedEntity.getLanguagesOfCompletion().get(0));
 
         updateJson =
-            "{\n" +
-                "\t\"studyModule\": {\n" +
-                "\t\t\"studyElementId\": \"ID1\",\n" +
-                "\t\t\"teachingLanguage\": [\n" +
-                "\t\t\t\t\"ENCVXBXCBV\"\n" +
-                "\t\t\t],\n" +
-                "\t\t\"languagesOfCompletion\": [\n" +
-                "\t\t\t\t\"CASDDC\"\n" +
-                "\t\t\t]\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "teachingLanguage": [
+                            "ENCVXBXCBV"
+                        ],
+                        "languagesOfCompletion": [
+                            "CASDDC"
+                        ]
+                    }
+                }
+            """;
 
-        responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(0, updatedEntity.getTeachingLanguage().size());
@@ -1010,13 +1011,13 @@ public class StudyModuleRouteV8IntegrationTest {
     public void testSendingDeleteStudyModuleMessageWithCourseUnits_shouldSuccess() throws JMSException {
 
         StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity("SM1", "SM1_CODE1", "TUNI",
-            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "TUNI",
-            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
         courseUnit.setParents(Collections.singletonList(
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("SM1", "TUNI",
-                    fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE)));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("SM1", "TUNI",
+                    fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE)));
 
         studyModuleRepository.create(studyModule);
         courseUnitRepository.create(courseUnit);
@@ -1046,13 +1047,13 @@ public class StudyModuleRouteV8IntegrationTest {
     public void testSendingDeleteStudyModuleMessageWithCourseUnits_shouldFail() throws JMSException {
 
         StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity("SM1", "SM1_CODE1", "ORG1",
-            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "ORG1",
-            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
         courseUnit.setParents(Collections.singletonList(
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("SM1", "ORG1",
-                    fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE)));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("SM1", "ORG1",
+                    fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE)));
 
         studyModuleRepository.create(studyModule);
         courseUnitRepository.create(courseUnit);
@@ -1081,16 +1082,16 @@ public class StudyModuleRouteV8IntegrationTest {
     public void testSendingDeleteStudyModuleMessageWithMultipleCourseUnitReferences_shouldSucceed() throws JMSException {
 
         StudyModuleEntity studyModule = EntityInitializer.getStudyModuleEntity("SM1", "SM1_CODE1", "TUNI",
-            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "METROP",
-            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
 
-        List<fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference> references = new ArrayList<>();
-        references.add(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("SM1","TUNI",
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE));
-        references.add(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("SM2", "METROP",
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE));
+        List<fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity> references = new ArrayList<>();
+        references.add(new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("SM1","TUNI",
+            fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE));
+        references.add(new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("SM2", "METROP",
+            fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE));
 
         courseUnit.setParents(references);
 
@@ -1123,8 +1124,8 @@ public class StudyModuleRouteV8IntegrationTest {
 
     @Test
     public void testSendingUpdateStudyModuleMessage_shouldNotFailBecauseOfExtraField() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
@@ -1132,8 +1133,8 @@ public class StudyModuleRouteV8IntegrationTest {
             DtoInitializer.getOrganisationReference(organisation, fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-                "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+                "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -1146,15 +1147,16 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(studyModuleEntity.getName().getValue("fi"), entity.getName().getValue("fi"));
 
         String updateJson =
-                "{\n" +
-                "    \"studyModule\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"thisdoesnotexist\": \"randomcontent\"\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "thisdoesnotexist": "randomcontent"
+                    }
+                }
+            """;
 
-        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         assertNotNull(responseMessage);
 
         Object updResponse = jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -1165,16 +1167,16 @@ public class StudyModuleRouteV8IntegrationTest {
 
     @Test
     public void testSendingDeleteStudyModuleMessage_shouldSuccessAndCreateHistory() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference organisationReference =
             DtoInitializer.getOrganisationReference(organisation, fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-                "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+                "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -1193,7 +1195,7 @@ public class StudyModuleRouteV8IntegrationTest {
 
         // Verify created study module exists
         StudyModuleEntity entityShouldBeNull = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNull(entityShouldBeNull);
 
@@ -1216,8 +1218,8 @@ public class StudyModuleRouteV8IntegrationTest {
 
     @Test
     public void testSendingDeleteStudyModuleMessage_shouldSuccessRemovesCourseUnitRefAndCreatesHistories() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
@@ -1226,19 +1228,19 @@ public class StudyModuleRouteV8IntegrationTest {
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
                 "ID1", "RAIRAI", organisation.getOrganisationTkCode(), Collections.singletonList(network),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleEntity = studyModuleRepository.create(studyModuleEntity);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference refToRemove = DtoInitializer.getStudyElementReferenceForStudyModule(
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity refToRemove = EntityInitializer.getStudyElementReferenceForStudyModule(
                 studyModuleEntity.getStudyElementId(), studyModuleEntity.getOrganizingOrganisationId());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference refNotToRemove = DtoInitializer.getStudyElementReferenceForStudyModule(
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity refNotToRemove = EntityInitializer.getStudyElementReferenceForStudyModule(
                 "ANOTHER-PARENT1", studyModuleEntity.getOrganizingOrganisationId());
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntityWithParents("CU-1", "CODE-1", organisation.getOrganisationTkCode(),
                 Collections.singletonList(network),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Jakson nimi 1", "Jakson nimi 1 Englanniksi", null),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Jakson nimi 1", "Jakson nimi 1 Englanniksi", null),
             Arrays.asList(refToRemove, refNotToRemove));
 
         courseUnitRepository.create(courseUnitEntity);
@@ -1259,7 +1261,7 @@ public class StudyModuleRouteV8IntegrationTest {
 
         // Verify created study module exists
         StudyModuleEntity entityShouldBeNull = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNull(entityShouldBeNull);
 
@@ -1286,10 +1288,10 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(1, parentRemovedCourseUnit.getParents().size());
         assertTrue(parentRemovedCourseUnit.getParents().stream().anyMatch(
                 p -> p.getReferenceIdentifier().equals(refNotToRemove.getReferenceIdentifier())
-                    && p.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE));
+                    && p.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE));
         assertTrue(parentRemovedCourseUnit.getParents().stream().noneMatch(
                 p -> p.getReferenceIdentifier().equals(refToRemove.getReferenceIdentifier())
-                        && p.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE));
+                        && p.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE));
 
         List<CourseUnitEntity> courseUnitHistoryEntities = HistoryHelper.queryHistoryIndex(elasticsearchTemplate,
                 "opintojaksot-history", CourseUnitEntity.class);
@@ -1310,16 +1312,16 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(2, courseUnitHistoryEntity.getParents().size());
         assertTrue(courseUnitHistoryEntity.getParents().stream().anyMatch(
                 p -> p.getReferenceIdentifier().equals(refNotToRemove.getReferenceIdentifier())
-                        && p.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE));
+                        && p.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE));
         assertTrue(courseUnitHistoryEntity.getParents().stream().anyMatch(
                 p -> p.getReferenceIdentifier().equals(refToRemove.getReferenceIdentifier())
-                        && p.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE));
+                        && p.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE));
     }
 
     @Test
     public void testSendingUpdateStudyModuleMessage_shouldSuccessAndCreateHistory() throws JMSException, IOException {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
@@ -1327,8 +1329,8 @@ public class StudyModuleRouteV8IntegrationTest {
             DtoInitializer.getOrganisationReference(organisation, fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-                "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+                "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -1341,27 +1343,29 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(studyModuleEntity.getName().getValue("fi"), entity.getName().getValue("fi"));
 
         String updateJson =
-                "{\n" +
-                "    \"studyModule\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"name\": {\n" +
-                "            \"values\": {\n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\",\n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\",\n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\"\n" +
-                "            }\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "studyModule": {
+                            "studyElementId": "ID1",
+                            "name": {
+                                "values": {
+                                    "fi": "Kokonaisuuden nimi 2",
+                                    "en": "Kokonaisuuden nimi 2 Englanniksi",
+                                    "sv": "Kokonaisuuden nimi 2 Ruotsiksi"
+                                }
+                            }
+                        }
+                    }
+                """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
+                organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getCreatedTime());
@@ -1388,28 +1392,30 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(studyModuleEntity.getName().getValue("en"), historyEntity.getName().getValue("en"));
 
         String updateJson2 =
-                "{\n" +
-                "    \"studyModule\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"studyElementIdentifierCode\": \"RAIRAI\",\n" +
-                "        \"name\": {\n" +
-                "            \"values\": {\n" +
-                "                \"fi\": \"Kokonaisuuden nimi 3\",\n" +
-                "                \"en\": \"Kokonaisuuden nimi 3 Englanniksi\",\n" +
-                "                \"sv\": \"Kokonaisuuden nimi 3 Ruotsiksi\"\n" +
-                "            }\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "studyModule": {
+                            "studyElementId": "ID1",
+                            "studyElementIdentifierCode": "RAIRAI",
+                            "name": {
+                                "values": {
+                                    "fi": "Kokonaisuuden nimi 3",
+                                    "en": "Kokonaisuuden nimi 3 Englanniksi",
+                                    "sv": "Kokonaisuuden nimi 3 Ruotsiksi"
+                                }
+                            }
+                        }
+                    }
+                """;
 
         responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson2, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
+                organisationReference.getTarget().getOrganisationTkCode());
         resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity2 = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity2);
         assertNotNull(updatedEntity2.getCreatedTime());
@@ -1445,7 +1451,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
@@ -1470,68 +1476,70 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork networkCurrentVersion = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity networkCurrentVersion = EntityInitializer.getCooperationNetwork(
+            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         // Create new course unit to be added to study module
         CourseUnitEntity courseUnitEntityToAddRefs = EntityInitializer.getCourseUnitEntity("CU-2", "CU-CODE2",
-                organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(networkCurrentVersion),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("OJ 2", null, null));
+                organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(networkCurrentVersion),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("OJ 2", null, null));
 
         courseUnitRepository.create(courseUnitEntityToAddRefs);
 
         // SEND UPDATE STUDY MODULE MESSAGE
 
         String updateJson =
-                "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnitEntityToAddRefs.getStudyElementId() + "\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "studyModule": { 
+                            "studyElementId": "ID1", 
+                            "name": { 
+                                "values": { 
+                                    "fi": "Kokonaisuuden nimi 2", 
+                                    "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                    "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                                } 
+                            }, 
+                            "subElements": [
+                                {
+                                    "studyElementId": "%s", 
+                                    "type": "COURSE_UNIT",
+                                    "organisationReferences": [
+                                       {
+                                           "organisationRole": 1,
+                                           "target": {
+                                               "organisationTkCode": "TUNI"
+                                           }
+                                       }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                """.formatted(courseUnitEntityToAddRefs.getStudyElementId());
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
+                organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify parent study module updated
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -1539,11 +1547,11 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         // Verify one course unit is found with parent reference to parent study module
         List<CourseUnitEntity> courseUnitEntities = courseUnitRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-                organisationReference.getOrganisation().getOrganisationTkCode(), CourseUnitEntity.class);
+                organisationReference.getTarget().getOrganisationTkCode(), CourseUnitEntity.class);
 
         assertNotNull(courseUnitEntities);
         assertTrue(courseUnitEntities.size() == 1);
@@ -1553,10 +1561,10 @@ public class StudyModuleRouteV8IntegrationTest {
 
         // Verify existing reference to course unit is removed
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(0, courseUnitEntityCreatedWithModule.getParents().size());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
     }
 
     @Test
@@ -1564,7 +1572,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
@@ -1598,114 +1606,116 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         // Verify course unit created and has parent reference
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                subCourseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subCourseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(1, courseUnitEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Verify course unit created and has parent reference
         StudyModuleEntity studyModuleEntityCreatedWithModule = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(studyModuleEntityCreatedWithModule);
         assertEquals(1, studyModuleEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, studyModuleEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), studyModuleEntityCreatedWithModule.getStatus().name());
 
         // Verify course unit created and has parent reference
         StudyModuleEntity studyModuleRefToBeRemoved = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModuleRefToBeRemoved.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModuleRefToBeRemoved.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(studyModuleRefToBeRemoved);
         assertEquals(1, studyModuleRefToBeRemoved.getParents().size());
         assertEquals(studyModule.getStudyElementId(), studyModuleRefToBeRemoved.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), studyModuleRefToBeRemoved.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, studyModuleRefToBeRemoved.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, studyModuleRefToBeRemoved.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, studyModuleRefToBeRemoved.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), studyModuleRefToBeRemoved.getStatus().name());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork networkCurrentVersion = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity networkCurrentVersion = EntityInitializer.getCooperationNetwork(
+            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         // Create new study module to be added to study module
         StudyModuleEntity studyModuleEntityToAddRefs = EntityInitializer.getStudyModuleEntity("OK-2", "OK-CODE2",
-                organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(networkCurrentVersion),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("OK 2", null, null));
+                organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(networkCurrentVersion),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("OK 2", null, null));
 
         studyModuleRepository.create(studyModuleEntityToAddRefs);
 
         // Send update study module message with same sub study elements and one new
         String updateJson =
-                "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ studyModuleEntityCreatedWithModule.getStudyElementId() + "\", \n" +
-                "                \"type\": \"STUDY_MODULE\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnitEntityCreatedWithModule.getStudyElementId() + "\", \n" +
-                "                \"studyElementIdentifierCode\": \""+ courseUnitEntityCreatedWithModule.getStudyElementIdentifierCode() + "\",\n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ studyModuleEntityToAddRefs.getStudyElementId() + "\", \n" +
-                "                \"studyElementIdentifierCode\": \""+ studyModuleEntityToAddRefs.getStudyElementIdentifierCode() + "\",\n" +
-                "                \"type\": \"STUDY_MODULE\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "studyModule": { 
+                            "studyElementId": "ID1", 
+                            "name": { 
+                                "values": { 
+                                    "fi": "Kokonaisuuden nimi 2", 
+                                    "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                    "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                                } 
+                            }, 
+                            "subElements": [
+                                {
+                                    "studyElementId": "%s", 
+                                    "type": "STUDY_MODULE",
+                                    "organisationReferences": [
+                                       {
+                                           "organisationRole": 1,
+                                           "target": {
+                                               "organisationTkCode": "TUNI"
+                                           }
+                                       }
+                                    ]
+                                },
+                                {
+                                    "studyElementId": "%s", 
+                                    "studyElementIdentifierCode": "%s",
+                                    "type": "COURSE_UNIT",
+                                    "organisationReferences": [
+                                       {
+                                           "organisationRole": 1,
+                                           "target": {
+                                               "organisationTkCode": "TUNI"
+                                           }
+                                       }
+                                    ]
+                                },
+                                {
+                                    "studyElementId": "%s", 
+                                    "studyElementIdentifierCode": "%s",
+                                    "type": "STUDY_MODULE",
+                                    "organisationReferences": [
+                                       {
+                                           "organisationRole": 1,
+                                           "target": {
+                                               "organisationTkCode": "TUNI"
+                                           }
+                                       }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                """.formatted(studyModuleEntityCreatedWithModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getStudyElementIdentifierCode(), studyModuleEntityToAddRefs.getStudyElementId(), studyModuleEntityToAddRefs.getStudyElementIdentifierCode());
 
-        Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify parent study module updated
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -1713,44 +1723,44 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         // Verify parent reference is not duplicated
         studyModuleEntityCreatedWithModule = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(studyModuleEntityCreatedWithModule);
         assertEquals(1, studyModuleEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, studyModuleEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), studyModuleEntityCreatedWithModule.getStatus().name());
 
         // Verify parent reference is not duplicated
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                subCourseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subCourseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(1, courseUnitEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Verify parent reference is added
         StudyModuleEntity studyModuleRefsAdded = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntityToAddRefs.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode())
+                studyModuleEntityToAddRefs.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode())
                 .orElse(null);
         assertNotNull(studyModuleRefsAdded);
         assertEquals(1, studyModuleRefsAdded.getParents().size());
         assertEquals(studyModule.getStudyElementId(), studyModuleRefsAdded.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), studyModuleRefsAdded.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, studyModuleRefsAdded.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, studyModuleRefsAdded.getParents().get(0).getReferenceType());
 
         // Verify study module parent reference was removed
         studyModuleRefToBeRemoved = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModuleRefToBeRemoved.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModuleRefToBeRemoved.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(studyModuleRefToBeRemoved);
         assertEquals(0, studyModuleRefToBeRemoved.getParents().size());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, studyModuleRefToBeRemoved.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), studyModuleRefToBeRemoved.getStatus().name());
     }
 
     @Test
@@ -1758,7 +1768,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -1782,80 +1792,82 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork networkCurrentVersion = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity networkCurrentVersion = EntityInitializer.getCooperationNetwork(
+            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         // Create new study module to be added to study module
         StudyModuleEntity studyModuleEntityToAddRefs = EntityInitializer.getStudyModuleEntity("OK-2", "OK-CODE2",
-                organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(networkCurrentVersion),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("OK 2", null, null));
+                organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(networkCurrentVersion),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("OK 2", null, null));
 
         studyModuleRepository.save(studyModuleEntityToAddRefs);
 
         // SEND UPDATE STUDY MODULE MESSAGE
 
         String updateJson =
-                "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnitEntityCreatedWithModule.getStudyElementId() + "\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ studyModuleEntityToAddRefs.getStudyElementId() + "\", \n" +
-                "                \"type\": \"STUDY_MODULE\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "studyModule": { 
+                            "studyElementId": "ID1", 
+                            "name": { 
+                                "values": { 
+                                    "fi": "Kokonaisuuden nimi 2", 
+                                    "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                    "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                                } 
+                            }, 
+                            "subElements": [
+                                {
+                                    "studyElementId": "%s", 
+                                    "type": "COURSE_UNIT",
+                                    "organisationReferences": [
+                                       {
+                                           "organisationRole": 1,
+                                           "target": {
+                                               "organisationTkCode": "TUNI"
+                                           }
+                                       }
+                                    ]
+                                },
+                                {
+                                    "studyElementId": "%s", 
+                                    "type": "STUDY_MODULE",
+                                    "organisationReferences": [
+                                       {
+                                           "organisationRole": 1,
+                                           "target": {
+                                               "organisationTkCode": "TUNI"
+                                           }
+                                       }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                """.formatted(courseUnitEntityCreatedWithModule.getStudyElementId(), studyModuleEntityToAddRefs.getStudyElementId());
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
+                organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -1863,10 +1875,10 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         List<StudyModuleEntity> studyModuleEntities = studyModuleRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-                organisationReference.getOrganisation().getOrganisationTkCode(), StudyModuleEntity.class);
+                organisationReference.getTarget().getOrganisationTkCode(), StudyModuleEntity.class);
         assertNotNull(studyModuleEntities);
         assertTrue(studyModuleEntities.size() == 1);
         assertEquals(studyModuleEntityToAddRefs.getStudyElementId(), studyModuleEntities.get(0).getStudyElementId());
@@ -1874,12 +1886,12 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(studyModuleEntityToAddRefs.getOrganizingOrganisationId(), studyModuleEntities.get(0).getOrganizingOrganisationId());
 
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
     }
 
     @Test
@@ -1887,7 +1899,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -1911,68 +1923,70 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork networkCurrentVersion = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity networkCurrentVersion = EntityInitializer.getCooperationNetwork(
+            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         // Create new course unit to be added to study module
         CourseUnitEntity courseUnitEntityToAddRefs = EntityInitializer.getCourseUnitEntity("CU/2", "CU/CODE2",
-                organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(networkCurrentVersion),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("OJ 2", null, null));
+                organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(networkCurrentVersion),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("OJ 2", null, null));
 
         courseUnitRepository.create(courseUnitEntityToAddRefs);
 
         // SEND UPDATE STUDY MODULE MESSAGE
 
         String updateJson =
-                        "{\n" +
-                        "    \"studyModule\": { \n" +
-                        "        \"studyElementId\": \"" + studyModule.getStudyElementId() + "\", \n" +
-                        "        \"name\": { \n" +
-                        "            \"values\": { \n" +
-                        "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                        "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                        "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                        "            } \n" +
-                        "        }, \n" +
-                        "        \"subElements\": [\n" +
-                        "            {\n" +
-                        "                \"studyElementId\": \""+ courseUnitEntityToAddRefs.getStudyElementId() + "\", \n" +
-                        "                \"type\": \"COURSE_UNIT\",\n" +
-                        "                \"organisationReferences\": [\n" +
-                        "                   {\n" +
-                        "                       \"organisationRole\": 1,\n" +
-                        "                       \"target\": {\n" +
-                        "                           \"organisationTkCode\": \"TUNI\"\n" +
-                        "                       }\n" +
-                        "                   }\n" +
-                        "                ]\n" +
-                        "            }\n" +
-                        "        ]\n" +
-                        "    }\n" +
-                        "}";
+                        """
+                            {
+                                "studyModule": { 
+                                    "studyElementId": "%s", 
+                                    "name": { 
+                                        "values": { 
+                                            "fi": "Kokonaisuuden nimi 2", 
+                                            "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                            "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                                        } 
+                                    }, 
+                                    "subElements": [
+                                        {
+                                            "studyElementId": "%s", 
+                                            "type": "COURSE_UNIT",
+                                            "organisationReferences": [
+                                               {
+                                                   "organisationRole": 1,
+                                                   "target": {
+                                                       "organisationTkCode": "TUNI"
+                                                   }
+                                               }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        """.formatted(studyModule.getStudyElementId(), courseUnitEntityToAddRefs.getStudyElementId());
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
+                organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify parent study module updated
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -1980,11 +1994,11 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         // Verify one course unit is found with parent reference to parent study module
         List<CourseUnitEntity> courseUnitEntities = courseUnitRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-                organisationReference.getOrganisation().getOrganisationTkCode(), CourseUnitEntity.class);
+                organisationReference.getTarget().getOrganisationTkCode(), CourseUnitEntity.class);
 
         assertNotNull(courseUnitEntities);
         assertTrue(courseUnitEntities.size() == 1);
@@ -1994,10 +2008,10 @@ public class StudyModuleRouteV8IntegrationTest {
 
         // Verify existing reference to course unit is removed
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(0, courseUnitEntityCreatedWithModule.getParents().size());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
     }
 
     @Test
@@ -2005,7 +2019,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -2025,42 +2039,44 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         // SEND UPDATE STUDY MODULE MESSAGE
         String updateJson =
-                "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \"NOTFOUND_ID\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"NOT_FOUND\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "studyModule": { 
+                            "studyElementId": "ID1", 
+                            "name": { 
+                                "values": { 
+                                    "fi": "Kokonaisuuden nimi 2", 
+                                    "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                    "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                                } 
+                            }, 
+                            "subElements": [
+                                {
+                                    "studyElementId": "NOTFOUND_ID", 
+                                    "type": "COURSE_UNIT",
+                                    "organisationReferences": [
+                                       {
+                                           "organisationRole": 1,
+                                           "target": {
+                                               "organisationTkCode": "NOT_FOUND"
+                                           }
+                                       }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                """;
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
+                organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.FAILED);
     }
@@ -2070,7 +2086,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -2098,53 +2114,55 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         StudyModuleEntity createdSubStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModuleEntity);
         assertNotNull(createdSubStudyModuleEntity.getCreatedTime());
         assertEquals(1, createdSubStudyModuleEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdSubStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdSubStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(1, courseUnitEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Send update study module to remove all sub elements
         String updateJson =
-                "{\n" +
-                        "    \"studyModule\": { \n" +
-                        "        \"studyElementId\": \"ID1\", \n" +
-                        "        \"name\": { \n" +
-                        "            \"values\": { \n" +
-                        "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                        "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                        "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                        "            } \n" +
-                        "        }, \n" +
-                        "        \"subElements\": []\n" +
-                        "    }\n" +
-                        "}";
+                """
+                    {
+                        "studyModule": { 
+                            "studyElementId": "ID1", 
+                            "name": { 
+                                "values": { 
+                                    "fi": "Kokonaisuuden nimi 2", 
+                                    "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                    "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                                } 
+                            }, 
+                            "subElements": []
+                        }
+                    }
+                """;
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
+                organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -2152,27 +2170,27 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         List<StudyModuleEntity> studyModuleEntitiesWithRef = studyModuleRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-                organisationReference.getOrganisation().getOrganisationTkCode(), StudyModuleEntity.class);
+                organisationReference.getTarget().getOrganisationTkCode(), StudyModuleEntity.class);
         assertNotNull(studyModuleEntitiesWithRef);
         assertTrue(studyModuleEntitiesWithRef.size() == 0);
 
         List<CourseUnitEntity> courseUnitEntitiesWithRef = courseUnitRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-                organisationReference.getOrganisation().getOrganisationTkCode(), CourseUnitEntity.class);;
+                organisationReference.getTarget().getOrganisationTkCode(), CourseUnitEntity.class);;
         assertNotNull(courseUnitEntitiesWithRef);
         assertTrue(courseUnitEntitiesWithRef.size() == 0);
 
         // Double check references have been removed
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertNotNull(courseUnitEntityCreatedWithModule.getUpdateTime());
         assertEquals(0, courseUnitEntityCreatedWithModule.getParents().size());
 
         createdSubStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModuleEntity);
         assertNotNull(createdSubStudyModuleEntity.getCreatedTime());
         assertEquals(0, createdSubStudyModuleEntity.getParents().size());
@@ -2183,7 +2201,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -2211,53 +2229,55 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         StudyModuleEntity createdSubStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModuleEntity);
         assertNotNull(createdSubStudyModuleEntity.getCreatedTime());
         assertEquals(1, createdSubStudyModuleEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdSubStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdSubStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(1, courseUnitEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Send update study module to remove all sub elements
         String updateJson =
-                "{\n" +
-                        "    \"studyModule\": { \n" +
-                        "        \"studyElementId\": \"ID1\", \n" +
-                        "        \"name\": { \n" +
-                        "            \"values\": { \n" +
-                        "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                        "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                        "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                        "            } \n" +
-                        "        }, \n" +
-                        "        \"subElements\": null\n" +
-                        "    }\n" +
-                        "}";
+                """
+                    {
+                        "studyModule": { 
+                            "studyElementId": "ID1", 
+                            "name": { 
+                                "values": { 
+                                    "fi": "Kokonaisuuden nimi 2", 
+                                    "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                    "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                                } 
+                            }, 
+                            "subElements": null
+                        }
+                    }
+                """;
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
+                organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -2265,27 +2285,27 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         List<StudyModuleEntity> studyModuleEntitiesWithRef = studyModuleRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-                organisationReference.getOrganisation().getOrganisationTkCode(), StudyModuleEntity.class);
+                organisationReference.getTarget().getOrganisationTkCode(), StudyModuleEntity.class);
         assertNotNull(studyModuleEntitiesWithRef);
         assertTrue(studyModuleEntitiesWithRef.size() == 0);
 
         List<CourseUnitEntity> courseUnitEntitiesWithRef = courseUnitRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-                organisationReference.getOrganisation().getOrganisationTkCode(), CourseUnitEntity.class);;
+                organisationReference.getTarget().getOrganisationTkCode(), CourseUnitEntity.class);;
         assertNotNull(courseUnitEntitiesWithRef);
         assertTrue(courseUnitEntitiesWithRef.size() == 0);
 
         // Double check references have been removed
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertNotNull(courseUnitEntityCreatedWithModule.getUpdateTime());
         assertEquals(0, courseUnitEntityCreatedWithModule.getParents().size());
 
         createdSubStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModuleEntity);
         assertNotNull(createdSubStudyModuleEntity.getCreatedTime());
         assertEquals(0, createdSubStudyModuleEntity.getParents().size());
@@ -2296,7 +2316,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
@@ -2322,95 +2342,97 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork networkCurrentVersion = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity networkCurrentVersion = EntityInitializer.getCooperationNetwork(
+            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         // Create new study module to be added to study module
         StudyModuleEntity studyModuleEntityToAddRefs = EntityInitializer.getStudyModuleEntity(
-                "OK-2", "OK-CODE2", organisationReference.getOrganisation().getOrganisationTkCode(),
+                "OK-2", "OK-CODE2", organisationReference.getTarget().getOrganisationTkCode(),
                 Collections.singletonList(networkCurrentVersion),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("OK 2", "OK 2 en", null));
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("OK 2", "OK 2 en", null));
 
         studyModuleRepository.save(studyModuleEntityToAddRefs);
 
         // SEND UPDATE STUDY MODULE MESSAGE
 
         String updateJson =
-                "{\n" +
-                        "    \"studyModule\": { \n" +
-                        "        \"studyElementId\": \"ID1\", \n" +
-                        "        \"name\": { \n" +
-                        "            \"values\": { \n" +
-                        "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                        "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                        "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                        "            } \n" +
-                        "        }, \n" +
-                        "        \"subElements\": [\n" +
-                        "            {\n" +
-                        "                \"studyElementId\": \""+ courseUnitEntityCreatedWithModule.getStudyElementId() + "\", \n" +
-                        "                \"type\": \"COURSE_UNIT\",\n" +
-                        "                \"organisationReferences\": [\n" +
-                        "                   {\n" +
-                        "                       \"organisationRole\": 1,\n" +
-                        "                       \"target\": {\n" +
-                        "                           \"organisationTkCode\": \"TUNI\"\n" +
-                        "                       }\n" +
-                        "                   }\n" +
-                        "                ],\n" +
-                        "                \"name\": { \n" +
-                        "                    \"values\": { \n" +
-                        "                        \"fi\": \"Opintojakson nimi 2\", \n" +
-                        "                        \"en\": \"Opintojakson nimi 2 Englanniksi\", \n" +
-                        "                        \"sv\": \"Opintojakson nimi 2 Ruotsiksi\" \n" +
-                        "                    } \n" +
-                        "               }\n" +
-                        "            },\n" +
-                        "            {\n" +
-                        "                \"studyElementId\": \""+ studyModuleEntityToAddRefs.getStudyElementId() + "\", \n" +
-                        "                \"type\": \"STUDY_MODULE\",\n" +
-                        "                \"organisationReferences\": [\n" +
-                        "                   {\n" +
-                        "                       \"organisationRole\": 1,\n" +
-                        "                       \"target\": {\n" +
-                        "                           \"organisationTkCode\": \"TUNI\"\n" +
-                        "                       }\n" +
-                        "                   }\n" +
-                        "                ],\n" +
-                        "                \"name\": { \n" +
-                        "                    \"values\": { \n" +
-                        "                        \"fi\": \"OK 3\", \n" +
-                        "                        \"en\": \"OK 3 en\", \n" +
-                        "                        \"sv\": \"OK 3 sv\" \n" +
-                        "                    } \n" +
-                        "               }\n" +
-                        "            }\n" +
-                        "        ]\n" +
-                        "    }\n" +
-                        "}";
+                """
+                    {
+                        "studyModule": { 
+                            "studyElementId": "ID1", 
+                            "name": { 
+                                "values": { 
+                                    "fi": "Kokonaisuuden nimi 2", 
+                                    "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                    "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                                } 
+                            }, 
+                            "subElements": [
+                                {
+                                    "studyElementId": "%s", 
+                                    "type": "COURSE_UNIT",
+                                    "organisationReferences": [
+                                       {
+                                           "organisationRole": 1,
+                                           "target": {
+                                               "organisationTkCode": "TUNI"
+                                           }
+                                       }
+                                    ],
+                                    "name": { 
+                                        "values": { 
+                                            "fi": "Opintojakson nimi 2", 
+                                            "en": "Opintojakson nimi 2 Englanniksi", 
+                                            "sv": "Opintojakson nimi 2 Ruotsiksi" 
+                                        } 
+                                   }
+                                },
+                                {
+                                    "studyElementId": "%s", 
+                                    "type": "STUDY_MODULE",
+                                    "organisationReferences": [
+                                       {
+                                           "organisationRole": 1,
+                                           "target": {
+                                               "organisationTkCode": "TUNI"
+                                           }
+                                       }
+                                    ],
+                                    "name": { 
+                                        "values": { 
+                                            "fi": "OK 3", 
+                                            "en": "OK 3 en", 
+                                            "sv": "OK 3 sv" 
+                                        } 
+                                   }
+                                }
+                            ]
+                        }
+                    }
+                """.formatted(courseUnitEntityCreatedWithModule.getStudyElementId(), studyModuleEntityToAddRefs.getStudyElementId());
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-                organisationReference.getOrganisation().getOrganisationTkCode());
+                organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -2418,10 +2440,10 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         List<StudyModuleEntity> studyModuleEntities = studyModuleRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-                organisationReference.getOrganisation().getOrganisationTkCode(), StudyModuleEntity.class);
+                organisationReference.getTarget().getOrganisationTkCode(), StudyModuleEntity.class);
         assertNotNull(studyModuleEntities);
         assertTrue(studyModuleEntities.size() == 1);
         assertEquals(studyModuleEntityToAddRefs.getStudyElementId(), studyModuleEntities.get(0).getStudyElementId());
@@ -2432,12 +2454,12 @@ public class StudyModuleRouteV8IntegrationTest {
         assertEquals(studyModuleEntityToAddRefs.getName().getValue("sv"), studyModuleEntities.get(0).getName().getValue("sv"));
 
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-                courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+                courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
         assertEquals(courseUnit.getName().getValue("fi"), courseUnitEntityCreatedWithModule.getName().getValue("fi"));
         assertEquals(courseUnit.getName().getValue("en"), courseUnitEntityCreatedWithModule.getName().getValue("en"));
         assertEquals(courseUnit.getName().getValue("sv"), courseUnitEntityCreatedWithModule.getName().getValue("sv"));
@@ -2449,7 +2471,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String courseUnitOrganisingOrganisationId = "LAUREA";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(studyModuleOrganisingOrganisationId, courseUnitOrganisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
@@ -2488,7 +2510,7 @@ public class StudyModuleRouteV8IntegrationTest {
         studyModule.setSubElements(Collections.singletonList(courseUnit));
 
         UpdateStudyModuleRequest updateStudyModuleRequest = new UpdateStudyModuleRequest();
-        updateStudyModuleRequest.setStudyModule(this.modelMapper.map(studyModule, StudyModule.class));
+        updateStudyModuleRequest.setStudyModule(StudyModule.from(studyModule));
 
         Message studyModuleUpdateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateStudyModuleRequest, studyModuleOrganisation.getOrganisationTkCode());
         DefaultResponse studyModuleUpdateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(studyModuleUpdateResponseMessage);
@@ -2501,11 +2523,11 @@ public class StudyModuleRouteV8IntegrationTest {
         assertNotNull(courseUnitEntity.getParents());
         assertEquals(1, courseUnitEntity.getParents().size());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference studyModuleReference = courseUnitEntity.getParents().get(0);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity studyModuleReference = courseUnitEntity.getParents().get(0);
 
         assertEquals(studyModule.getStudyElementId(), studyModuleReference.getReferenceIdentifier());
         assertEquals(studyModuleOrganisation.getOrganisationTkCode(), studyModuleReference.getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, studyModuleReference.getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, studyModuleReference.getReferenceType());
     }
 
     @Test
@@ -2514,7 +2536,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String courseUnitOrganisingOrganisationId = "LAUREA";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(studyModuleOrganisingOrganisationId, courseUnitOrganisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
@@ -2553,7 +2575,7 @@ public class StudyModuleRouteV8IntegrationTest {
         studyModule.setSubElements(Collections.singletonList(courseUnit));
 
         UpdateStudyModuleRequest updateStudyModuleRequest = new UpdateStudyModuleRequest();
-        updateStudyModuleRequest.setStudyModule(this.modelMapper.map(studyModule, StudyModule.class));
+        updateStudyModuleRequest.setStudyModule(StudyModule.from(studyModule));
 
         Message studyModuleUpdateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateStudyModuleRequest, studyModuleOrganisation.getOrganisationTkCode());
         DefaultResponse studyModuleUpdateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(studyModuleUpdateResponseMessage);
@@ -2565,7 +2587,7 @@ public class StudyModuleRouteV8IntegrationTest {
 
         studyModule.setSubElements(Collections.singletonList(courseUnit));
         updateStudyModuleRequest = new UpdateStudyModuleRequest();
-        updateStudyModuleRequest.setStudyModule(this.modelMapper.map(studyModule, StudyModule.class));
+        updateStudyModuleRequest.setStudyModule(StudyModule.from(studyModule));
 
         studyModuleUpdateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateStudyModuleRequest, studyModuleOrganisation.getOrganisationTkCode());
         studyModuleUpdateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(studyModuleUpdateResponseMessage);
@@ -2578,11 +2600,11 @@ public class StudyModuleRouteV8IntegrationTest {
         assertNotNull(courseUnitEntity.getParents());
         assertEquals(1, courseUnitEntity.getParents().size());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference studyModuleReference = courseUnitEntity.getParents().get(0);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity studyModuleReference = courseUnitEntity.getParents().get(0);
 
         assertEquals(studyModule.getStudyElementId(), studyModuleReference.getReferenceIdentifier());
         assertEquals(studyModuleOrganisation.getOrganisationTkCode(), studyModuleReference.getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, studyModuleReference.getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, studyModuleReference.getReferenceType());
     }
 
     @Test
@@ -2591,12 +2613,12 @@ public class StudyModuleRouteV8IntegrationTest {
         String courseUnitOrganisingOrganisationId = "LAUREA";
 
         NetworkEntity studyModuleNetworkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(studyModuleOrganisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(studyModuleOrganisingOrganisationId));
         CooperationNetwork studyModuleNetwork = DtoInitializerV8.getCooperationNetwork(
                 studyModuleNetworkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         NetworkEntity courseUnitNetworkEntity = persistNetworkEntity("CN-2",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 2", "Verkosto en", "Verkosto sv"), Arrays.asList(courseUnitOrganisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 2", "Verkosto en", "Verkosto sv"), Arrays.asList(courseUnitOrganisingOrganisationId));
         CooperationNetwork courseUnitNetwork = DtoInitializerV8.getCooperationNetwork(
                 courseUnitNetworkEntity.getId(), new LocalisedString("Verkosto 2", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
@@ -2633,7 +2655,7 @@ public class StudyModuleRouteV8IntegrationTest {
         studyModule.setSubElements(Collections.singletonList(courseUnit));
 
         UpdateStudyModuleRequest updateStudyModuleRequest = new UpdateStudyModuleRequest();
-        updateStudyModuleRequest.setStudyModule(this.modelMapper.map(studyModule, StudyModule.class));
+        updateStudyModuleRequest.setStudyModule(StudyModule.from(studyModule));
 
         Message studyModuleUpdateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateStudyModuleRequest, studyModuleOrganisation.getOrganisationTkCode());
         DefaultResponse studyModuleUpdateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(studyModuleUpdateResponseMessage);
@@ -2651,7 +2673,7 @@ public class StudyModuleRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
@@ -2678,98 +2700,99 @@ public class StudyModuleRouteV8IntegrationTest {
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
 
         CourseUnitEntity createdCourseUnitEntity = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdCourseUnitEntity);
         assertEquals(1, createdCourseUnitEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdCourseUnitEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(courseUnit.getOnlyEnrollableWithParent(), createdCourseUnitEntity.getParents().get(0).getOnlyEnrollableWithParent());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), createdCourseUnitEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, createdCourseUnitEntity.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, createdCourseUnitEntity.getParents().get(0).getReferenceType());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork networkCurrentVersion = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity networkCurrentVersion = EntityInitializer.getCooperationNetwork(
+            networkEntity.getId(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnit2 = EntityInitializer.getCourseUnitEntity("ID2", "RAIRAI2", "TUNI",
             Collections.singletonList(networkCurrentVersion),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Opintojakson nimi 2", "Course unit to add ref to", null));
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Opintojakson nimi 2", "Course unit to add ref to", null));
 
         courseUnitRepository.create(courseUnit2);
 
         // Test updating new reference to study module with onlyEnrollableWithParent and remove requirement from previously created
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnit.getStudyElementId() + "\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"onlyEnrollableWithParent\": false,\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnit2.getStudyElementId() + "\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"onlyEnrollableWithParent\": true,\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": { 
+                        "studyElementId": "ID1", 
+                        "subElements": [
+                            {
+                                "studyElementId": "%s", 
+                                "type": "COURSE_UNIT",
+                                "onlyEnrollableWithParent": false,
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ]
+                            },
+                            {
+                                "studyElementId": "%s", 
+                                "type": "COURSE_UNIT",
+                                "onlyEnrollableWithParent": true,
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            """.formatted(courseUnit.getStudyElementId(), courseUnit2.getStudyElementId());
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         CourseUnitEntity refOnlyEnrollableRemovedCourseUnitEntity = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdCourseUnitEntity);
         assertEquals(1, refOnlyEnrollableRemovedCourseUnitEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), refOnlyEnrollableRemovedCourseUnitEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(false, refOnlyEnrollableRemovedCourseUnitEntity.getParents().get(0).getOnlyEnrollableWithParent());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), refOnlyEnrollableRemovedCourseUnitEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, refOnlyEnrollableRemovedCourseUnitEntity.getParents().get(0).getReferenceType());
-
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, refOnlyEnrollableRemovedCourseUnitEntity.getParents().get(0).getReferenceType());
 
         CourseUnitEntity refAddedCourseUnitEntity = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit2.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit2.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdCourseUnitEntity);
         assertEquals(1, refAddedCourseUnitEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), refAddedCourseUnitEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(true, refAddedCourseUnitEntity.getParents().get(0).getOnlyEnrollableWithParent());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), refAddedCourseUnitEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.STUDY_MODULE, refAddedCourseUnitEntity.getParents().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.STUDY_MODULE, refAddedCourseUnitEntity.getParents().get(0).getReferenceType());
     }
 
     // TODO: move to a separate service layer integration test someday?
     @Test
     public void testCreatingDuplicateStudyModules_shouldFail() {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation org = DtoInitializer.getOrganisation("TESTORG", "TESTORG");
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference organisationRef = DtoInitializer.getOrganisationReference(org,
-                fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole.ROLE_MAIN_ORGANIZER);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationDataEntity org = EntityInitializer.getOrganisation("TESTORG", "TESTORG");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationReferenceEntity organisationRef = EntityInitializer.getOrganisationReference(org,
+                fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationRoleEntity.ROLE_MAIN_ORGANIZER);
 
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("TESTORG", "blaa",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", null, null), 8);
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", null, null), 8);
         organisationService.create(organisationEntity);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity("TESTID", "TESTORG", null, null, null);
@@ -2780,18 +2803,18 @@ public class StudyModuleRouteV8IntegrationTest {
         assertThrows(CreateFailedException.class, () -> studyModuleService.create(studyModuleEntity));
     }
 
-    private NetworkEntity persistNetworkEntity(String id, fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString name, List<String> organisationIds) {
-        List<fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation> networkOrgs = new ArrayList<>();
+    private NetworkEntity persistNetworkEntity(String id, fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity name, List<String> organisationIds) {
+        List<fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity> networkOrgs = new ArrayList<>();
         for (String orgId : organisationIds) {
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation networkOrganisation =
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation();
+            fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity networkOrganisation =
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity();
             networkOrganisation.setOrganisationTkCode(orgId);
-            networkOrganisation.setValidityInNetwork(DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now()));
+            networkOrganisation.setValidityInNetwork(EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now()));
             networkOrganisation.setIsCoordinator(true);
             networkOrgs.add(networkOrganisation);
         }
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(id, name, networkOrgs,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
 
         return networkRepository.create(networkEntity);
     }

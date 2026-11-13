@@ -47,4 +47,14 @@ public class ForwardedUpdateStudentStudyRightRequest extends AbstractForwardedSt
         this.homeStudyRight = homeStudyRight;
     }
 
+    public static ForwardedUpdateStudentStudyRightRequest from(UpdateStudentStudyRightRequest source) {
+        if (source == null) {
+            return null;
+        }
+
+        ForwardedUpdateStudentStudyRightRequest target = new ForwardedUpdateStudentStudyRightRequest();
+        target.setOid(source.getOid());
+        target.setHomeStudyRight(source.getHomeStudyRight());
+        return target;
+    }
 }

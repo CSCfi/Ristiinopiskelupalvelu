@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.messaging.jms;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.messaging.MessageTypeClassProvider;
 import fi.uta.ristiinopiskelu.messaging.VersionedMessageType;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
@@ -32,8 +32,8 @@ public class VersionedMessageTypeAwareDelegatingMessageConverter implements Mess
     private final int currentVersion;
     private Map<Integer, RistiinopiskeluMessageConverter> convertersByVersion = new HashMap<>();
 
-    public VersionedMessageTypeAwareDelegatingMessageConverter(ObjectMapper objectMapper, MessageTypeClassProvider messageTypeClassProvider) {
-        Assert.notNull(objectMapper, "ObjectMapper cannot be null");
+    public VersionedMessageTypeAwareDelegatingMessageConverter(JsonMapper jsonMapper, MessageTypeClassProvider messageTypeClassProvider) {
+        Assert.notNull(jsonMapper, "JsonMapper cannot be null");
         Assert.notNull(messageTypeClassProvider, "MessageTypeClassProvider cannot be null");
 
         this.currentVersion = messageTypeClassProvider.getCurrentVersion();
@@ -45,7 +45,7 @@ public class VersionedMessageTypeAwareDelegatingMessageConverter implements Mess
             int schemaVersion = entry.getKey();
             VersionedMessageType[] schemaMessageTypes = entry.getValue();
 
-            RistiinopiskeluMessageConverter converter = new RistiinopiskeluMessageConverter(objectMapper, schemaMessageTypes);
+            RistiinopiskeluMessageConverter converter = new RistiinopiskeluMessageConverter(jsonMapper, schemaMessageTypes);
 
             if(!CollectionUtils.isEmpty(messageTypeClassProvider.getMessageTypeOverrides())) {
                 Map<VersionedMessageType, VersionedMessageType> overrides = messageTypeClassProvider.getMessageTypeOverrides().get(schemaVersion);

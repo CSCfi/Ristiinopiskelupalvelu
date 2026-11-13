@@ -10,7 +10,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
-import org.springframework.data.elasticsearch.core.SearchHit;
 
 import java.util.List;
 
@@ -50,8 +49,6 @@ public class RealisationRepositoryExtendedImpl implements RealisationRepositoryE
                 .withPageable(Pageable.unpaged())
                 .build();
 
-        return elasticsearchTemplate.search(builder, RealisationEntity.class).get()
-                .map(SearchHit::getContent)
-                .toList();
+        return ElasticsearchQueryUtils.search(elasticsearchTemplate, builder, RealisationEntity.class);
     }
 }

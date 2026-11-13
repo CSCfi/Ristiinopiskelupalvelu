@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.read.code;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeSet;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeValue;
+import fi.uta.ristiinopiskelu.datamodel.entity.CodeEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDate;
@@ -104,4 +105,22 @@ public class CodeReadDTO {
         return "Code(codeUri=" + this.getCodeUri() + ")";
     }
 
+    public static CodeReadDTO from(CodeEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        CodeReadDTO target = new CodeReadDTO();
+        target.setCodeUri(source.getCodeUri());
+        target.setResourceUri(source.getResourceUri());
+        target.setCodeSet(CodeSet.from(source.getCodeSet()));
+        target.setKey(source.getKey());
+        target.setCodeVersion(source.getCodeVersion());
+        target.setUpdateDate(source.getUpdateDate());
+        target.setValidityStartDate(source.getValidityStartDate());
+        target.setValidityEndDate(source.getValidityEndDate());
+        target.setStatus(source.getStatus());
+        target.setCodeValues(CodeValue.from(source.getCodeValues()));
+        return target;
+    }
 }

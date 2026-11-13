@@ -3,49 +3,46 @@
     <v-select
       v-model="nestedObjectValue"
       :items="items"
+      item-title="text"
+      item-value="value"
       filled
       :rules="[]"
-      :label="$t(this.label)"
+      :label="$t(label)"
     ></v-select>
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue';
 import _ from 'lodash';
-export default {
-  props: {
-    field: String,
-    value: Object,
-    label: String,
-    items: Array
-  },
-  computed: {
-    nestedObjectValue: {
-      get: function() {
-        return this.value?.[this.field];
-      },
-      set: function(newValue) {
-        let newValueToEmit = this.value;
-        if (!newValueToEmit) {
-          newValueToEmit = {};
-        }
-        newValueToEmit[this.field] = newValue;
 
-        if (!newValue) {
-          if (this.isEmptyObject(this.value)) {
-            newValueToEmit = null;
-          }
-        }
-        this.$emit('input', newValueToEmit);
-      }
-    }
+const props = defineProps({
+  field: String,
+  modelValue: Object,
+  label: String,
+  items: Array
+});
+
+const emit = defineEmits(['update:modelValue']);
+
+const isEmptyObject = values =>
+  _.keys(values).every(key => {
+    return !values[key];
+  });
+
+const nestedObjectValue = computed({
+  get() {
+    return props.modelValue?.[props.field];
   },
-  methods: {
-    isEmptyObject(values) {
-      return _.keys(values).every(key => {
-        return !values[key];
-      });
+  set(newValue) {
+    const current = props.modelValue ? { ...props.modelValue } : {};
+    current[props.field] = newValue;
+
+    let newValueToEmit = current;
+    if (!newValue && isEmptyObject(current)) {
+      newValueToEmit = null;
     }
+    emit('update:modelValue', newValueToEmit);
   }
-};
+});
 </script>

@@ -18,6 +18,10 @@
       "description": "Tarkempi kuvaus viestin käsittelyn tilasta.",
       "type": "string"
     },
+    "errorCode": {
+      "description": "Koneellisesti käsiteltävä numeerinen virhekoodi.",
+      "type": "integer"
+    },
     "registrationRequestId": {
       "description": "Ristiinopiskelupalvelun luoma rekisteröintipyynnön tekninen tunniste.",
       "type": "string",

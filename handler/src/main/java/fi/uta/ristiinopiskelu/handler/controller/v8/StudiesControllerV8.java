@@ -32,7 +32,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Tag(name = "studies", description = "Tarjonta v8")
@@ -61,7 +60,7 @@ public class StudiesControllerV8 extends AbstractController {
                                                    @Parameter(description = "Opintojakson tunnistekoodi") @RequestParam(value = "courseUnitIdentifierCode", required = false) String courseUnitIdentifierCode,
                                                    @Parameter(description = "Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
                                                    @Parameter(description = "Opintojaksojen tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
-                                                   @Parameter(description = "Palautetaanko inaktiiviset") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
+                                                   @Parameter(description = "Palautetaanko vain voimassaolevaa tarjontaa voimassaolevista verkostoista") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
                                                    @Parameter(description = "Sivunumero") @RequestParam(defaultValue = "0", required = false) Integer page,
                                                    @Parameter(description = "Sivun koko") @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
 
@@ -77,11 +76,11 @@ public class StudiesControllerV8 extends AbstractController {
     @GetMapping(value = "/courseunits/{courseUnitId}/realisations")
     public List<Realisation> findCourseUnitRealisations(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
                                                             @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
-                                                        @Parameter(description ="Opintojakson tunniste") @PathVariable("courseUnitId") String courseUnitId,
-                                                        @Parameter(description ="Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
-                                                        @Parameter(description ="Toteutusten tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
-                                                        @Parameter(description ="Sivunumero") @RequestParam(defaultValue = "0", required = false) Integer page,
-                                                        @Parameter(description ="Sivun koko") @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
+                                                        @Parameter(description = "Opintojakson tunniste") @PathVariable("courseUnitId") String courseUnitId,
+                                                        @Parameter(description = "Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
+                                                        @Parameter(description = "Toteutusten tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
+                                                        @Parameter(description = "Sivunumero") @RequestParam(defaultValue = "0", required = false) Integer page,
+                                                        @Parameter(description = "Sivun koko") @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
 
         RealisationSearchParameters searchParams = new RealisationSearchParameters();
         searchParams.setIncludeInactive(true);
@@ -107,7 +106,7 @@ public class StudiesControllerV8 extends AbstractController {
                                                      @Parameter(description = "Opintokokonaisuuden tunnistekoodi") @RequestParam(value = "studyModuleIdentifierCode", required = false) String studyModuleIdentifierCode,
                                                      @Parameter(description = "Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
                                                      @Parameter(description = "Opintokokonaisuuksien tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
-                                                     @Parameter(description = "Palautetaanko inaktiiviset") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
+                                                     @Parameter(description = "Palautetaanko vain voimassaolevaa tarjontaa voimassaolevista verkostoista") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
                                                      @Parameter(description = "Sivunumero") @RequestParam(defaultValue = "0", required = false) Integer page,
                                                      @Parameter(description = "Sivun koko") @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
 
@@ -124,17 +123,19 @@ public class StudiesControllerV8 extends AbstractController {
             " Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags ="studies")
     @GetMapping(value = "/realisations")
     public List<Realisation> findRealisation(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                        @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
-                                                        @Parameter(description = "Toteutuksen tunniste") @RequestParam(value = "realisationId", required = false) String realisationId,
-                                                        @Parameter(description = "Opintojakson tarjoava organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
-                                                        @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
-                                                        @RequestParam(defaultValue = "0", required = false) Integer page,
-                                                        @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
+                                                 @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                             @Parameter(description = "Toteutuksen tunniste") @RequestParam(value = "realisationId", required = false) String realisationId,
+                                             @Parameter(description = "Opintojakson tarjoava organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
+                                             @Parameter(description = "Toteutusten tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
+                                             @Parameter(description = "Palautetaanko vain voimassaolevaa tarjontaa voimassaolevista verkostoista") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
+                                             @RequestParam(defaultValue = "0", required = false) Integer page,
+                                             @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
         List<fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus> currentVersionStatuses = statuses.stream()
-            .map(st -> fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.valueOf(st.name())).collect(Collectors.toList());
+            .map(st -> fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.valueOf(st.name()))
+            .toList();
 
         return super.mapSearchResultsToList(realisationService.searchByIds(SSL_CLIENT_S_DN_O, realisationId,
-            organizingOrganisationId, currentVersionStatuses, PageRequest.of(page, pageSize)), Realisation.class);
+            organizingOrganisationId, currentVersionStatuses, includeInactive, PageRequest.of(page, pageSize)), Realisation.class);
     }
 
     @Operation(summary = "Hae toteutuksia", description = "Operaatio hakee toteutuksia annetuilla hakuehdoilla. Hakee oletuksena toteutuksia, joissa ilmoittautumisaika on meneillään," +
@@ -143,7 +144,7 @@ public class StudiesControllerV8 extends AbstractController {
             " Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags ="studies")
     @RequestMapping(value = "/realisations/search", method = RequestMethod.POST)
     public List<Realisation> findRealisations(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                              @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                  @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
                                               @RequestBody RealisationSearchParameters searchParameters) {
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters currentSearchParams =
@@ -158,7 +159,8 @@ public class StudiesControllerV8 extends AbstractController {
             " Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags ="studies")
     @PostMapping(value = "/search")
     public StudiesRestSearchResults search(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                               @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudiesSearchParameters searchParams) {
+                                               @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                           @RequestBody StudiesSearchParameters searchParams) {
 
         fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters currentSearchParams =
             super.mapToDto(searchParams, fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters.class);
@@ -167,8 +169,13 @@ public class StudiesControllerV8 extends AbstractController {
         fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchResults results = new StudiesSearchResultsConverter().convert(internalResults);
 
         return new StudiesRestSearchResults(
-            results.getResults().stream().map(this::mapStudyElement).collect(Collectors.toList()),
-            results.getAggregations().stream().map(this::mapAggregation).filter(agg -> !agg.getName().equals("studyElementsByRealisationTeachingLanguages")).collect(Collectors.toList()),
+            results.getResults().stream()
+                .map(this::mapStudyElement)
+                .toList(),
+            results.getAggregations().stream()
+                .map(this::mapAggregation)
+                .filter(agg -> !agg.getName().equals("studyElementsByRealisationTeachingLanguages"))
+                .toList(),
             results.getTotalHits());
     }
 

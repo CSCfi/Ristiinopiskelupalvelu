@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
 import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.GenericEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
@@ -9,13 +10,12 @@ import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
-import org.springframework.data.elasticsearch.core.SearchHitSupport;
-import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.core.SearchPage;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.data.elasticsearch.core.query.IndexQuery;
 import org.springframework.data.elasticsearch.core.query.IndexQueryBuilder;
@@ -25,6 +25,7 @@ import org.springframework.util.Assert;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.stream.StreamSupport;
 
 public class ExtendedRepositoryImpl<T extends GenericEntity>
         extends SimpleElasticsearchRepository<T, String> implements ExtendedRepository<T, String> {
@@ -87,25 +88,58 @@ public class ExtendedRepositoryImpl<T extends GenericEntity>
      */
     @Override
     public List<T> search(Query query, Pageable pageable) {
-        NativeQueryBuilder nativeSearchQueryBuilder = new NativeQueryBuilder()
-            .withQuery(query);
+        NativeQuery nativeSearchQuery = new NativeQueryBuilder()
+            .withQuery(query)
+            .withPageable(pageable != null ? pageable : Pageable.unpaged())
+            .build();
 
-        if(pageable != null) {
-            nativeSearchQueryBuilder.withPageable(pageable);
-        } else {
-            nativeSearchQueryBuilder.withPageable(Pageable.unpaged());
-        }
-
-        NativeQuery nativeSearchQuery = nativeSearchQueryBuilder.build();
-
-        SearchHits<T> searchHits = elasticsearchRestTemplate.search(nativeSearchQuery, super.entityClass);
-        SearchPage<T> page = SearchHitSupport.searchPageFor(searchHits, nativeSearchQuery.getPageable());
-        return ((Page<T>) SearchHitSupport.unwrapSearchHits(page)).getContent();
+        return ElasticsearchQueryUtils.search(elasticsearchRestTemplate, nativeSearchQuery, super.entityClass);
     }
 
     @Override
     public List<T> search(Query query) {
         return search(query, null);
+    }
+
+    @Override
+    public Iterable<T> findAll() {
+        return search(QueryBuilders.matchAll().build()._toQuery());
+    }
+
+    @Override
+    public Page<T> findAll(Pageable pageable) {
+        Assert.notNull(pageable, "pageable must not be null");
+
+        if (pageable.isPaged()) {
+            return super.findAll(pageable);
+        }
+
+        List<T> content = search(QueryBuilders.matchAll().build()._toQuery(), pageable);
+        return new PageImpl<>(content, pageable, content.size());
+    }
+
+    @Override
+    public Iterable<T> findAll(Sort sort) {
+        Assert.notNull(sort, "sort must not be null");
+        return search(QueryBuilders.matchAll().build()._toQuery(), Pageable.unpaged(sort));
+    }
+
+    @Override
+    public Iterable<T> findAllById(Iterable<String> ids) {
+        Assert.notNull(ids, "ids can't be null");
+
+        List<String> stringIds = StreamSupport.stream(ids.spliterator(), false)
+            .map(elasticsearchRestTemplate::convertId)
+            .toList();
+
+        if (stringIds.isEmpty()) {
+            return List.of();
+        }
+
+        return search(QueryBuilders.ids()
+            .values(stringIds)
+            .build()
+            ._toQuery());
     }
 
     private <S extends T> S save(S entity, IndexQuery.OpType opType) {

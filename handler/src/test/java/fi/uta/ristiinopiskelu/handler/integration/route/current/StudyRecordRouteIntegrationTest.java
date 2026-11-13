@@ -1,15 +1,19 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current;
 
 import com.github.mpolla.HetuUtil;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Person;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyRightIdentifier;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Student;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyRightIdentifierEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.StudyRecordStatusEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -25,7 +29,6 @@ import fi.uta.ristiinopiskelu.persistence.repository.*;
 import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.commons.util.StringUtils;
@@ -36,12 +39,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -108,57 +112,55 @@ public class StudyRecordRouteIntegrationTest {
         JmsHelper.setMessageSchemaVersion(this.messageSchemaVersion);
 
         studentHomeOrganization = EntityInitializer.getOrganisationEntity(
-            "TESTORG1", "testiorganisaatio1", new LocalisedString("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
+            "TESTORG1", "testiorganisaatio1", new LocalisedStringEntity("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
 
         courseUnitOrganizerOrganization = EntityInitializer.getOrganisationEntity(
-            "TESTORG2", "testiorganisaatio2", new LocalisedString("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
+            "TESTORG2", "testiorganisaatio2", new LocalisedStringEntity("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
 
         organisationRepository.create(studentHomeOrganization);
         organisationRepository.create(courseUnitOrganizerOrganization);
 
-        NetworkOrganisation networkOrganisation1 = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation1 = new NetworkOrganisationEntity();
         networkOrganisation1.setOrganisationTkCode(studentHomeOrganization.getId());
-        networkOrganisation1.setValidityInNetwork(DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1)));
+        networkOrganisation1.setValidityInNetwork(EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1)));
         networkOrganisation1.setIsCoordinator(true);
 
-        NetworkOrganisation networkOrganisation2 = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation2 = new NetworkOrganisationEntity();
         networkOrganisation2.setOrganisationTkCode(courseUnitOrganizerOrganization.getId());
-        networkOrganisation2.setValidityInNetwork(DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1)));
+        networkOrganisation2.setValidityInNetwork(EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1)));
         networkOrganisation2.setIsCoordinator(true);
 
         networkEntity = EntityInitializer.getNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(networkOrganisation1, networkOrganisation2),
-            DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(networkOrganisation1, networkOrganisation2),
+            EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
         networkRepository.create(networkEntity);
 
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
             networkEntity.getId(), null, true, networkEntity.getValidity().getStart().toLocalDate(), null);
 
         courseUnitEntity = EntityInitializer.getCourseUnitEntity(
             "OJ-1", "OJ-1-CODE", "TESTORG2", Collections.singletonList(network), null);
         courseUnitRepository.create(courseUnitEntity);
 
-        StudyElementReference courseUnitReference = new StudyElementReference(courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity courseUnitReference = EntityInitializer.getStudyElementReferenceForCourseUnit(
+            courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
 
         realisationEntity = EntityInitializer.getRealisationEntity(
             "TOT-1", "TOT1-CODE", "TESTORG2", Collections.singletonList(courseUnitReference), Collections.singletonList(network));
         realisationRepository.create(realisationEntity);
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParentEntity selection = EntityInitializer.getRegistrationSelectionCourseUnitParent(
+            courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection rootSelection = DtoInitializer.getRegistrationSelectionRealisation(
-            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, selection, null);
+        CreateRegistrationSelectionEntity rootSelection = EntityInitializer.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.PENDING, selection, null);
 
-        RegistrationSelection selectionReply = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.ACCEPTED);
-
-        RegistrationSelection rootSelectionReply = DtoInitializer.getRegistrationSelectionRealisation(
-            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.ACCEPTED, selectionReply, null);
+        RegistrationReplySelectionEntity rootSelectionReply = EntityInitializer.getRegistrationReplySelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.ACCEPTED, null);
 
         registration = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), Collections.singletonList(rootSelection),
-            Collections.singletonList(rootSelectionReply), RegistrationStatus.REGISTERED, networkEntity.getId());
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(rootSelection),
+            List.of(rootSelectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
 
         registrationRepository.create(registration);
 
@@ -171,8 +173,8 @@ public class StudyRecordRouteIntegrationTest {
             .givenName("Testo")
             .hostStudentNumber(registration.getStudent().getHostStudentNumber())
             .hostEppn("testst@testi2.fi")
-            .homeStudyRightIdentifier(registration.getStudent().getHomeStudyRight().getIdentifiers())
-            .hostStudyRightIdentifier(registration.getStudent().getHostStudyRight().getIdentifiers())
+            .homeStudyRightIdentifier(toStudyRightIdentifier(registration.getStudent().getHomeStudyRight().getIdentifiers()))
+            .hostStudyRightIdentifier(toStudyRightIdentifier(registration.getStudent().getHostStudyRight().getIdentifiers()))
             .build();
     }
 
@@ -181,29 +183,29 @@ public class StudyRecordRouteIntegrationTest {
         // clear all registrations premade in setUp()
         registrationRepository.deleteAll();
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionEntity selection = EntityInitializer.getRegistrationSelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.PENDING);
 
-        RegistrationSelection selectionReply = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.ACCEPTED);
+        RegistrationReplySelectionEntity selectionReply = EntityInitializer.getRegistrationReplySelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.ACCEPTED);
 
         // create a few registrations with the same enrolmentDateTime, with or without receivingDateTime
         RegistrationEntity registration = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), Collections.singletonList(selection),
-            Collections.singletonList(selectionReply), RegistrationStatus.REGISTERED, networkEntity.getId());
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(selection),
+            List.of(selectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
         registration.setEnrolmentDateTime(OffsetDateTime.now().minusDays(5));
         registration.setReceivingDateTime(null);
 
         RegistrationEntity registration2 = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), Collections.singletonList(selection),
-            Collections.singletonList(selectionReply), RegistrationStatus.REGISTRATION_REJECTED, networkEntity.getId());
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(selection),
+            List.of(selectionReply), RegistrationStatusEntity.REGISTRATION_REJECTED, networkEntity.getId());
         registration2.setStudent(registration.getStudent());
         registration2.setEnrolmentDateTime(OffsetDateTime.now().minusDays(5));
         registration2.setReceivingDateTime(null);
 
         RegistrationEntity registration3 = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), Collections.singletonList(selection),
-            Collections.singletonList(selectionReply), RegistrationStatus.REGISTERED, networkEntity.getId());
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(selection),
+            List.of(selectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
         registration3.setStudent(registration.getStudent());
         registration3.setEnrolmentDateTime(OffsetDateTime.now().minusDays(5));
         registration3.setReceivingDateTime(OffsetDateTime.now().minusDays(1));
@@ -240,8 +242,8 @@ public class StudyRecordRouteIntegrationTest {
 
         // now add a new registration with the same enrolmentDateTime as the first registration, but with a recent receivingDateTime and status rejected
         RegistrationEntity registration4 = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), Collections.singletonList(selection),
-            Collections.singletonList(selectionReply), RegistrationStatus.REGISTRATION_REJECTED, networkEntity.getId());
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(selection),
+            List.of(selectionReply), RegistrationStatusEntity.REGISTRATION_REJECTED, networkEntity.getId());
         registration4.setStudent(registration.getStudent());
         registration4.setEnrolmentDateTime(registration.getEnrolmentDateTime());
         registration4.setReceivingDateTime(OffsetDateTime.now());
@@ -255,7 +257,93 @@ public class StudyRecordRouteIntegrationTest {
     }
 
     @Test
-    public void testSendingCreateStudyRecordMessageForRootSelectionRealisation_shouldSucceed() throws JMSException, IOException {
+    public void testSendingCreateStudyRecordMessage_registrationsCheckedAccordingToReceivingTimestampAndReceivingSequence_shouldSucceed() throws JMSException {
+        // clear all registrations premade in setUp()
+        registrationRepository.deleteAll();
+
+        CreateRegistrationSelectionEntity selection = EntityInitializer.getRegistrationSelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.PENDING);
+
+        RegistrationReplySelectionEntity selectionReply = EntityInitializer.getRegistrationReplySelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.ACCEPTED);
+
+        // create a few registrations with the same enrolmentDateTime, with or without receivingDateTime
+        RegistrationEntity registration = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(selection),
+            List.of(selectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
+        registration.setEnrolmentDateTime(null);
+        registration.setReceivingDateTime(null);
+        registration.setReceivingTimestamp(Instant.now().minus(5, ChronoUnit.DAYS).toEpochMilli());
+        registration.setReceivingSequence(1L);
+
+        RegistrationEntity registration2 = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(selection),
+            List.of(selectionReply), RegistrationStatusEntity.REGISTRATION_REJECTED, networkEntity.getId());
+        registration2.setStudent(registration.getStudent());
+        registration2.setEnrolmentDateTime(null);
+        registration2.setReceivingDateTime(null);
+        registration2.setReceivingTimestamp(Instant.now().minus(5, ChronoUnit.DAYS).toEpochMilli());
+        registration2.setReceivingSequence(2L);
+
+        RegistrationEntity registration3 = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(selection),
+            List.of(selectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
+        registration3.setStudent(registration.getStudent());
+        registration3.setEnrolmentDateTime(null);
+        registration3.setReceivingDateTime(null);
+        registration3.setReceivingTimestamp(Instant.now().minus(5, ChronoUnit.DAYS).toEpochMilli());
+        registration3.setReceivingSequence(3L);
+
+        registration = registrationRepository.create(registration);
+        registrationRepository.create(registration2);
+        registrationRepository.create(registration3);
+
+        // create the study record request
+        Person acceptor = DtoInitializer.getPerson("Olli", "Opettaja", "testvir@testi.fi", "testivir@testi2.fi");
+
+        CompletedCreditAssessment completedCreditAssessment = DtoInitializer.getCompletedCreditAssessment(
+            "completed credit assessment description", "5", ScaleValue.FIVE_LEVEL, GradeCode.GRADE_5);
+
+        StudyRecordOrganisation organisation = DtoInitializer.getStudyRecordOrganisation(
+            "ORG-2", "123456", new LocalisedString("Nimen kuvaus", null, null));
+
+        CompletedCreditTarget completedCreditTarget = DtoInitializer.getCompletedCreditTarget(
+            courseUnitEntity.getStudyElementId(), courseUnitEntity.getStudyElementIdentifierCode(), CompletedCreditTargetType.COURSE_UNIT);
+
+        CompletedCredit completedCredit = DtoInitializer.getCompletedCreditForCourseUnit(
+            "SUORITUSID-1", new LocalisedString("testisuoritus", null, null), CompletedCreditStatus.ACCEPTED,
+            completedCreditTarget, CompletedCreditType.DEGREE_PROGRAMME_COMPLETION,
+            Collections.singletonList(acceptor), completedCreditAssessment, "ORG-2", organisation);
+
+        CreateStudyRecordRequest createStudyRecordRequest = MessageTemplateInitializer.getCreateStudyRecordRequestTemplate(
+            courseUnitOrganizerOrganization.getId(), studentHomeOrganization.getId(), networkEntity.getId(),
+            Collections.singletonList(completedCredit), new StudyRecordStudent(registration.getStudent()), RoutingType.CROSS_STUDY);
+
+        // now send the study record request to home school and check that it succeeds
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, courseUnitOrganizerOrganization.getId());
+        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertEquals(Status.OK, resp.getStatus());
+
+        // now add a new registration with the same enrolmentDateTime as the first registration, but with a recent receivingDateTime and status rejected
+        RegistrationEntity registration4 = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(selection),
+            List.of(selectionReply), RegistrationStatusEntity.REGISTRATION_REJECTED, networkEntity.getId());
+        registration4.setStudent(registration.getStudent());
+        registration4.setEnrolmentDateTime(null);
+        registration4.setReceivingDateTime(null);
+        registration4.setReceivingTimestamp(Instant.now().toEpochMilli());
+        registration4.setReceivingSequence(4L);
+
+        registrationRepository.create(registration4);
+
+        // send the study record request to home school and check that it now fails
+        responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, courseUnitOrganizerOrganization.getId());
+        resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertEquals(Status.FAILED, resp.getStatus());
+    }
+
+    @Test
+    public void testSendingCreateStudyRecordMessageForRootSelectionRealisation_shouldSucceed() throws JMSException {
         Person acceptor = DtoInitializer.getPerson("Olli", "Opettaja", "testvir@testi.fi", "testivir@testi2.fi");
 
         CompletedCreditAssessment completedCreditAssessment = DtoInitializer.getCompletedCreditAssessment(
@@ -305,7 +393,7 @@ public class StudyRecordRouteIntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInOrganizingOrganization = jmsTemplate.receive(courseUnitOrganizerOrganization.getQueue());
@@ -371,7 +459,7 @@ public class StudyRecordRouteIntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInOrganizingOrganization = jmsTemplate.receive(courseUnitOrganizerOrganization.getQueue());
@@ -386,56 +474,58 @@ public class StudyRecordRouteIntegrationTest {
         assertEquals(receivedRequest.getStudent().getHostStudyRightIdentifier(), forwardedReply.getStudent().getHostStudyRightIdentifier());
     }
 
-    // disable this test for now. for some unknown reason, overriding onlyTestPersonsAllowed to true seems to be impossible with *any* method.
-    // this certainly isn't normal behaviour, simple @TestPropertySource or @DynamicPropertySource should absolutely suffice, not to mention setting the value
-    // through listeners etc. computer just says no.
-    @Disabled
-    @DirtiesContext
     @Test
-    public void testSendingCreateStudyRecordMessageForCourseUnit_withOnlyTestPersonsAllowed_shouldFail() throws JMSException {
-        // disallow anything but test users
-        personIdValidatorProcessor.setOnlyTestPersonsAllowed(true);
+    public void testSendingCreateStudyRecordMessageForCourseUnit_withOnlyTestPersonsAllowed_shouldFail() throws Exception {
+        boolean originalOnlyTestPersonsAllowed = personIdValidatorProcessor.isOnlyTestPersonsAllowed();
+        try {
+            // disallow anything but test users
+            personIdValidatorProcessor.setOnlyTestPersonsAllowed(true);
 
-        Person acceptor = DtoInitializer.getPerson("Olli", "Opettaja", "testvir@testi.fi", "testivir@testi2.fi");
+            Person acceptor = DtoInitializer.getPerson("Olli", "Opettaja", "testvir@testi.fi", "testivir@testi2.fi");
 
-        CompletedCreditAssessment completedCreditAssessment = DtoInitializer.getCompletedCreditAssessment(
-            "completed credit assessment description", "5", ScaleValue.FIVE_LEVEL, GradeCode.GRADE_5);
+            CompletedCreditAssessment completedCreditAssessment = DtoInitializer.getCompletedCreditAssessment(
+                "completed credit assessment description", "5", ScaleValue.FIVE_LEVEL, GradeCode.GRADE_5);
 
-        StudyRecordOrganisation organisation = DtoInitializer.getStudyRecordOrganisation(
-            "ORG-2", "123456", new LocalisedString("Nimen kuvaus", null, null));
+            StudyRecordOrganisation organisation = DtoInitializer.getStudyRecordOrganisation(
+                "ORG-2", "123456", new LocalisedString("Nimen kuvaus", null, null));
 
-        CompletedCreditTarget completedCreditTarget = DtoInitializer.getCompletedCreditTarget(
-            courseUnitEntity.getStudyElementId(), courseUnitEntity.getStudyElementIdentifierCode(), CompletedCreditTargetType.COURSE_UNIT);
+            CompletedCreditTarget completedCreditTarget = DtoInitializer.getCompletedCreditTarget(
+                courseUnitEntity.getStudyElementId(), courseUnitEntity.getStudyElementIdentifierCode(), CompletedCreditTargetType.COURSE_UNIT);
 
-        CompletedCredit completedCredit = DtoInitializer.getCompletedCreditForCourseUnit(
-            "SUORITUSID-1", new LocalisedString("testisuoritus", null, null), CompletedCreditStatus.ACCEPTED,
-            completedCreditTarget, CompletedCreditType.DEGREE_PROGRAMME_COMPLETION,
-            Collections.singletonList(acceptor), completedCreditAssessment, "ORG-2", organisation);
+            CompletedCredit completedCredit = DtoInitializer.getCompletedCreditForCourseUnit(
+                "SUORITUSID-1", new LocalisedString("testisuoritus", null, null), CompletedCreditStatus.ACCEPTED,
+                completedCreditTarget, CompletedCreditType.DEGREE_PROGRAMME_COMPLETION,
+                Collections.singletonList(acceptor), completedCreditAssessment, "ORG-2", organisation);
 
-        // test with only person id first
-        student.setOid(null);
+            // test with only person id first
+            student.setOid(null);
 
-        CreateStudyRecordRequest createStudyRecordRequest = MessageTemplateInitializer.getCreateStudyRecordRequestTemplate(
-            courseUnitOrganizerOrganization.getId(), studentHomeOrganization.getId(), networkEntity.getId(),
-            Collections.singletonList(completedCredit), student, RoutingType.CROSS_STUDY);
+            CreateStudyRecordRequest createStudyRecordRequest = MessageTemplateInitializer.getCreateStudyRecordRequestTemplate(
+                courseUnitOrganizerOrganization.getId(), studentHomeOrganization.getId(), networkEntity.getId(),
+                Collections.singletonList(completedCredit), student, RoutingType.CROSS_STUDY);
 
-        // send the study record request to home school and check that it failed.
-        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, courseUnitOrganizerOrganization.getId());
-        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
-        assertEquals(Status.FAILED, resp.getStatus());
+            // send the study record request to home school and check that it failed.
+            Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest,
+                courseUnitOrganizerOrganization.getId());
+            DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+            assertEquals(Status.FAILED, resp.getStatus());
 
-        // now, test with oid only
-        student.setOid(Oid.randomOid(OidPersonNode.PERSON));
-        student.setPersonId(null);
+            // now, test with oid only
+            student.setOid(Oid.randomOid(OidPersonNode.PERSON));
+            student.setPersonId(null);
 
-        createStudyRecordRequest = MessageTemplateInitializer.getCreateStudyRecordRequestTemplate(
-            courseUnitOrganizerOrganization.getId(), studentHomeOrganization.getId(), networkEntity.getId(),
-            Collections.singletonList(completedCredit), student, RoutingType.CROSS_STUDY);
+            createStudyRecordRequest = MessageTemplateInitializer.getCreateStudyRecordRequestTemplate(
+                courseUnitOrganizerOrganization.getId(), studentHomeOrganization.getId(), networkEntity.getId(),
+                Collections.singletonList(completedCredit), student, RoutingType.CROSS_STUDY);
 
-        // send it again, should fail too
-        responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, courseUnitOrganizerOrganization.getId());
-        resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
-        assertEquals(Status.FAILED, resp.getStatus());
+            // send it again, should fail too
+            responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest,
+                courseUnitOrganizerOrganization.getId());
+            resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+            assertEquals(Status.FAILED, resp.getStatus());
+        } finally {
+            personIdValidatorProcessor.setOnlyTestPersonsAllowed(originalOnlyTestPersonsAllowed);
+        }
     }
 
     @Test
@@ -490,7 +580,7 @@ public class StudyRecordRouteIntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInstudentHomeOrganization = jmsTemplate.receive(studentHomeOrganization.getQueue());
@@ -554,7 +644,7 @@ public class StudyRecordRouteIntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInstudentHomeOrganization = jmsTemplate.receive(studentHomeOrganization.getQueue());
@@ -682,7 +772,7 @@ public class StudyRecordRouteIntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInCourseUnitOrganizerOrganisation = jmsTemplate.receive(courseUnitOrganizerOrganization.getQueue());
@@ -748,7 +838,7 @@ public class StudyRecordRouteIntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(StudyRecordStatus.RECORD_REJECTED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORD_REJECTED, studyRecords.get(0).getStatus());
         assertEquals(replyRequest.getRejectionReason().getValue("fi"), studyRecords.get(0).getRejectionReason().getValue("fi"));
         assertEquals(replyRequest.getRejectionReason().getValue("en"), studyRecords.get(0).getRejectionReason().getValue("en"));
         assertEquals(replyRequest.getRejectionReason().getValue("sv"), studyRecords.get(0).getRejectionReason().getValue("sv"));
@@ -770,87 +860,199 @@ public class StudyRecordRouteIntegrationTest {
     }
 
     @Test
-    public void testSendingCreateStudyRecordMessageForCourseUnit_withMultipleRegistrationsAndonlyLatestRegistrationShouldCount_shouldSucceed() throws JMSException {
+    public void testSendingCreateStudyRecordMessageForCourseUnit_whenLatestNotApprovedButOlderHasAcceptedParentSelection_shouldSucceed() throws JMSException {
+        registrationRepository.deleteAll();
 
-        // first, add another registration with REJECTED status in addition to the one in setUp()
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionEntity rejectedSelection = EntityInitializer.getRegistrationSelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.PENDING);
+        RegistrationReplySelectionEntity rejectedSelectionReply = EntityInitializer.getRegistrationReplySelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.REJECTED);
 
-        RegistrationEntity registration2 = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(),
-            Collections.singletonList(selection),
-            Collections.singletonList(DtoInitializer.getRegistrationSelectionCourseUnit(courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.REJECTED)),
-            RegistrationStatus.REGISTERED, networkEntity.getId());
-
-        registrationRepository.create(registration2);
-
-        assertEquals(2, registrationRepository.findAll(Pageable.unpaged()).getTotalElements());
+        RegistrationEntity latestRejectedRegistration = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(rejectedSelection),
+            List.of(rejectedSelectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
+        latestRejectedRegistration.setReceivingDateTime(null);
+        latestRejectedRegistration.setReceivingTimestamp(Instant.now().minus(1, ChronoUnit.DAYS).toEpochMilli());
+        latestRejectedRegistration.setReceivingSequence(1L);
+        latestRejectedRegistration = registrationRepository.create(latestRejectedRegistration);
 
         Person acceptor = DtoInitializer.getPerson("Olli", "Opettaja", "testvir@testi.fi", "testivir@testi2.fi");
-
         CompletedCreditAssessment completedCreditAssessment = DtoInitializer.getCompletedCreditAssessment(
             "completed credit assessment description", "5", ScaleValue.FIVE_LEVEL, GradeCode.GRADE_5);
-
         StudyRecordOrganisation organisation = DtoInitializer.getStudyRecordOrganisation(
             "ORG-2", "123456", new LocalisedString("Nimen kuvaus", null, null));
-
         CompletedCreditTarget completedCreditTarget = DtoInitializer.getCompletedCreditTarget(
             courseUnitEntity.getStudyElementId(), courseUnitEntity.getStudyElementIdentifierCode(), CompletedCreditTargetType.COURSE_UNIT);
-
         CompletedCredit completedCredit = DtoInitializer.getCompletedCreditForCourseUnit(
             "SUORITUSID-1", new LocalisedString("testisuoritus", null, null), CompletedCreditStatus.ACCEPTED,
             completedCreditTarget, CompletedCreditType.DEGREE_PROGRAMME_COMPLETION,
             Collections.singletonList(acceptor), completedCreditAssessment, "ORG-2", organisation);
-
-        // try creating a study record for the first time. should fail now since the latest is "REJECTED"
         CreateStudyRecordRequest createStudyRecordRequest = MessageTemplateInitializer.getCreateStudyRecordRequestTemplate(
             courseUnitOrganizerOrganization.getId(), studentHomeOrganization.getId(), networkEntity.getId(),
-            Collections.singletonList(completedCredit), student, RoutingType.CROSS_STUDY);
+            Collections.singletonList(completedCredit), new StudyRecordStudent(latestRejectedRegistration.getStudent()), RoutingType.CROSS_STUDY);
 
         Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, courseUnitOrganizerOrganization.getId());
         DefaultResponse failedResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
-        assertTrue(failedResp.getStatus() == Status.FAILED);
+        assertEquals(Status.FAILED, failedResp.getStatus());
 
-        // now add some more registrations. the latest has succeeded.
-        RegistrationEntity registration3 = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(),
-            Collections.singletonList(selection),
-            Collections.singletonList(DtoInitializer.getRegistrationSelectionCourseUnit(courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.REJECTED)),
-            RegistrationStatus.REGISTERED, networkEntity.getId());
+        CreateRegistrationSelectionParentEntity courseUnitSelection = EntityInitializer.getRegistrationSelectionCourseUnitParent(
+            courseUnitEntity.getStudyElementId());
+        CreateRegistrationSelectionEntity realisationSelection = EntityInitializer.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.PENDING, courseUnitSelection, null);
 
-        registrationRepository.create(registration3);
+        RegistrationReplySelectionEntity realisationSelectionReply = EntityInitializer.getRegistrationReplySelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.ACCEPTED, null);
 
-        RegistrationEntity registration4 = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(),
-            Collections.singletonList(selection),
-            Collections.singletonList(DtoInitializer.getRegistrationSelectionCourseUnit(courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.ACCEPTED)),
-            RegistrationStatus.REGISTERED, networkEntity.getId());
+        RegistrationEntity olderRegistrationWithAcceptedParentSelection = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(realisationSelection),
+            List.of(realisationSelectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
+        olderRegistrationWithAcceptedParentSelection.setStudent(latestRejectedRegistration.getStudent());
+        olderRegistrationWithAcceptedParentSelection.setReceivingDateTime(null);
+        olderRegistrationWithAcceptedParentSelection.setReceivingTimestamp(Instant.now().minus(5, ChronoUnit.DAYS).toEpochMilli());
+        olderRegistrationWithAcceptedParentSelection.setReceivingSequence(1L);
+        registrationRepository.create(olderRegistrationWithAcceptedParentSelection);
 
-        registrationRepository.create(registration4);
-
-        assertEquals(4, registrationRepository.findAll(Pageable.unpaged()).getTotalElements());
-
-        // now try again, should work
         responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, courseUnitOrganizerOrganization.getId());
-        StudyRecordResponse resp = (StudyRecordResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
-        assertTrue(resp.getStatus() == Status.OK);
-        assertTrue(StringUtils.isNotBlank(resp.getStudyRecordRequestId()));
+        StudyRecordResponse okResp = (StudyRecordResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertEquals(Status.OK, okResp.getStatus());
+        assertTrue(StringUtils.isNotBlank(okResp.getStudyRecordRequestId()));
+    }
 
-        // and finally, add one more REJECTED registration and try again. should fail again.
-        RegistrationEntity registration5 = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(),
-            Collections.singletonList(selection),
-            Collections.singletonList(DtoInitializer.getRegistrationSelectionCourseUnit(courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.REJECTED)),
-            RegistrationStatus.REGISTERED, networkEntity.getId());
+    @Test
+    public void testSendingCreateStudyRecordMessageForCourseUnit_whenOnlyParentCourseUnitIsAcceptedButRealisationIsRejected_shouldFail() throws JMSException {
+        registrationRepository.deleteAll();
 
-        registrationRepository.create(registration5);
+        CreateRegistrationSelectionEntity rejectedSelection = EntityInitializer.getRegistrationSelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.PENDING);
+        RegistrationReplySelectionEntity rejectedSelectionReply = EntityInitializer.getRegistrationReplySelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.REJECTED);
 
-        assertEquals(5, registrationRepository.findAll(Pageable.unpaged()).getTotalElements());
+        RegistrationEntity latestRejectedRegistration = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(rejectedSelection),
+            List.of(rejectedSelectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
+        latestRejectedRegistration.setReceivingDateTime(null);
+        latestRejectedRegistration.setReceivingTimestamp(Instant.now().minus(1, ChronoUnit.DAYS).toEpochMilli());
+        latestRejectedRegistration.setReceivingSequence(1L);
+        latestRejectedRegistration = registrationRepository.create(latestRejectedRegistration);
 
-        // should fail
-        responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, courseUnitOrganizerOrganization.getId());
-        failedResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
-        assertTrue(failedResp.getStatus() == Status.FAILED);
+        Person acceptor = DtoInitializer.getPerson("Olli", "Opettaja", "testvir@testi.fi", "testivir@testi2.fi");
+        CompletedCreditAssessment completedCreditAssessment = DtoInitializer.getCompletedCreditAssessment(
+            "completed credit assessment description", "5", ScaleValue.FIVE_LEVEL, GradeCode.GRADE_5);
+        StudyRecordOrganisation organisation = DtoInitializer.getStudyRecordOrganisation(
+            "ORG-2", "123456", new LocalisedString("Nimen kuvaus", null, null));
+        CompletedCreditTarget completedCreditTarget = DtoInitializer.getCompletedCreditTarget(
+            courseUnitEntity.getStudyElementId(), courseUnitEntity.getStudyElementIdentifierCode(), CompletedCreditTargetType.COURSE_UNIT);
+        CompletedCredit completedCredit = DtoInitializer.getCompletedCreditForCourseUnit(
+            "SUORITUSID-1", new LocalisedString("testisuoritus", null, null), CompletedCreditStatus.ACCEPTED,
+            completedCreditTarget, CompletedCreditType.DEGREE_PROGRAMME_COMPLETION,
+            Collections.singletonList(acceptor), completedCreditAssessment, "ORG-2", organisation);
+        CreateStudyRecordRequest createStudyRecordRequest = MessageTemplateInitializer.getCreateStudyRecordRequestTemplate(
+            courseUnitOrganizerOrganization.getId(), studentHomeOrganization.getId(), networkEntity.getId(),
+            Collections.singletonList(completedCredit), new StudyRecordStudent(latestRejectedRegistration.getStudent()), RoutingType.CROSS_STUDY);
+
+        CreateRegistrationSelectionParentEntity courseUnitSelection = EntityInitializer.getRegistrationSelectionCourseUnitParent(
+            courseUnitEntity.getStudyElementId());
+        CreateRegistrationSelectionEntity realisationSelection = EntityInitializer.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.PENDING, courseUnitSelection, null);
+
+        RegistrationReplySelectionEntity realisationSelectionReply = EntityInitializer.getRegistrationReplySelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.REJECTED, null);
+
+        RegistrationEntity olderRegistrationWithRejectedRealisation = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(realisationSelection),
+            List.of(realisationSelectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
+
+        olderRegistrationWithRejectedRealisation.setStudent(latestRejectedRegistration.getStudent());
+        olderRegistrationWithRejectedRealisation.setReceivingDateTime(null);
+        olderRegistrationWithRejectedRealisation.setReceivingTimestamp(Instant.now().minus(5, ChronoUnit.DAYS).toEpochMilli());
+        olderRegistrationWithRejectedRealisation.setReceivingSequence(1L);
+        registrationRepository.create(olderRegistrationWithRejectedRealisation);
+
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, courseUnitOrganizerOrganization.getId());
+        DefaultResponse failedResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertEquals(Status.FAILED, failedResp.getStatus());
+    }
+
+    @Test
+    public void testSendingCreateStudyRecordMessageForCourseUnit_whenAcceptedRealisationIsLaterCancelledAndOtherRealisationIsUnaccepted_shouldFail() throws JMSException {
+        registrationRepository.deleteAll();
+
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            networkEntity.getId(), null, true, networkEntity.getValidity().getStart().toLocalDate(), null);
+        StudyElementReferenceEntity courseUnitReference = EntityInitializer.getStudyElementReferenceForCourseUnit(
+            courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
+        RealisationEntity anotherRealisationEntity = EntityInitializer.getRealisationEntity(
+            "TOT-2", "TOT2-CODE", "TESTORG2", Collections.singletonList(courseUnitReference), Collections.singletonList(network));
+        realisationRepository.create(anotherRealisationEntity);
+
+        CreateRegistrationSelectionParentEntity acceptedCourseUnitSelection = EntityInitializer.getRegistrationSelectionCourseUnitParent(
+            courseUnitEntity.getStudyElementId());
+        CreateRegistrationSelectionEntity acceptedRealisationSelection = EntityInitializer.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.PENDING, acceptedCourseUnitSelection, null);
+
+        RegistrationReplySelectionEntity acceptedRealisationSelectionReply = EntityInitializer.getRegistrationReplySelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.ACCEPTED, null);
+
+        RegistrationEntity acceptedRegistrationForRealisationA = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(acceptedRealisationSelection),
+            List.of(acceptedRealisationSelectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
+        acceptedRegistrationForRealisationA.setReceivingDateTime(null);
+        acceptedRegistrationForRealisationA.setReceivingTimestamp(Instant.now().minus(5, ChronoUnit.DAYS).toEpochMilli());
+        acceptedRegistrationForRealisationA.setReceivingSequence(1L);
+        acceptedRegistrationForRealisationA = registrationRepository.create(acceptedRegistrationForRealisationA);
+
+        CreateRegistrationSelectionParentEntity cancelledCourseUnitSelection = EntityInitializer.getRegistrationSelectionCourseUnitParent(
+            courseUnitEntity.getStudyElementId());
+        CreateRegistrationSelectionEntity cancelledRealisationSelection = EntityInitializer.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.PENDING, cancelledCourseUnitSelection, null);
+
+        RegistrationReplySelectionEntity cancelledRealisationSelectionReply = EntityInitializer.getRegistrationReplySelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.REJECTED, null);
+
+        RegistrationEntity cancelledRegistrationForRealisationA = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(cancelledRealisationSelection),
+            List.of(cancelledRealisationSelectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
+        cancelledRegistrationForRealisationA.setStudent(acceptedRegistrationForRealisationA.getStudent());
+        cancelledRegistrationForRealisationA.setReceivingDateTime(null);
+        cancelledRegistrationForRealisationA.setReceivingTimestamp(Instant.now().minus(3, ChronoUnit.DAYS).toEpochMilli());
+        cancelledRegistrationForRealisationA.setReceivingSequence(1L);
+        registrationRepository.create(cancelledRegistrationForRealisationA);
+
+        CreateRegistrationSelectionParentEntity unacceptedCourseUnitSelection = EntityInitializer.getRegistrationSelectionCourseUnitParent(
+            courseUnitEntity.getStudyElementId());
+        CreateRegistrationSelectionEntity unacceptedRealisationSelection = EntityInitializer.getRegistrationSelectionRealisation(
+            anotherRealisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.PENDING, unacceptedCourseUnitSelection, null);
+
+        RegistrationReplySelectionEntity unacceptedRealisationSelectionReply = EntityInitializer.getRegistrationReplySelectionRealisation(
+            anotherRealisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.PENDING, null);
+
+        RegistrationEntity unacceptedRegistrationForRealisationC = EntityInitializer.getRegistrationEntity(
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(unacceptedRealisationSelection),
+            List.of(unacceptedRealisationSelectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
+        unacceptedRegistrationForRealisationC.setStudent(acceptedRegistrationForRealisationA.getStudent());
+        unacceptedRegistrationForRealisationC.setReceivingDateTime(null);
+        unacceptedRegistrationForRealisationC.setReceivingTimestamp(Instant.now().minus(1, ChronoUnit.DAYS).toEpochMilli());
+        unacceptedRegistrationForRealisationC.setReceivingSequence(1L);
+        registrationRepository.create(unacceptedRegistrationForRealisationC);
+
+        Person acceptor = DtoInitializer.getPerson("Olli", "Opettaja", "testvir@testi.fi", "testivir@testi2.fi");
+        CompletedCreditAssessment completedCreditAssessment = DtoInitializer.getCompletedCreditAssessment(
+            "completed credit assessment description", "5", ScaleValue.FIVE_LEVEL, GradeCode.GRADE_5);
+        StudyRecordOrganisation organisation = DtoInitializer.getStudyRecordOrganisation(
+            "ORG-2", "123456", new LocalisedString("Nimen kuvaus", null, null));
+        CompletedCreditTarget completedCreditTarget = DtoInitializer.getCompletedCreditTarget(
+            courseUnitEntity.getStudyElementId(), courseUnitEntity.getStudyElementIdentifierCode(), CompletedCreditTargetType.COURSE_UNIT);
+        CompletedCredit completedCredit = DtoInitializer.getCompletedCreditForCourseUnit(
+            "SUORITUSID-1", new LocalisedString("testisuoritus", null, null), CompletedCreditStatus.ACCEPTED,
+            completedCreditTarget, CompletedCreditType.DEGREE_PROGRAMME_COMPLETION,
+            Collections.singletonList(acceptor), completedCreditAssessment, "ORG-2", organisation);
+        CreateStudyRecordRequest createStudyRecordRequest = MessageTemplateInitializer.getCreateStudyRecordRequestTemplate(
+            courseUnitOrganizerOrganization.getId(), studentHomeOrganization.getId(), networkEntity.getId(),
+            Collections.singletonList(completedCredit), new StudyRecordStudent(acceptedRegistrationForRealisationA.getStudent()), RoutingType.CROSS_STUDY);
+
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, createStudyRecordRequest, courseUnitOrganizerOrganization.getId());
+        DefaultResponse failedResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertEquals(Status.FAILED, failedResp.getStatus());
     }
 
     @Test
@@ -860,24 +1062,24 @@ public class StudyRecordRouteIntegrationTest {
 
         // now recreate a single registration with two selections that both have the same completedCreditTargetId (courseUnitEntity.getStudyElementId() for the realisation too)
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(courseUnitEntity.getStudyElementId(), courseUnitOrganizerOrganization.getId(), Collections.emptyList(),
-            Collections.singletonList(DtoInitializer.getCooperationNetwork(networkEntity.getId(), null, true, networkEntity.getValidity().getStart().toLocalDate(), null)));
+            Collections.singletonList(EntityInitializer.getCooperationNetwork(networkEntity.getId(), null, true, networkEntity.getValidity().getStart().toLocalDate(), null)));
         realisationRepository.create(realisationEntity);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
-            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, null, null);
+        CreateRegistrationSelectionEntity realisationSelection = EntityInitializer.getRegistrationSelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.PENDING, null, null);
 
-        RegistrationSelection realisationSelectionReply = DtoInitializer.getRegistrationSelectionRealisation(
-            realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.ACCEPTED, null, null);
+        RegistrationReplySelectionEntity realisationSelectionReply = EntityInitializer.getRegistrationReplySelectionRealisation(
+            realisationEntity.getRealisationId(), RegistrationSelectionItemStatusEntity.ACCEPTED, null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionEntity courseUnitSelection = EntityInitializer.getRegistrationSelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.PENDING);
 
-        RegistrationSelection courseUnitSelectionReply = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.ACCEPTED);
+        RegistrationReplySelectionEntity courseUnitSelectionReply = EntityInitializer.getRegistrationReplySelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.ACCEPTED);
 
         RegistrationEntity registration = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), Arrays.asList(realisationSelection, courseUnitSelection),
-            Arrays.asList(realisationSelectionReply, courseUnitSelectionReply), RegistrationStatus.REGISTERED, networkEntity.getId());
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), List.of(realisationSelection, courseUnitSelection),
+            List.of(realisationSelectionReply, courseUnitSelectionReply), RegistrationStatusEntity.REGISTERED, networkEntity.getId());
 
         registrationRepository.create(registration);
 
@@ -940,8 +1142,8 @@ public class StudyRecordRouteIntegrationTest {
         // send a study record for STUDY_MODULE with the same studyElementId; this should not work
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(courseUnitEntity.getStudyElementId(),
             courseUnitEntity.getStudyElementIdentifierCode(), courseUnitEntity.getOrganizingOrganisationId(),
-            Collections.singletonList(DtoInitializer.getCooperationNetwork(networkEntity.getId(), null, true, networkEntity.getValidity().getStart().toLocalDate(), null)),
-            new LocalisedString("test", null, null));
+            Collections.singletonList(EntityInitializer.getCooperationNetwork(networkEntity.getId(), null, true, networkEntity.getValidity().getStart().toLocalDate(), null)),
+            new LocalisedStringEntity("test", null, null));
         studyModuleRepository.create(studyModuleEntity);
 
         CompletedCreditTarget studyModuleCompletedCreditTarget = DtoInitializer.getCompletedCreditTarget(
@@ -965,7 +1167,7 @@ public class StudyRecordRouteIntegrationTest {
     public void testSendingCreateStudyRecordMessageV9toV8_shouldSucceed() throws JMSException, IOException {
 
         studentHomeOrganization = EntityInitializer.getOrganisationEntity("TESTORG1", "testiorganisaatio1",
-            new LocalisedString("Opiskelijan kotiorganisaatio testiorganisaatio", null, null), this.messageSchemaVersion - 1);
+            new LocalisedStringEntity("Opiskelijan kotiorganisaatio testiorganisaatio", null, null), this.messageSchemaVersion - 1);
 
         organisationRepository.create(studentHomeOrganization);
 
@@ -1020,7 +1222,7 @@ public class StudyRecordRouteIntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInstudentHomeOrganization = jmsTemplate.receive(courseUnitOrganizerOrganization.getQueue());
@@ -1040,7 +1242,7 @@ public class StudyRecordRouteIntegrationTest {
     public void testSendingCreateStudyRecordMessageV8toV9_shouldSucceed() throws JMSException, IOException {
 
         courseUnitOrganizerOrganization = EntityInitializer.getOrganisationEntity(
-            "TESTORG2", "testiorganisaatio1", new LocalisedString("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion - 1);
+            "TESTORG2", "testiorganisaatio1", new LocalisedStringEntity("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion - 1);
         organisationRepository.create(courseUnitOrganizerOrganization);
 
         //All sent DTO:s are in v7 format
@@ -1109,7 +1311,7 @@ public class StudyRecordRouteIntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         // Again, response is in v7 format
@@ -1129,10 +1331,10 @@ public class StudyRecordRouteIntegrationTest {
 
     @Test
     public void testSendingCreateStudyRecordMessageForCourseUnitWithNotYetValidNetwork_shouldFail() throws JMSException {
-        networkEntity.setValidity(new Validity(Validity.ContinuityEnum.INDEFINITELY, OffsetDateTime.now().plusDays(2), null));
+        networkEntity.setValidity(EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().plusDays(2)));
         networkEntity = networkRepository.update(networkEntity);
 
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
             networkEntity.getId(), null, true, LocalDate.now().plusDays(2), null);
 
         courseUnitEntity.setCooperationNetworks(Collections.singletonList(network));
@@ -1166,10 +1368,10 @@ public class StudyRecordRouteIntegrationTest {
 
     @Test
     public void testSendingCreateStudyRecordMessageForCourseUnitWithExpiredNetwork_shouldSucceed() throws JMSException {
-        networkEntity.setValidity(new Validity(Validity.ContinuityEnum.INDEFINITELY, OffsetDateTime.now().minusDays(5), OffsetDateTime.now().minusDays(2)));
+        networkEntity.setValidity(EntityInitializer.getFixedValidity(OffsetDateTime.now().minusDays(5), OffsetDateTime.now().minusDays(2)));
         networkEntity = networkRepository.update(networkEntity);
 
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
             networkEntity.getId(), null, true, LocalDate.now().minusDays(5), LocalDate.now().minusDays(2));
 
         courseUnitEntity.setCooperationNetworks(Collections.singletonList(network));
@@ -1201,4 +1403,15 @@ public class StudyRecordRouteIntegrationTest {
         assertEquals(Status.OK, resp.getStatus());
         assertTrue(StringUtils.isNotBlank(resp.getStudyRecordRequestId()));
     }
+
+    private StudyRightIdentifier toStudyRightIdentifier(StudyRightIdentifierEntity source) {
+        if (source == null) {
+            return null;
+        }
+        StudyRightIdentifier target = new StudyRightIdentifier();
+        target.setOrganisationTkCodeReference(source.getOrganisationTkCodeReference());
+        target.setStudyRightId(source.getStudyRightId());
+        return target;
+    }
+
 }

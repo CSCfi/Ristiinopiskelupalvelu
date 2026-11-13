@@ -1,9 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.CompletedCredit;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.RoutingType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.CompletedCreditEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.RoutingTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.StudyRecordStatusEntity;
 import lombok.*;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -24,14 +24,14 @@ public class StudyRecordEntity extends GenericEntity {
     private String receivingOrganisation;
     private String networkIdentifier;
     private StudyRecordStudentEntity student;
-    private List<CompletedCredit> completedCredits;
+    private List<CompletedCreditEntity> completedCredits;
 
     @Field(type = FieldType.Date, pattern = {"uuuu-MM-dd'T'HH:mm:ss.SSSXXX"})
     private OffsetDateTime sendingTime;
     
-    private RoutingType routingType;
-    private StudyRecordStatus status;
-    private LocalisedString rejectionReason;
+    private RoutingTypeEntity routingType;
+    private StudyRecordStatusEntity status;
+    private LocalisedStringEntity rejectionReason;
 
     public StudyRecordEntity(StudyRecordEntity old) {
         this.sendingOrganisation = old.getSendingOrganisation();

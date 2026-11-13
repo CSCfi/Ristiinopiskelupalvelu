@@ -3,7 +3,7 @@ package fi.uta.ristiinopiskelu.messaging.message.current.registration;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyRight;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationReplySelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.messaging.message.current.AbstractRequest;
 
@@ -18,7 +18,7 @@ public class RegistrationReplyRequest extends AbstractRequest {
     private StudyRight hostStudyRight;
     private String hostStudentEppn;
     private String hostStudentNumber;
-    private List<RegistrationSelection> selections;
+    private List<RegistrationReplySelection> selections;
     private RegistrationStatus status;
     private String statusInfo;
     private LocalisedString rejectionReason;
@@ -55,11 +55,11 @@ public class RegistrationReplyRequest extends AbstractRequest {
         this.hostStudentNumber = hostStudentNumber;
     }
 
-    public List<RegistrationSelection> getSelections() {
+    public List<RegistrationReplySelection> getSelections() {
         return selections;
     }
 
-    public void setSelections(List<RegistrationSelection> selections) {
+    public void setSelections(List<RegistrationReplySelection> selections) {
         this.selections = selections;
     }
 

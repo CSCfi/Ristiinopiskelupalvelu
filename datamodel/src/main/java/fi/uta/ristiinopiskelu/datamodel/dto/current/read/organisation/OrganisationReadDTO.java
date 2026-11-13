@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Address;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Phone;
+import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.Objects;
@@ -232,5 +233,24 @@ public class OrganisationReadDTO {
                 ", phone=" + phone +
                 ", url='" + url + '\'' +
                 '}';
+    }
+
+    public static OrganisationReadDTO from(OrganisationEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        OrganisationReadDTO target = new OrganisationReadDTO();
+        target.setOrganisationIdentifier(source.getOrganisationIdentifier());
+        target.setOrganisationTkCode(source.getId());
+        target.setOrganisationName(LocalisedString.from(source.getOrganisationName()));
+        target.setUnitName(LocalisedString.from(source.getUnitName()));
+        target.setNameDescription(LocalisedString.from(source.getNameDescription()));
+        target.setPostalAddress(Address.from(source.getPostalAddress()));
+        target.setStreetAddress(Address.from(source.getStreetAddress()));
+        target.setMunicipalityCode(source.getMunicipalityCode());
+        target.setPhone(Phone.from(source.getPhone()));
+        target.setUrl(source.getUrl());
+        return target;
     }
 }

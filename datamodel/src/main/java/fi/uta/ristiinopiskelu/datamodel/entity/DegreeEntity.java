@@ -1,24 +1,23 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.DegreeWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CompositeIdentifiedEntityTypeEntity;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.springframework.data.elasticsearch.annotations.Document;
 
 import java.io.Serializable;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
 @Document(indexName = "tutkinnot", createIndex = false)
 public class DegreeEntity extends StudyElementEntity implements Serializable {
+
     private double duration;
 
-    public void setDuration(double duration) {
-        this.duration = duration;
-    }
-
-    public double getDuration() {
-        return this.duration;
-    }
-
     public DegreeEntity() {
-        setType(CompositeIdentifiedEntityType.DEGREE);
+        setType(CompositeIdentifiedEntityTypeEntity.DEGREE);
     }
 
     public DegreeEntity(double duration) {
@@ -26,8 +25,14 @@ public class DegreeEntity extends StudyElementEntity implements Serializable {
         this.duration = duration;
     }
 
-    public String toString() {
-        return "Degree(duration=" + this.getDuration() + ")";
-    }
+    public static DegreeEntity from(DegreeWriteDTO source) {
+        if (source == null) {
+            return null;
+        }
 
+        DegreeEntity target = new DegreeEntity();
+        AbstractStudyElementWriteDTO.copyStudyElementWriteDtoToEntity(source, target);
+        target.setDuration(source.getDuration());
+        return target;
+    }
 }

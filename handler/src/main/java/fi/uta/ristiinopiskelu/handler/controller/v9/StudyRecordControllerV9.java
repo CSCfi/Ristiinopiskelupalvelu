@@ -33,15 +33,16 @@ public class StudyRecordControllerV9 {
     @Operation(summary = "Hae opintosuorituksia", description = "Operaatio hakee opintosuorituksia annetuilla hakuehdoilla.", tags = "studyrecords")
     @PostMapping(value = "/search")
     public List<StudyRecordReadDTO> findStudyRecords(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordSearchParameters searchParams) {
-
+                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                     @RequestBody StudyRecordSearchParameters searchParams) {
         return new ArrayList<>(studyRecordService.search(SSL_CLIENT_S_DN_O, searchParams).getResults());
     }
 
     @Operation(summary = "Hae opintosuorituksia CSV-muodossa", description = "Operaatio hakee opintosuorituksia CSV-muodossa annetuilla hakuehdoilla.", tags = "studyrecords")
     @PostMapping(value = "/search/csv", produces = "text/csv")
     public ResponseEntity<String> findStudyRecordsAsCSV(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                            @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordSearchParameters searchParams) {
+                                                            @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                        @RequestBody StudyRecordSearchParameters searchParams) {
         StudyRecordSearchResults results = studyRecordService.search(SSL_CLIENT_S_DN_O, searchParams);
 
         String content;
@@ -60,7 +61,8 @@ public class StudyRecordControllerV9 {
         tags = "studyrecords")
     @PostMapping(value = "/search/amounts")
     public StudyRecordAmountRestSearchResults findStudyRecordAmounts(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                        @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordAmountSearchParameters searchParams) {
+                                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                                     @RequestBody StudyRecordAmountSearchParameters searchParams) {
         StudyRecordAmountSearchResults results = studyRecordService.searchAmounts(SSL_CLIENT_S_DN_O, searchParams);
         return new StudyRecordAmountRestSearchResults(results.getTotalHits(), AggregationUtils.mapAggregates(AggregationUtils.toAggregateMap(results.getAggregations())));
     }
@@ -68,7 +70,8 @@ public class StudyRecordControllerV9 {
     @Operation(summary = "Hae opintosuoritusten lukumääriä CSV-muodossa", description = "Operaatio hakee opintosuoritusten lukumääriä CSV-muodossa annetuilla hakuehdoilla.", tags = "studyrecords")
     @PostMapping(value = "/search/amounts/csv")
     public ResponseEntity<String> findStudyRecordAmountsAsCSV(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                                 @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudyRecordAmountSearchParameters searchParams) {
+                                                                 @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                              @RequestBody StudyRecordAmountSearchParameters searchParams) {
         StudyRecordAmountSearchResults results = studyRecordService.searchAmounts(SSL_CLIENT_S_DN_O, searchParams);
 
         String content;

@@ -1,12 +1,14 @@
 package fi.uta.ristiinopiskelu.handler.validator.registration;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationReplySelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationSelectionItemTypeEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.service.RegistrationService;
 import fi.uta.ristiinopiskelu.handler.validator.RequestValidator;
+import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.RegistrationReplyRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -21,7 +23,7 @@ public class RegistrationStatusValidator extends AbstractRegistrationValidator i
     @Override
     public void validateRequest(RegistrationReplyRequest req, String organisationId) {
         if(StringUtils.isEmpty(organisationId)) {
-            throw new MissingMessageHeaderException("Cannot perform create. Organisation Id is missing from header. This should not happen.");
+            throw new MissingMessageHeaderException(MessageHeader.JMS_XUSERID);
         }
 
         if(StringUtils.isEmpty(req.getRegistrationRequestId())) {
@@ -36,10 +38,10 @@ public class RegistrationStatusValidator extends AbstractRegistrationValidator i
             return;
         }
 
-        for(RegistrationSelection replySelection : req.getSelections()) {
+        for(RegistrationReplySelection replySelection : req.getSelections()) {
             boolean selectionExists = registrationEntity.getSelections().stream()
                     .anyMatch(sel -> sel.getSelectionItemId().equals(replySelection.getSelectionItemId())
-                        && sel.getSelectionItemType() == replySelection.getSelectionItemType());
+                        && sel.getSelectionItemType() == RegistrationSelectionItemTypeEntity.from(replySelection.getSelectionItemType()));
             if(!selectionExists) {
                 throw new RegistrationSelectionDoesNotExistValidationException("Unable to process registration reply request." +
                         " Reply selection " + getSelectionIdString(replySelection) +

@@ -1,12 +1,13 @@
 package fi.uta.ristiinopiskelu.handler.validator.registration;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelectionParent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
@@ -17,7 +18,7 @@ import fi.uta.ristiinopiskelu.messaging.message.current.registration.CreateRegis
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.time.LocalDate;
@@ -33,17 +34,16 @@ import static org.mockito.Mockito.*;
 @ExtendWith(SpringExtension.class)
 public class CreateRegistrationValidatorTest {
 
-    @MockBean
+    @MockitoBean
     private CourseUnitService courseUnitService;
 
-    @MockBean
+    @MockitoBean
     private RealisationService realisationService;
 
-    @MockBean
+    @MockitoBean
     private NetworkService networkService;
 
     private CreateRegistrationValidator validator;
-
 
     @BeforeEach
     public void before() {
@@ -54,7 +54,7 @@ public class CreateRegistrationValidatorTest {
     public void testValidate_shouldSuccess() throws Exception {
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.ACCEPTED);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -77,12 +77,11 @@ public class CreateRegistrationValidatorTest {
         verify(validator, times(1)).verifySelectionsEnrollable(any(), any(), any());
     }
 
-
     @Test
     public void testValidate_shouldThrowMissingMessageHeaderException() throws Exception {
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.ACCEPTED);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -103,7 +102,7 @@ public class CreateRegistrationValidatorTest {
     public void testValidate_shouldThrowEntityNotFoundException() throws Exception {
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.ACCEPTED);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -126,7 +125,7 @@ public class CreateRegistrationValidatorTest {
     public void testValidate_shouldThrowOrganisationNotValidInNetworkValidationExceptionSendingNotValid() throws Exception {
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.ACCEPTED);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -153,7 +152,7 @@ public class CreateRegistrationValidatorTest {
     public void testValidate_shouldThrowOrganisationNotValidInNetworkValidationExceptionReceivingNotValid() throws Exception {
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.ACCEPTED);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -206,12 +205,12 @@ public class CreateRegistrationValidatorTest {
         NetworkEntity networkEntity = new NetworkEntity();
         networkEntity.setId("VERKOSTO-1");
 
-        Validity validity = new Validity();
-        validity.setContinuity(Validity.ContinuityEnum.FIXED);
+        ValidityEntity validity = new ValidityEntity();
+        validity.setContinuity(ValidityEntity.ContinuityEntity.FIXED);
         validity.setStart(OffsetDateTime.now().minusYears(1));
         validity.setEnd(OffsetDateTime.now().plusYears(1));
 
-        NetworkOrganisation organisation = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation = new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TUNI");
         organisation.setValidityInNetwork(validity);
         networkEntity.setOrganisations(Collections.singletonList(organisation));
@@ -225,11 +224,11 @@ public class CreateRegistrationValidatorTest {
         NetworkEntity networkEntity = new NetworkEntity();
         networkEntity.setId("VERKOSTO-1");
 
-        Validity validity = new Validity();
-        validity.setContinuity(Validity.ContinuityEnum.INDEFINITELY);
+        ValidityEntity validity = new ValidityEntity();
+        validity.setContinuity(ValidityEntity.ContinuityEntity.INDEFINITELY);
         validity.setStart(OffsetDateTime.now().minusYears(1));
 
-        NetworkOrganisation organisation = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation = new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TUNI");
         organisation.setValidityInNetwork(validity);
         networkEntity.setOrganisations(Collections.singletonList(organisation));
@@ -243,12 +242,12 @@ public class CreateRegistrationValidatorTest {
         NetworkEntity networkEntity = new NetworkEntity();
         networkEntity.setId("VERKOSTO-1");
 
-        Validity validity = new Validity();
-        validity.setContinuity(Validity.ContinuityEnum.FIXED);
+        ValidityEntity validity = new ValidityEntity();
+        validity.setContinuity(ValidityEntity.ContinuityEntity.FIXED);
         validity.setStart(OffsetDateTime.now().plusYears(1));
         validity.setEnd(OffsetDateTime.now().plusYears(2));
 
-        NetworkOrganisation organisation = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation = new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TUNI");
         organisation.setValidityInNetwork(validity);
         networkEntity.setOrganisations(Collections.singletonList(organisation));
@@ -262,12 +261,12 @@ public class CreateRegistrationValidatorTest {
         NetworkEntity networkEntity = new NetworkEntity();
         networkEntity.setId("VERKOSTO-1");
 
-        Validity validity = new Validity();
-        validity.setContinuity(Validity.ContinuityEnum.FIXED);
+        ValidityEntity validity = new ValidityEntity();
+        validity.setContinuity(ValidityEntity.ContinuityEntity.FIXED);
         validity.setStart(OffsetDateTime.now().minusYears(2));
         validity.setEnd(OffsetDateTime.now().minusYears(1));
 
-        NetworkOrganisation organisation = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation = new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TUNI");
         organisation.setValidityInNetwork(validity);
         networkEntity.setOrganisations(Collections.singletonList(organisation));
@@ -276,13 +275,12 @@ public class CreateRegistrationValidatorTest {
         assertFalse(result);
     }
 
-
     @Test
     public void testIsOrganisationValidInNetwork_shouldReturnFalseValidityMissing() {
         NetworkEntity networkEntity = new NetworkEntity();
         networkEntity.setId("VERKOSTO-1");
 
-        NetworkOrganisation organisation = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation = new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TUNI");
         organisation.setValidityInNetwork(null);
         networkEntity.setOrganisations(Collections.singletonList(organisation));
@@ -296,12 +294,12 @@ public class CreateRegistrationValidatorTest {
         NetworkEntity networkEntity = new NetworkEntity();
         networkEntity.setId("VERKOSTO-1");
 
-        Validity validity = new Validity();
-        validity.setContinuity(Validity.ContinuityEnum.FIXED);
+        ValidityEntity validity = new ValidityEntity();
+        validity.setContinuity(ValidityEntity.ContinuityEntity.FIXED);
         validity.setStart(null);
         validity.setEnd(OffsetDateTime.now().plusYears(1));
 
-        NetworkOrganisation organisation = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation = new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TUNI");
         organisation.setValidityInNetwork(validity);
         networkEntity.setOrganisations(Collections.singletonList(organisation));
@@ -315,10 +313,10 @@ public class CreateRegistrationValidatorTest {
         String registrationNetworkId = "NETWORK-1";
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.PENDING);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 "R1", RegistrationSelectionItemStatus.PENDING, null, null);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -327,7 +325,7 @@ public class CreateRegistrationValidatorTest {
         request.setReceivingOrganisationTkCode("JYU");
         request.setSelections(Arrays.asList(courseUnitSelection, realisationSelection));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
                 registrationNetworkId, null, true, LocalDate.now().minusYears(1), null);
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(realisationSelection.getSelectionItemId(),
@@ -351,7 +349,7 @@ public class CreateRegistrationValidatorTest {
         String registrationNetworkId = "NETWORK-1";
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.PENDING);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -360,7 +358,7 @@ public class CreateRegistrationValidatorTest {
         request.setReceivingOrganisationTkCode(organizingOrganisationId);
         request.setSelections(Arrays.asList(courseUnitSelection));
 
-        CooperationNetwork cooperationNetworkValidInPast = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity cooperationNetworkValidInPast = EntityInitializer.getCooperationNetwork(
                 registrationNetworkId, null, true, null, null);
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(courseUnitSelection.getSelectionItemId(),
@@ -380,10 +378,10 @@ public class CreateRegistrationValidatorTest {
         String registrationNetworkId = "NETWORK-1";
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.PENDING);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 "R1", RegistrationSelectionItemStatus.PENDING, null, null);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -392,7 +390,7 @@ public class CreateRegistrationValidatorTest {
         request.setReceivingOrganisationTkCode("JYU");
         request.setSelections(Arrays.asList(courseUnitSelection, realisationSelection));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
                 "WRONG_NETWORK_ID", null, true, LocalDate.now().minusYears(1), null);
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(realisationSelection.getSelectionItemId(),
@@ -417,10 +415,10 @@ public class CreateRegistrationValidatorTest {
         String registrationNetworkId = "NETWORK-1";
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.PENDING);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 "R1", RegistrationSelectionItemStatus.PENDING, null, null);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -429,10 +427,10 @@ public class CreateRegistrationValidatorTest {
         request.setReceivingOrganisationTkCode("JYU");
         request.setSelections(Arrays.asList(courseUnitSelection, realisationSelection));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
                 registrationNetworkId, null, true, LocalDate.now().minusYears(1), null);
 
-        CooperationNetwork notEnrollableCooperationNetwork = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity notEnrollableCooperationNetwork = EntityInitializer.getCooperationNetwork(
                 registrationNetworkId, null, false, LocalDate.now().minusYears(1), null);
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(realisationSelection.getSelectionItemId(),
@@ -457,7 +455,7 @@ public class CreateRegistrationValidatorTest {
         String registrationNetworkId = "NETWORK-1";
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.PENDING);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -466,7 +464,7 @@ public class CreateRegistrationValidatorTest {
         request.setReceivingOrganisationTkCode(organizingOrganisationId);
         request.setSelections(Arrays.asList(courseUnitSelection));
 
-        CooperationNetwork cooperationNetworkValidInPast = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity cooperationNetworkValidInPast = EntityInitializer.getCooperationNetwork(
                 registrationNetworkId, null, true, LocalDate.now().minusYears(2), LocalDate.now().minusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(courseUnitSelection.getSelectionItemId(),
@@ -487,7 +485,7 @@ public class CreateRegistrationValidatorTest {
         String registrationNetworkId = "NETWORK-1";
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.PENDING);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -496,7 +494,7 @@ public class CreateRegistrationValidatorTest {
         request.setReceivingOrganisationTkCode(organizingOrganisationId);
         request.setSelections(Arrays.asList(courseUnitSelection));
 
-        CooperationNetwork cooperationNetworkValidInFuture = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity cooperationNetworkValidInFuture = EntityInitializer.getCooperationNetwork(
                 registrationNetworkId, null, true, LocalDate.now().plusYears(1), LocalDate.now().plusYears(2));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(courseUnitSelection.getSelectionItemId(),
@@ -517,7 +515,7 @@ public class CreateRegistrationValidatorTest {
         String registrationNetworkId = "NETWORK-1";
         String organizingOrganisationId = "TUNI";
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 "CU-1", RegistrationSelectionItemStatus.PENDING);
 
         CreateRegistrationRequest request = new CreateRegistrationRequest();
@@ -526,7 +524,7 @@ public class CreateRegistrationValidatorTest {
         request.setReceivingOrganisationTkCode(organizingOrganisationId);
         request.setSelections(Arrays.asList(courseUnitSelection));
 
-        CooperationNetwork cooperationNetworkIncorrectValidity = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity cooperationNetworkIncorrectValidity = EntityInitializer.getCooperationNetwork(
                 registrationNetworkId, null, true, null, LocalDate.now().plusYears(2));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(courseUnitSelection.getSelectionItemId(),
@@ -548,7 +546,7 @@ public class CreateRegistrationValidatorTest {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
 
         doReturn(Optional.of(courseUnitEntity)).when(courseUnitService).findByStudyElementIdAndOrganizingOrganisationId(
@@ -563,7 +561,7 @@ public class CreateRegistrationValidatorTest {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
 
         doReturn(Optional.empty()).when(courseUnitService).findByStudyElementIdAndOrganizingOrganisationId(
@@ -579,9 +577,9 @@ public class CreateRegistrationValidatorTest {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
-        courseUnitSelection.setParent(new RegistrationSelection());
+        courseUnitSelection.setParent(new CreateRegistrationSelectionParent());
 
         doReturn(Optional.empty()).when(courseUnitService).findByStudyElementIdAndOrganizingOrganisationId(
                 courseUnitEntity.getStudyElementId(), receivingOrganisationId);
@@ -590,17 +588,15 @@ public class CreateRegistrationValidatorTest {
                 () -> validator.verifySelectionsHierarchy(Collections.singletonList(courseUnitSelection), receivingOrganisationId));
     }
 
-
     @Test
     public void testVerifySelectionsHierarchy_noCourseUnitSelection_shouldThrowRegistrationSelectionHierarchyValidationException() throws Exception {
         String receivingOrganisationId = "TUNI";
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 "R1", RegistrationSelectionItemStatus.PENDING, null, null);
 
         assertThrows(RegistrationSelectionHierarchyValidationException.class,
                 () -> validator.verifySelectionsHierarchy(Collections.singletonList(realisationSelection), receivingOrganisationId));
     }
-
 
     @Test
     public void testVerifySelectionsHierarchy_unknownRootSelection_shouldThrowRegistrationSelectionHierarchyValidationException() throws Exception {
@@ -608,10 +604,10 @@ public class CreateRegistrationValidatorTest {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem("AI-1", courseUnitSelection);
+        CreateRegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem("AI-1", courseUnitSelection);
 
         doReturn(Optional.of(courseUnitEntity)).when(courseUnitService).findByStudyElementIdAndOrganizingOrganisationId(
                 courseUnitEntity.getStudyElementId(), receivingOrganisationId);
@@ -626,16 +622,16 @@ public class CreateRegistrationValidatorTest {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
 
-        StudyElementReference courseUnitReference = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity courseUnitReference = EntityInitializer.getStudyElementReferenceForCourseUnit(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(courseUnitReference), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitSelection, null);
 
         doReturn(Optional.of(courseUnitEntity)).when(courseUnitService).findByStudyElementIdAndOrganizingOrganisationId(
@@ -657,16 +653,16 @@ public class CreateRegistrationValidatorTest {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
 
-        StudyElementReference courseUnitReference = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity courseUnitReference = EntityInitializer.getStudyElementReferenceForCourseUnit(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(courseUnitReference), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitSelection, null);
 
         doReturn(Optional.of(courseUnitEntity)).when(courseUnitService).findByStudyElementIdAndOrganizingOrganisationId(
@@ -689,16 +685,16 @@ public class CreateRegistrationValidatorTest {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
 
-        StudyElementReference wrongCourseUnitReference = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity wrongCourseUnitReference = EntityInitializer.getStudyElementReferenceForCourseUnit(
                 "CU-2", courseUnitEntity.getOrganizingOrganisationId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(wrongCourseUnitReference), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, courseUnitSelection, null);
 
         doReturn(Optional.of(courseUnitEntity)).when(courseUnitService).findByStudyElementIdAndOrganizingOrganisationId(
@@ -725,22 +721,22 @@ public class CreateRegistrationValidatorTest {
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
         courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOptionEntity));
 
-        StudyElementReference courseUnitReference = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity courseUnitReference = EntityInitializer.getStudyElementReferenceForCourseUnit(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(courseUnitReference), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 completionOptionEntity.getCompletionOptionId(), courseUnitSelection);
 
-        RegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                 assessmentItemEntity.getAssessmentItemId(), completionOptionSelection);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, assessmentItemSelection, null);
 
         doReturn(Optional.of(courseUnitEntity)).when(courseUnitService).findByStudyElementIdAndOrganizingOrganisationId(
@@ -772,22 +768,22 @@ public class CreateRegistrationValidatorTest {
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
         courseUnitEntity.setCompletionOptions(Arrays.asList(completionOptionEntity, completionOptionEntity2, completionOptionEntity3));
 
-        StudyElementReference assessmentItemRef = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity assessmentItemRef = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(assessmentItemRef), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 completionOptionEntity.getCompletionOptionId(), courseUnitSelection);
 
-        RegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                 assessmentItemEntity.getAssessmentItemId(), completionOptionSelection);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, assessmentItemSelection, null);
 
         validator.verifyHierarchyReferences(realisationSelection, courseUnitEntity, realisationEntity);
@@ -803,19 +799,19 @@ public class CreateRegistrationValidatorTest {
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
         courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOptionEntity));
 
-        StudyElementReference courseUnitReference = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity courseUnitReference = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(courseUnitReference), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 completionOptionEntity.getCompletionOptionId(), courseUnitSelection);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, completionOptionSelection, null);
 
         assertThrows(RegistrationSelectionHierarchyValidationException.class,
@@ -832,22 +828,22 @@ public class CreateRegistrationValidatorTest {
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
         courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOptionEntity));
 
-        StudyElementReference wrongAssessmentItemRef = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity wrongAssessmentItemRef = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), "AI-2");
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(wrongAssessmentItemRef), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 completionOptionEntity.getCompletionOptionId(), courseUnitSelection);
 
-        RegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                 assessmentItemEntity.getAssessmentItemId(), completionOptionSelection);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, assessmentItemSelection, null);
 
         assertThrows(RegistrationSelectionReferenceValidationException.class,
@@ -864,22 +860,22 @@ public class CreateRegistrationValidatorTest {
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
         courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOptionEntity));
 
-        StudyElementReference wrongAssessmentItemRef = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity wrongAssessmentItemRef = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 "WRONG-ID", courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(wrongAssessmentItemRef), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 completionOptionEntity.getCompletionOptionId(), courseUnitSelection);
 
-        RegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                 assessmentItemEntity.getAssessmentItemId(), completionOptionSelection);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, assessmentItemSelection, null);
 
         assertThrows(RegistrationSelectionReferenceValidationException.class,
@@ -896,25 +892,25 @@ public class CreateRegistrationValidatorTest {
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
         courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOptionEntity));
 
-        StudyElementReference assessmentItemRef = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity assessmentItemRef = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(assessmentItemRef), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 completionOptionEntity.getCompletionOptionId(), courseUnitSelection);
 
-        RegistrationSelection wrongParent = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent wrongParent = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                 assessmentItemEntity.getAssessmentItemId(), completionOptionSelection);
 
-        RegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                 assessmentItemEntity.getAssessmentItemId(), wrongParent);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, assessmentItemSelection, null);
 
         assertThrows(RegistrationSelectionHierarchyValidationException.class,
@@ -931,25 +927,25 @@ public class CreateRegistrationValidatorTest {
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
         courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOptionEntity));
 
-        StudyElementReference assessmentItemRef = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity assessmentItemRef = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(assessmentItemRef), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection wrongParent = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent wrongParent = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 completionOptionEntity.getCompletionOptionId(), courseUnitSelection);
 
-        RegistrationSelection completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 completionOptionEntity.getCompletionOptionId(), wrongParent);
 
-        RegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                 assessmentItemEntity.getAssessmentItemId(), completionOptionSelection);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, assessmentItemSelection, null);
 
         assertThrows(RegistrationSelectionHierarchyValidationException.class,
@@ -963,22 +959,22 @@ public class CreateRegistrationValidatorTest {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
 
-        StudyElementReference assessmentItemRef = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity assessmentItemRef = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), "AI-1");
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(assessmentItemRef), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 "CO-1", courseUnitSelection);
 
-        RegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                 "AI-1", completionOptionSelection);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, assessmentItemSelection, null);
 
         assertThrows(RegistrationSelectionReferenceValidationException.class,
@@ -995,22 +991,22 @@ public class CreateRegistrationValidatorTest {
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
         courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOptionEntity));
 
-        StudyElementReference assessmentItemRef = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity assessmentItemRef = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(assessmentItemRef), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(),  RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection wrongCompletionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent wrongCompletionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 "CO-2", courseUnitSelection);
 
-        RegistrationSelection assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent assessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                 assessmentItemEntity.getAssessmentItemId(), wrongCompletionOptionSelection);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, assessmentItemSelection, null);
 
         assertThrows(RegistrationSelectionReferenceValidationException.class,
@@ -1028,22 +1024,22 @@ public class CreateRegistrationValidatorTest {
                 "CU-1", "CUCODE-1", receivingOrganisationId, null, null);
         courseUnitEntity.setCompletionOptions(Arrays.asList(completionOptionEntity, completionOptionEntity2));
 
-        StudyElementReference assessmentItemRef = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity assessmentItemRef = EntityInitializer.getStudyElementReferenceForAssessmentItem(
                 courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 "R1", "RCODE-1", receivingOrganisationId, Collections.singletonList(assessmentItemRef), null);
 
-        RegistrationSelection courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnit(
-                courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionParent courseUnitSelection = DtoInitializer.getRegistrationSelectionCourseUnitParent(
+                courseUnitEntity.getStudyElementId());
 
-        RegistrationSelection completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOption(
+        CreateRegistrationSelectionParent completionOptionSelection = DtoInitializer.getRegistrationSelectionCompletionOptionParent(
                 completionOptionEntity.getCompletionOptionId(), courseUnitSelection);
 
-        RegistrationSelection wrongAssessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItem(
+        CreateRegistrationSelectionParent wrongAssessmentItemSelection = DtoInitializer.getRegistrationSelectionAssessmentItemParent(
                "THIS_ID_IS_NOT_IN_COURSE_UNITS_CO", completionOptionSelection);
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntity.getRealisationId(), RegistrationSelectionItemStatus.PENDING, wrongAssessmentItemSelection, null);
 
         assertThrows(RegistrationSelectionReferenceValidationException.class,
@@ -1067,13 +1063,13 @@ public class CreateRegistrationValidatorTest {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
                 "CU1", "CUCODE-1", receivingOrganisationId, null, null);
 
-        RegistrationSelection realisationSelection1 = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection1 = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntityEndDateTimeNull.getRealisationId(), RegistrationSelectionItemStatus.PENDING, null, null);
 
-        RegistrationSelection realisationSelection2 = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection2 = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntityEndDateInFuture.getRealisationId(), RegistrationSelectionItemStatus.PENDING, null, null);
 
-        RegistrationSelection realisationSelection3 = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection realisationSelection3 = DtoInitializer.getRegistrationSelectionCourseUnit(
                 courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
 
         doReturn(Optional.of(realisationEntityEndDateTimeNull)).when(realisationService).findByIdAndOrganizingOrganisationId(
@@ -1094,7 +1090,7 @@ public class CreateRegistrationValidatorTest {
         realisationEntityEndDateTimeNull.setEnrollmentStartDateTime(OffsetDateTime.now().minusDays(30));
         realisationEntityEndDateTimeNull.setEnrollmentEndDateTime(null);
 
-        RegistrationSelection realisationSelection1 = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection1 = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntityEndDateTimeNull.getRealisationId(), RegistrationSelectionItemStatus.PENDING, null, null);
 
         doReturn(Optional.of(realisationEntityEndDateTimeNull)).when(realisationService).findByIdAndOrganizingOrganisationId(
@@ -1123,13 +1119,13 @@ public class CreateRegistrationValidatorTest {
         realisationEntityEnrollmentPast.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
         realisationEntityEnrollmentPast.setEnrollmentEndDateTime(OffsetDateTime.now().minusDays(1));
 
-        RegistrationSelection realisationSelection1 = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection1 = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntityStartDateNull.getRealisationId(), RegistrationSelectionItemStatus.PENDING, null, null);
 
-        RegistrationSelection realisationSelection2 = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection2 = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntityEnrollmentFuture.getRealisationId(), RegistrationSelectionItemStatus.PENDING, null, null);
 
-        RegistrationSelection realisationSelection3 = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection3 = DtoInitializer.getRegistrationSelectionRealisation(
                 realisationEntityEnrollmentPast.getRealisationId(),  RegistrationSelectionItemStatus.PENDING, null, null);
 
         doReturn(Optional.of(realisationEntityStartDateNull)).when(realisationService).findByIdAndOrganizingOrganisationId(

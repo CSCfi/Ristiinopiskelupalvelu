@@ -1,11 +1,12 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
 import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationDataEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationRoleEntity;
+import fi.uta.ristiinopiskelu.handler.exception.validation.OrganizingOrganisationMissingValidationException;
 import fi.uta.ristiinopiskelu.handler.service.CompositeIdentifiedService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
@@ -37,7 +38,7 @@ public abstract class AbstractCompositeIdentifiedService<W, T extends CompositeI
             return entity;
         }
 
-        for(CooperationNetwork cooperationNetwork : entity.getCooperationNetworks()) {
+        for(CooperationNetworkEntity cooperationNetwork : entity.getCooperationNetworks()) {
             NetworkEntity networkEntity = networkService.findById(cooperationNetwork.getId()).orElse(null);
             // Should this fail if no network is found with given id since there we are saving incorrect data?
             // This should never happen, networks should always be validated before coming here
@@ -54,16 +55,16 @@ public abstract class AbstractCompositeIdentifiedService<W, T extends CompositeI
         return entity;
     }
 
-    protected String getOrganizingOrganisationIdFromReferences(List<OrganisationReference> organisationReferences) {
+    protected String getOrganizingOrganisationIdFromReferences(List<OrganisationReferenceEntity> organisationReferences) {
         if(!CollectionUtils.isEmpty(organisationReferences)) {
-            for(OrganisationReference ref : organisationReferences) {
-                if (ref.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER) {
-                    return ref.getOrganisation().getOrganisationTkCode();
+            for(OrganisationReferenceEntity ref : organisationReferences) {
+                if (ref.getOrganisationRole() == OrganisationRoleEntity.ROLE_MAIN_ORGANIZER) {
+                    return ref.getTarget().getOrganisationTkCode();
                 }
             }
         }
 
-        throw new IllegalArgumentException("No organisations with organiser role found");
+        throw new OrganizingOrganisationMissingValidationException("No organisations with organiser role found");
     }
 
     protected T fillMissingOrganisationInfo(T entity) {
@@ -71,8 +72,8 @@ public abstract class AbstractCompositeIdentifiedService<W, T extends CompositeI
             return entity;
         }
 
-        for(OrganisationReference reference : entity.getOrganisationReferences()) {
-            Organisation organisation = reference.getOrganisation();
+        for(OrganisationReferenceEntity reference : entity.getOrganisationReferences()) {
+            OrganisationDataEntity organisation = reference.getTarget();
             organisationService.fillMissingValuesById(organisation, organisation.getOrganisationTkCode());
         }
 

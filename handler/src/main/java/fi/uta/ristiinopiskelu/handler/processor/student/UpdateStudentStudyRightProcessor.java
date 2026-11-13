@@ -1,10 +1,10 @@
 package fi.uta.ristiinopiskelu.handler.processor.student;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentMessageType;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudentEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.student.StudentMessageTypeEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.NoForwardingOrganisationsValidationException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.OrganizingOrganisationMismatchValidationException;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
@@ -18,13 +18,8 @@ import fi.uta.ristiinopiskelu.messaging.message.current.StudentMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.ForwardedUpdateStudentStudyRightRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.StudentResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.UpdateStudentStudyRightRequest;
-import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
-import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
-import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
-import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.commons.collections4.MapUtils;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -38,39 +33,21 @@ public class UpdateStudentStudyRightProcessor extends AbstractStudentProcessor {
 
     private RegistrationService registrationService;
     private StudentService studentService;
-    private ObjectMapper objectMapper;
-    private ModelMapper modelMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     public UpdateStudentStudyRightProcessor(StudentService studentService, RegistrationService registrationService,
-                                            ObjectMapper objectMapper, ModelMapper modelMapper, JmsMessageForwarder jmsMessageForwarder) {
+                                            JsonMapper jsonMapper, JmsMessageForwarder jmsMessageForwarder) {
         super(jmsMessageForwarder);
         this.registrationService = registrationService;
         this.studentService = studentService;
-        this.objectMapper = objectMapper;
-        this.modelMapper = modelMapper;
+        this.jsonMapper = jsonMapper;
     }
-
-    @AsyncListener(operation = @AsyncOperation(
-            channelName = "handler",
-            description = "Updates student study right",
-            servers = {"production", "staging"},
-            message = @AsyncMessage(
-                    description = "Updates student study right"
-            ),
-            payloadType = UpdateStudentStudyRightRequest.class
-    ))
-    @AsyncPublisher(operation = @AsyncOperation(
-            channelName = "<ORGANISATION_QUEUE>",
-            description = "Forwarded student study right update request",
-            servers = {"production", "staging"},
-            payloadType = ForwardedUpdateStudentStudyRightRequest.class
-    ))
     @Override
     public void process(Exchange exchange) throws Exception {
-        UpdateStudentStudyRightRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), UpdateStudentStudyRightRequest.class);
+        UpdateStudentStudyRightRequest request = jsonMapper.readValue(exchange.getIn().getBody(String.class), UpdateStudentStudyRightRequest.class);
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
-        String correlationId = exchange.getIn().getHeader("JMSMessageID", String.class);
+        String correlationId = exchange.getIn().getHeader(MessageHeader.JMS_MESSAGEID, String.class);
 
         if (!organisationId.equals(request.getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference())) {
             throw new OrganizingOrganisationMismatchValidationException("Organisation sending the request must match home " +
@@ -89,16 +66,16 @@ public class UpdateStudentStudyRightProcessor extends AbstractStudentProcessor {
                             " Message would not be forwarded to anyone so it is redundant.");
         }
 
-        StudentEntity student = modelMapper.map(request, StudentEntity.class);
+        StudentEntity student = UpdateStudentStudyRightRequest.toStudentEntity(request);
         student.setId(null);
         student.setHomeOrganisationTkCode(organisationId);
         student.setTimestamp(OffsetDateTime.now());
-        student.setMessageType(StudentMessageType.UPDATE_STUDENT_STUDYRIGHT);
+        student.setMessageType(StudentMessageTypeEntity.UPDATE_STUDENT_STUDYRIGHT);
 
         List<? extends EntityModificationResult<?>> modificationResults = studentService.create(student);
         student = (StudentEntity) modificationResults.get(0).getCurrent();
 
-        ForwardedUpdateStudentStudyRightRequest forwardedRequest = modelMapper.map(request, ForwardedUpdateStudentStudyRightRequest.class);
+        ForwardedUpdateStudentStudyRightRequest forwardedRequest = ForwardedUpdateStudentStudyRightRequest.from(request);
         forwardedRequest.setStudentRequestId(student.getId());
 
         // send to correct organisations and add host study rights

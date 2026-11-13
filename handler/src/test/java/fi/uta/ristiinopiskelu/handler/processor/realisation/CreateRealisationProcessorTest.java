@@ -1,13 +1,10 @@
 package fi.uta.ristiinopiskelu.handler.processor.realisation;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
@@ -20,19 +17,18 @@ import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.realisation.CreateRealisationRequest;
+import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.support.DefaultExchange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import tools.jackson.databind.json.JsonMapper;
 
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,44 +37,36 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class CreateRealisationProcessorTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(CreateRealisationProcessorTest.class);
-    
-    @MockBean
+    @MockitoBean
     private RealisationService realisationService;
 
-    @MockBean
+    @MockitoBean
     private NetworkService networkService;
 
-    @MockBean
+    @MockitoBean
     private OrganisationService organisationService;
     
-    @MockBean
+    @MockitoBean
     private JmsMessageForwarder jmsMessageForwarder;
 
-    @MockBean
+    @MockitoBean
     private MessageSchemaService messageSchemaService;
 
-    @MockBean
+    @MockitoBean
     private CreateRealisationValidator validator;
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private CreateRealisationProcessor processor;
 
     @BeforeEach
     public void before() {
-        objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .registerModule(new Jdk8Module());
-
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        objectMapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
-        objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
-
+        jsonMapper = new EsConfig().jsonMapper(null);
         processor = spy(new CreateRealisationProcessor(networkService, organisationService, jmsMessageForwarder,
-                realisationService, validator, objectMapper, new ModelMapper(), messageSchemaService));
+                realisationService, validator, jsonMapper, messageSchemaService));
     }
 
     @Test
@@ -89,9 +77,12 @@ public class CreateRealisationProcessorTest {
 
         CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork("CN-1",
                 new LocalisedString("verkosto 1", null, null), true, LocalDate.now(), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity cooperationNetworkEntity = EntityInitializer.getCooperationNetwork("CN-1",
+                LocalisedStringEntity.from(new LocalisedString("verkosto 1", null, null)),
+                true, LocalDate.now(), LocalDate.now().plusYears(1));
 
         CourseUnitEntity cuEntity = EntityInitializer.getCourseUnitEntity("OJ-1", "OJ-CODE1", organisingOrganisationId,
-                Collections.singletonList(cooperationNetwork), new LocalisedString("Opintojakso 1", null, null));
+                Collections.singletonList(cooperationNetworkEntity), LocalisedStringEntity.from(new LocalisedString("Opintojakso 1", null, null)));
 
         StudyElementReference reference = DtoInitializer.getStudyElementReferenceForCourseUnit(
                 cuEntity.getStudyElementId(), cuEntity.getOrganizingOrganisationId());
@@ -107,7 +98,7 @@ public class CreateRealisationProcessorTest {
 
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
         exchange.getIn().setHeader(MessageHeader.JMS_XUSERID, organisingOrganisationId);
-        exchange.getIn().setBody(objectMapper.writeValueAsString(request));
+        exchange.getIn().setBody(jsonMapper.writeValueAsString(request));
 
         processor.process(exchange);
 

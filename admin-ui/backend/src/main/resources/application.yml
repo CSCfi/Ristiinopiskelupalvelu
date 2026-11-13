@@ -22,6 +22,8 @@ spring:
 tomcat:
   ajp:
     port: 8009
+    secret-required: ${tomcat_ajp_secret_required:true}
+    secret: ${tomcat_ajp_secret:}
 
 general:
   message-schema:

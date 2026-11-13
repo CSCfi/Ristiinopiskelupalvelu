@@ -1,74 +1,45 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.AssessmentItemType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.AssessmentItemWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.AssessmentItemTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class AssessmentItemEntity {
 
     private String assessmentItemId;
     private String primaryCourseUnitId;
-    private AssessmentItemType type;
+    private AssessmentItemTypeEntity type;
     private BigDecimal creditsMin = null;
     private BigDecimal creditsMax = null;
-    private LocalisedString name;
+    private LocalisedStringEntity name;
     private List<CourseUnitRealisationEntity> realisations;
 
-    public String getAssessmentItemId() {
-        return assessmentItemId;
-    }
+    public static List<AssessmentItemEntity> from(List<AssessmentItemWriteDTO> source) {
+        if (source == null) {
+            return null;
+        }
 
-    public void setAssessmentItemId(String assessmentItemId) {
-        this.assessmentItemId = assessmentItemId;
-    }
-
-    public String getPrimaryCourseUnitId() {
-        return primaryCourseUnitId;
-    }
-
-    public void setPrimaryCourseUnitId(String primaryCourseUnitId) {
-        this.primaryCourseUnitId = primaryCourseUnitId;
-    }
-
-    public AssessmentItemType getType() {
-        return type;
-    }
-
-    public void setType(AssessmentItemType type) {
-        this.type = type;
-    }
-
-    public BigDecimal getCreditsMin() {
-        return creditsMin;
-    }
-
-    public void setCreditsMin(BigDecimal creditsMin) {
-        this.creditsMin = creditsMin;
-    }
-
-    public BigDecimal getCreditsMax() {
-        return creditsMax;
-    }
-
-    public void setCreditsMax(BigDecimal creditsMax) {
-        this.creditsMax = creditsMax;
-    }
-
-    public LocalisedString getName() {
-        return name;
-    }
-
-    public void setName(LocalisedString name) {
-        this.name = name;
-    }
-
-    public List<CourseUnitRealisationEntity> getRealisations() {
-        return realisations;
-    }
-
-    public void setRealisations(List<CourseUnitRealisationEntity> realisations) {
-        this.realisations = realisations;
+        return source.stream()
+            .map(item -> {
+                AssessmentItemEntity target = new AssessmentItemEntity();
+                target.setAssessmentItemId(item.getAssessmentItemId());
+                target.setPrimaryCourseUnitId(item.getPrimaryCourseUnitId());
+                target.setType(item.getType() == null ? null : AssessmentItemTypeEntity.valueOf(item.getType().name()));
+                target.setCreditsMin(item.getCreditsMin());
+                target.setCreditsMax(item.getCreditsMax());
+                target.setName(LocalisedStringEntity.from(item.getName()));
+                target.setRealisations(CourseUnitRealisationEntity.from(item.getRealisations()));
+                return target;
+            }).collect(Collectors.toList());
     }
 }

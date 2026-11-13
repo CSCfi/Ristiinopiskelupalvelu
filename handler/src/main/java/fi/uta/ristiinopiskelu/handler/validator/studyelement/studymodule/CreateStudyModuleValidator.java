@@ -8,6 +8,7 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.InvalidMessageBodyExc
 import fi.uta.ristiinopiskelu.handler.exception.validation.MissingMessageHeaderException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.impl.AbstractStudyElementService;
+import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.handler.validator.studyelement.AbstractStudyElementCreateValidator;
 import fi.uta.ristiinopiskelu.handler.validator.studyelement.courseunit.CreateCourseUnitValidator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,7 @@ public class CreateStudyModuleValidator extends AbstractStudyElementCreateValida
     @Override
     public void validateObject(List<StudyModuleWriteDTO> studyModules, String organisationId) {
         if(StringUtils.isEmpty(organisationId)) {
-            throw new MissingMessageHeaderException("Cannot perform create. Organisation Id is missing from header. This should not happen.");
+            throw new MissingMessageHeaderException(MessageHeader.JMS_XUSERID);
         }
         
         if(CollectionUtils.isEmpty(studyModules)) {

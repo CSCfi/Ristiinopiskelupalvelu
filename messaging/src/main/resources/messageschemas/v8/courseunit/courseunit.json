@@ -121,6 +121,27 @@
             "required": [
               "completionOptionId"
             ],
+            "not": {
+              "allOf": [
+                {
+                  "required": ["description"],
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    }
+                  }
+                },
+                {
+                  "required": ["descriptionLocalised"],
+                  "properties": {
+                    "descriptionLocalised": {
+                      "type": "object",
+                      "$ref": "../common/localisedString.json"
+                    }
+                  }
+                }
+              ]
+            },
             "properties": {
               "completionOptionId": {
                 "description": "Suoritusvaihtoehdon tekninen tunniste.",
@@ -128,8 +149,19 @@
                 "minLength": 1
               },
               "description": {
-                "description": "Suoritusvaihtoehdon kuvaus.",
+                "description": "Suoritusvaihtoehdon kuvaus. (deprekoitu)",
                 "type": ["null","string"]
+              },
+              "descriptionLocalised": {
+                "description": "Suoritusvaihtoehdon kuvaus kieleistettynä.",
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "../common/localisedString.json"
+                  }
+                ]
               },
               "name": {
                 "description": "Suoritusvaihtoehdon nimi kieleistettynä.",

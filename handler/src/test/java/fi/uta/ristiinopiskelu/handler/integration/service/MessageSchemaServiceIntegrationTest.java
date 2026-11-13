@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.handler.integration.service;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.registration.RegistrationWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -53,8 +55,10 @@ public class MessageSchemaServiceIntegrationTest {
     @Test
     public void testConvertingRegistrationV8ToV9withDefaultConverter_shouldSucceed() {
         fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.Registration v8Registration = new fi.uta.ristiinopiskelu.datamodel.dto.v8.registration.Registration();
-        v8Registration.setEnrolmentDateTime(OffsetDateTime.now());
+        v8Registration.setEnrolmentDateTime(OffsetDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+        v8Registration.setStatus(RegistrationStatus.RECEIVED);
         RegistrationWriteDTO convertedRegistration = messageSchemaService.convertObject(v8Registration, RegistrationWriteDTO.class);
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.RECEIVED.name(), convertedRegistration.getStatus().name());
         assertEquals(v8Registration.getEnrolmentDateTime(), convertedRegistration.getEnrolmentDateTime());
     }
 }

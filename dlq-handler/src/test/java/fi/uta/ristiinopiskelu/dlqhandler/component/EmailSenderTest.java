@@ -4,11 +4,12 @@ import com.icegreen.greenmail.junit5.GreenMailExtension;
 import com.icegreen.greenmail.store.StoredMessage;
 import com.icegreen.greenmail.user.GreenMailUser;
 import com.icegreen.greenmail.util.ServerSetupTest;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.entity.DeadLetterQueueEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.DeadLetterQueueRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,9 +19,7 @@ import org.simplejavamail.api.mailer.Mailer;
 import org.simplejavamail.api.mailer.config.TransportStrategy;
 import org.simplejavamail.converter.EmailConverter;
 import org.simplejavamail.mailer.MailerBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.util.ArrayList;
@@ -32,20 +31,19 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class EmailSenderTest {
-
-    private static final Logger logger = LoggerFactory.getLogger(EmailSenderTest.class);
 
     @RegisterExtension
     private static final GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP);
 
     private EmailSender emailSender;
 
-    @MockBean
+    @MockitoBean
     private OrganisationRepository organisationRepository;
 
-    @MockBean
+    @MockitoBean
     private DeadLetterQueueRepository deadLetterQueueRepository;
 
     private final String administratorEmail = "admin@test.com";
@@ -91,13 +89,13 @@ public class EmailSenderTest {
         OrganisationEntity organisationEntity = new OrganisationEntity();
         organisationEntity.setId("ORG1");
         organisationEntity.setAdministratorEmail(organisation1Email);
-        organisationEntity.setOrganisationName(new LocalisedString("TestiOrganisaatio 1", null, null));
+        organisationEntity.setOrganisationName(new LocalisedStringEntity("TestiOrganisaatio 1", null, null));
         organisationEntity.setQueue("org1-jono");
 
         OrganisationEntity organisationEntity2 = new OrganisationEntity();
         organisationEntity2.setId("ORG2");
         organisationEntity2.setAdministratorEmail(organisation2Email);
-        organisationEntity2.setOrganisationName(new LocalisedString("TestiOrganisaatio 2", null, null));
+        organisationEntity2.setOrganisationName(new LocalisedStringEntity("TestiOrganisaatio 2", null, null));
         organisationEntity2.setQueue("org2-jono");
 
         organisationEntitiesForTest.add(organisationEntity);
@@ -143,8 +141,8 @@ public class EmailSenderTest {
 
         String bccMessageContent = bccAdminMessage.getPlainText();
         String actualMessageContent = actualOrganisationMessage.getPlainText();
-        logger.info("BCC message content:\n{}", bccMessageContent);
-        logger.info("Actual message content:\n{}", actualMessageContent);
+        log.info("BCC message content:\n{}", bccMessageContent);
+        log.info("Actual message content:\n{}", actualMessageContent);
 
         assertEquals(0, bccAdminMessage.getAttachments().size());
         assertEquals(0, actualOrganisationMessage.getAttachments().size());

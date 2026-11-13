@@ -6,7 +6,7 @@
 
     <groupId>fi.uta.ristiinopiskelu</groupId>
     <artifactId>datamodel</artifactId>
-    <version>9.0.28</version>
+    <version>9.0.35</version>
     <packaging>jar</packaging>
 
     <name>datamodel</name>
@@ -15,8 +15,8 @@
     <parent>
         <groupId>fi.uta.ristiinopiskelu</groupId>
         <artifactId>parent</artifactId>
-        <version>9.0.28</version>
-        <relativePath>../</relativePath> <!-- lookup parent from repository -->
+        <version>9.0.35</version>
+        <relativePath>../pom.xml</relativePath> <!-- lookup parent from repository -->
     </parent>
     
     <dependencies>
@@ -35,10 +35,6 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
         
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-        </dependency>
         <dependency>
             <groupId>com.flipkart.zjsonpatch</groupId>
             <artifactId>zjsonpatch</artifactId>

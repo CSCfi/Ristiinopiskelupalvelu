@@ -335,7 +335,7 @@ public class Realisation {
         if(!CollectionUtils.isEmpty(this.getOrganisationReferences())) {
             for(OrganisationReference ref : this.getOrganisationReferences()) {
                 if (ref.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER) {
-                    return ref.getOrganisation().getOrganisationTkCode();
+                    return ref.getTarget().getOrganisationTkCode();
                 }
             }
         }

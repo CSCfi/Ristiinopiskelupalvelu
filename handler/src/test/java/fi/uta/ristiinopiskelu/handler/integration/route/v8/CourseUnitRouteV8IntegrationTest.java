@@ -1,11 +1,12 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.v8.network.Network;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.request.CreateCourseUnitRequestDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CompositeIdentifiedEntityTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -29,7 +30,6 @@ import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,9 +88,6 @@ public class CourseUnitRouteV8IntegrationTest {
     private NetworkService networkService;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
     private OrganisationService organisationService;
 
     @Autowired
@@ -110,9 +107,9 @@ public class CourseUnitRouteV8IntegrationTest {
         for(String organisationId : organisationIds) {
             if(!organisationService.findById(organisationId).isPresent()) {
                 OrganisationEntity organisation = EntityInitializer.getOrganisationEntity(organisationId, organisationId,
-                        new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString(organisationId, null, null), this.messageSchemaVersion);
+                        new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity(organisationId, null, null), this.messageSchemaVersion);
                 organisation.setSchemaVersion(this.messageSchemaVersion);
-                organisationService.create(modelMapper.map(organisation, OrganisationEntity.class));
+                organisationService.create(organisation);
             }
         }
     }
@@ -122,7 +119,7 @@ public class CourseUnitRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), null, true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -147,14 +144,14 @@ public class CourseUnitRouteV8IntegrationTest {
                 courseUnit.getStudyElementId(), organisation.getOrganisationTkCode()).get();
         assertNotNull(createdCourseUnit);
         assertNotNull(createdCourseUnit.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, createdCourseUnit.getType());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, createdCourseUnit.getType());
         assertEquals(courseUnit.getStudyElementId(), createdCourseUnit.getStudyElementId());
         assertEquals(courseUnit.getStudyElementIdentifierCode(), createdCourseUnit.getStudyElementIdentifierCode());
         assertEquals(courseUnit.getStudyElementPermanentId(), createdCourseUnit.getStudyElementPermanentId());
         assertEquals(1, createdCourseUnit.getCooperationNetworks().size());
 
         // Verify cooperation network data was gathered from network index
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork courseUnitNetwork = createdCourseUnit.getCooperationNetworks().get(0);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity courseUnitNetwork = createdCourseUnit.getCooperationNetworks().get(0);
         assertEquals(networkEntity.getName().getValue("fi"), courseUnitNetwork.getName().getValue("fi"));
         assertEquals(networkEntity.getName().getValue("en"), courseUnitNetwork.getName().getValue("en"));
         assertEquals(networkEntity.getName().getValue("sv"), courseUnitNetwork.getName().getValue("sv"));
@@ -168,8 +165,8 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals(result.getStudyElementIdentifierCode(), result.getStudyElementIdentifierCode());
         assertNotNull(result.getCreatedTime());
         assertNotNull(result.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, result.getType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.CANCELLED, result.getStatus());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, result.getType());
+        assertEquals(StudyStatusEntity.CANCELLED, result.getStatus());
         assertNotEquals(result.getId(), courseUnit.getStudyElementId());
         assertNotEquals(result.getId(), courseUnit.getStudyElementIdentifierCode());
         assertNotEquals(result.getId(), courseUnit.getStudyElementPermanentId());
@@ -179,11 +176,123 @@ public class CourseUnitRouteV8IntegrationTest {
     }
 
     @Test
+    public void testSendingCreateCourseUnitMessage_withBothCompletionOptionDescriptions_shouldFail() throws JMSException {
+        String organisingOrganisationId = "TUNI";
+
+        NetworkEntity networkEntity = persistNetworkEntity("CN-1",
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+
+        CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
+            networkEntity.getId(), null, true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        Organisation organisation = DtoInitializerV8.getOrganisation(organisingOrganisationId, organisingOrganisationId);
+        OrganisationReference organisationReference = DtoInitializerV8.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
+
+        LocalisedString courseUnitName = new LocalisedString("Opintojakson nimi 1", "Opintojakson nimi 1 Englanniksi", null);
+
+        CompletionOption completionOption = DtoInitializerV8.getCompletionOption("CO1", "kuvaus", List.of(), new LocalisedString("Nimi", null, null));
+        completionOption.setDescriptionLocalised(new LocalisedString("Tuplakuvaus lokalisoituna", "Double description", "Dubbel deskriptionen"));
+
+        CreateCourseUnitRequestDTO courseUnit = DtoInitializerV8.getCreateCourseUnitRequestDTO("ID1", "RAIRAI", courseUnitName,
+            Collections.singletonList(network), Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5.0));
+        courseUnit.setStudyElementPermanentId("PERMID1");
+        courseUnit.setStatus(StudyStatus.CANCELLED);
+        courseUnit.setCompletionOptions(List.of(completionOption));
+
+        CreateCourseUnitRequest req = new CreateCourseUnitRequest();
+        req.setCourseUnits(Collections.singletonList(courseUnit));
+
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, organisingOrganisationId);
+        JsonValidationFailedResponse resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertEquals(Status.FAILED, resp.getStatus());
+    }
+
+    @Test
+    public void testSendingCreateCourseUnitMessage_withCompletionOptionLocalisedDescriptionOnly_shouldSucceed() throws JMSException {
+        String organisingOrganisationId = "TUNI";
+
+        NetworkEntity networkEntity = persistNetworkEntity("CN-1",
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+
+        CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
+            networkEntity.getId(), null, true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        Organisation organisation = DtoInitializerV8.getOrganisation(organisingOrganisationId, organisingOrganisationId);
+        OrganisationReference organisationReference = DtoInitializerV8.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
+
+        LocalisedString courseUnitName = new LocalisedString("Opintojakson nimi 1", "Opintojakson nimi 1 Englanniksi", null);
+
+        CompletionOption completionOption = DtoInitializerV8.getCompletionOption("CO1", null, List.of(), new LocalisedString("Nimi", null, null));
+        completionOption.setDescriptionLocalised(new LocalisedString("Tuplakuvaus lokalisoituna", "Double description", "Dubbel deskriptionen"));
+
+        CreateCourseUnitRequestDTO courseUnit = DtoInitializerV8.getCreateCourseUnitRequestDTO("ID1", "RAIRAI", courseUnitName,
+            Collections.singletonList(network), Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5.0));
+        courseUnit.setStudyElementPermanentId("PERMID1");
+        courseUnit.setStatus(StudyStatus.CANCELLED);
+        courseUnit.setCompletionOptions(List.of(completionOption));
+
+        CreateCourseUnitRequest req = new CreateCourseUnitRequest();
+        req.setCourseUnits(Collections.singletonList(courseUnit));
+
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, organisingOrganisationId);
+        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(resp.getStatus() == Status.OK);
+
+        CourseUnitEntity createdCourseUnit = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
+            courseUnit.getStudyElementId(), organisation.getOrganisationTkCode()).get();
+        assertNotNull(createdCourseUnit);
+
+        assertEquals(completionOption.getDescriptionLocalised().getValue(Language.FI), createdCourseUnit.getCompletionOptions().get(0).getDescription().getValue("fi"));
+        assertEquals(completionOption.getDescriptionLocalised().getValue(Language.SV), createdCourseUnit.getCompletionOptions().get(0).getDescription().getValue("sv"));
+        assertEquals(completionOption.getDescriptionLocalised().getValue(Language.EN), createdCourseUnit.getCompletionOptions().get(0).getDescription().getValue("en"));
+    }
+
+    @Test
+    public void testSendingCreateCourseUnitMessage_withCompletionOptionSimpleDescriptionOnly_shouldSucceed() throws JMSException {
+        String organisingOrganisationId = "TUNI";
+
+        NetworkEntity networkEntity = persistNetworkEntity("CN-1",
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+
+        CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
+            networkEntity.getId(), null, true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        Organisation organisation = DtoInitializerV8.getOrganisation(organisingOrganisationId, organisingOrganisationId);
+        OrganisationReference organisationReference = DtoInitializerV8.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
+
+        LocalisedString courseUnitName = new LocalisedString("Opintojakson nimi 1", "Opintojakson nimi 1 Englanniksi", null);
+
+        CompletionOption completionOption = DtoInitializerV8.getCompletionOption("CO1", "Vanha kuvaus ei lokalisoituna",
+            List.of(), new LocalisedString("Nimi", null, null));
+
+        CreateCourseUnitRequestDTO courseUnit = DtoInitializerV8.getCreateCourseUnitRequestDTO("ID1", "RAIRAI", courseUnitName,
+            Collections.singletonList(network), Collections.singletonList(organisationReference), new BigDecimal(2.5), new BigDecimal(5.0));
+        courseUnit.setStudyElementPermanentId("PERMID1");
+        courseUnit.setStatus(StudyStatus.CANCELLED);
+        courseUnit.setCompletionOptions(List.of(completionOption));
+
+        CreateCourseUnitRequest req = new CreateCourseUnitRequest();
+        req.setCourseUnits(Collections.singletonList(courseUnit));
+
+        Message responseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, req, organisingOrganisationId);
+        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertTrue(resp.getStatus() == Status.OK);
+
+        CourseUnitEntity createdCourseUnit = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
+            courseUnit.getStudyElementId(), organisation.getOrganisationTkCode()).get();
+        assertNotNull(createdCourseUnit);
+
+        assertEquals(completionOption.getDescription(), createdCourseUnit.getCompletionOptions().get(0).getDescription().getValue("fi"));
+        assertEquals("", createdCourseUnit.getCompletionOptions().get(0).getDescription().getValue("sv"));
+        assertEquals("", createdCourseUnit.getCompletionOptions().get(0).getDescription().getValue("en"));
+    }
+
+    @Test
     public void testSendingCreateCourseUnitMessageWithoutCooperationNetworks_shouldFail() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
@@ -250,14 +359,42 @@ public class CourseUnitRouteV8IntegrationTest {
         orgs.add(networkOrganisation2);
         orgs.add(networkOrganisation3);
 
-        Network network = DtoInitializerV8.getNetwork("CN-1", new LocalisedString("Verkosto", null, null), validity, orgs);
-        networkService.create(modelMapper.map(network, NetworkEntity.class));
+        List<fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity> networkOrganisations = orgs.stream()
+            .map(networkOrg -> {
+                fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity orgValidity =
+                    new fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity();
+                orgValidity.setStart(networkOrg.getValidityInNetwork().getStart());
+                orgValidity.setEnd(networkOrg.getValidityInNetwork().getEnd());
+                orgValidity.setContinuity(networkOrg.getValidityInNetwork().getEnd() == null
+                    ? fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity.ContinuityEntity.INDEFINITELY
+                    : fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity.ContinuityEntity.FIXED);
+                return new fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity(
+                    networkOrg.getOrganisationTkCode(), networkOrg.getIsCoordinator(), orgValidity);
+            }).collect(Collectors.toList());
+        fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity networkValidity =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity();
+        networkValidity.setStart(validity.getStart());
+        networkValidity.setEnd(validity.getEnd());
+        networkValidity.setContinuity(validity.getEnd() == null
+            ? fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity.ContinuityEntity.INDEFINITELY
+            : fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity.ContinuityEntity.FIXED);
+        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(
+            "CN-1",
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null),
+            networkOrganisations,
+            networkValidity,
+            true);
+        networkService.create(networkEntity);
 
         // TUNI already persisted in setUp()
         Organisation organisation = DtoInitializerV8.getOrganisation(organisingOrganisationId, organisingOrganisationId);
 
         Organisation organisation2 = DtoInitializerV8.getOrganisation(organisingOrganisationId2, organisingOrganisationId2);
-        OrganisationEntity organisationEntity2 = modelMapper.map(organisation2, OrganisationEntity.class);
+        OrganisationEntity organisationEntity2 = EntityInitializer.getOrganisationEntity(
+            organisingOrganisationId2,
+            organisingOrganisationId2,
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity(organisingOrganisationId2, null, null),
+            messageSchemaVersion);
         organisationEntity2.setId(organisingOrganisationId2);
         organisationEntity2.setQueue(organisingOrganisationId2);
         organisationEntity2.setNotificationsEnabled(true);
@@ -265,7 +402,11 @@ public class CourseUnitRouteV8IntegrationTest {
         organisationService.create(organisationEntity2);
 
         Organisation organisation3 = DtoInitializerV8.getOrganisation(organisingOrganisationId3, organisingOrganisationId3);
-        OrganisationEntity organisationEntity3 = modelMapper.map(organisation3, OrganisationEntity.class);
+        OrganisationEntity organisationEntity3 = EntityInitializer.getOrganisationEntity(
+            organisingOrganisationId3,
+            organisingOrganisationId3,
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity(organisingOrganisationId3, null, null),
+            messageSchemaVersion);
         organisationEntity3.setId(organisingOrganisationId3);
         organisationEntity3.setQueue(organisingOrganisationId3);
         organisationEntity3.setNotificationsEnabled(false); // NOTE: this one doesn't want notifications :)
@@ -309,13 +450,13 @@ public class CourseUnitRouteV8IntegrationTest {
         Message notificationInOrganisation3Queue = JmsHelper.receiveObject(jmsTemplate, organisingOrganisationId3);
         assertNull(notificationInOrganisation3Queue);
     }
-    
+
     @Test
     public void testSendingCreateCourseUnitMessage_shouldSucceedCodeContainsSlash() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
@@ -340,7 +481,7 @@ public class CourseUnitRouteV8IntegrationTest {
                 courseUnit.getStudyElementId(), organisation.getOrganisationTkCode()).get();
         assertNotNull(createdCourseUnit);
         assertNotNull(createdCourseUnit.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, createdCourseUnit.getType());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, createdCourseUnit.getType());
 
         List<CourseUnitEntity> savedCourseUnits = StreamSupport.stream(courseUnitRepository.findAll(Pageable.unpaged()).spliterator(), false).collect(Collectors.toList());
         assertTrue(savedCourseUnits != null);
@@ -351,15 +492,15 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals(result.getStudyElementIdentifierCode(), result.getStudyElementIdentifierCode());
         assertNotNull(result.getCreatedTime());
         assertNotNull(result.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, result.getType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ARCHIVED, result.getStatus());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, result.getType());
+        assertEquals(StudyStatusEntity.ARCHIVED, result.getStatus());
     }
 
     @Test
     public void testSendingCreateCourseUnitMessageAsJson_shouldSucceed() throws JMSException, IOException, EntityNotFoundException {
         String organisingOrganisationId = "TUNI";
         persistNetworkEntity("CN-1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, createCourseUnitJson, MessageType.CREATE_COURSEUNIT_REQUEST.name(), organisingOrganisationId);
@@ -376,15 +517,15 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("TUNI", createdUnit.getOrganizingOrganisationId());
         assertNotNull(createdUnit.getCreatedTime());
         assertNotNull(createdUnit.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, createdUnit.getType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdUnit.getStatus());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, createdUnit.getType());
+        assertEquals(StudyStatusEntity.ACTIVE, createdUnit.getStatus());
     }
 
     @Test
     public void testSendingCreateCourseUnitMessageAsJson_containsSpecialCharactersAndXss_shouldSucceedAndTagsRemoved() throws JMSException, IOException, EntityNotFoundException {
         String organisingOrganisationId = "TUNI";
         persistNetworkEntity("CN-1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, createCourseUnitJsonWitSpecialCharacters,
@@ -402,39 +543,41 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("TUNI", createdUnit.getOrganizingOrganisationId());
         assertEquals("", createdUnit.getName().getValue("fi"));
         assertEquals("", createdUnit.getName().getValue("sv"));
-        assertEquals("testFinal Thesis", createdUnit.getName().getValue("en"));
+        assertEquals("<b>test</b>Final Thesis", createdUnit.getName().getValue("en"));
         assertNotNull(createdUnit.getCreatedTime());
         assertNotNull(createdUnit.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, createdUnit.getType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdUnit.getStatus());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, createdUnit.getType());
+        assertEquals(StudyStatusEntity.ACTIVE, createdUnit.getStatus());
     }
 
     @Test
     public void testSendingUpdateCourseUnitMessage_containsSpecialCharactersAndXss_shoudlSucceedAndTagsRemoved() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork("CN-1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork("CN-1",
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
             "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-            "{\n" +
-                "\t\"courseUnit\": {\n" +
-                "\t\t\"studyElementId\": \"ID1\",\n" +
-                "\t\t\"name\": {\n" +
-                "\t\t\t\"values\": {\n" +
-                "\t\t\t\t\"en\": \"<script type='text/javascript'>xss here</script>\",\n" +
-                "\t\t\t\t\"sv\": \"<strong>blaah</strong> jaksonnimi2 sv\",\n" +
-                "\t\t\t\t\"fi\": \"<xc jaksonnimi2 fi\"\n" +
-                "\t\t\t}\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+            """
+                {
+                	"courseUnit": {
+                		"studyElementId": "ID1",
+                		"name": {
+                			"values": {
+                				"en": "<script type='text/javascript'>xss here</script>",
+                				"sv": "<strong>blaah</strong> jaksonnimi2 sv",
+                				"fi": "<xc jaksonnimi2 fi"
+                			}
+                		}
+                	}
+                }
+            """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -458,29 +601,31 @@ public class CourseUnitRouteV8IntegrationTest {
     public void testSendingUpdateCourseUnitMessage_shouldSucceed() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-                "{\n" +
-                "\t\"courseUnit\": {\n" +
-                "\t\t\"studyElementId\": \"ID1\",\n" +
-                "\t\t\"name\": {\n" +
-                "\t\t\t\"values\": {\n" +
-                "\t\t\t\t\"fi\": \"jaksonnimi2 fi\",\n" +
-                "\t\t\t\t\"en\": \"jaksonnimi2 en\",\n" +
-                "\t\t\t\t\"sv\": \"jaksonnimi2 sv\"\n" +
-                "\t\t\t}\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+                """
+                    {
+                    	"courseUnit": {
+                    		"studyElementId": "ID1",
+                    		"name": {
+                    			"values": {
+                    				"fi": "jaksonnimi2 fi",
+                    				"en": "jaksonnimi2 en",
+                    				"sv": "jaksonnimi2 sv"
+                    			}
+                    		}
+                    	}
+                    }
+                """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -500,8 +645,8 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("jaksonnimi2 sv", result.getName().getValue("sv"));
         assertNotNull(result.getCreatedTime());
         assertNotNull(result.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, result.getType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, result.getStatus());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, result.getType());
+        assertEquals(StudyStatusEntity.ACTIVE, result.getStatus());
         assertTrue(result.getCooperationNetworks().stream()
                 .allMatch(resultCn -> courseUnit.getCooperationNetworks().stream()
                         .anyMatch(cn -> cn.getId().equals(resultCn.getId())
@@ -516,31 +661,33 @@ public class CourseUnitRouteV8IntegrationTest {
         String organizingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organizingOrganisationId));
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(networkEntity.getId(),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("JUUJUU", null, null),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(networkEntity.getId(),
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("JUUJUU", null, null),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-                "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "           \"cooperationNetworks\": [\n" +
-                "               {\n" +
-                "                   \"id\": \"" + networkEntity.getId() +"\",\n" +
-                "                   \"enrollable\": true\n" +
-                "               }\n" +
-                "           ]\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "courseUnit": {
+                            "studyElementId": "ID1",
+                               "cooperationNetworks": [
+                                   {
+                                       "id": "%s",
+                                       "enrollable": true
+                                   }
+                               ]
+                        }
+                    }
+                """.formatted(networkEntity.getId());
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -556,8 +703,8 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals(courseUnit.getStudyElementIdentifierCode(), result.getStudyElementIdentifierCode());
         assertNotNull(result.getCreatedTime());
         assertNotNull(result.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, result.getType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, result.getStatus());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, result.getType());
+        assertEquals(StudyStatusEntity.ACTIVE, result.getStatus());
         assertTrue(result.getCooperationNetworks().stream()
                 .allMatch(resultCn -> networkEntity.getId().equals(resultCn.getId())
                         && networkEntity.getName().getValue("fi").equals(resultCn.getName().getValue("fi"))
@@ -570,31 +717,31 @@ public class CourseUnitRouteV8IntegrationTest {
     public void testSendingUpdateCourseUnitMessageWithEmptyCooperationNetworks_shouldSucceed() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-                "{\n" +
-                        "\t\"courseUnit\": {\n" +
-                        "\t\t\"studyElementId\": \"ID1\",\n" +
-                        "\t\t\"name\": {\n" +
-                        "\t\t\t\"values\": {\n" +
-                        "\t\t\t\t\"fi\": \"jaksonnimi2 fi\",\n" +
-                        "\t\t\t\t\"en\": \"jaksonnimi2 en\",\n" +
-                        "\t\t\t\t\"sv\": \"jaksonnimi2 sv\"\n" +
-                        "\t\t\t\t}\n" +
-                        "\t\t\t},\n" +
-                        "\t\t\"cooperationNetworks\": [\n" +
-                        "\t\t\t]\n" +
-                        "\t\t}\n" +
-                        "\t}\n" +
-                        "}";
+            """
+                {
+                    "courseUnit": {
+                        "studyElementId": "ID1",
+                        "name": {
+                            "values": {
+                                "fi": "jaksonnimi2 fi",
+                                "en": "jaksonnimi2 en",
+                                "sv": "jaksonnimi2 sv"
+                            }
+                        },
+                        "cooperationNetworks": []
+                    }
+                }
+            """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -614,36 +761,38 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("jaksonnimi2 sv", result.getName().getValue("sv"));
         assertNotNull(result.getCreatedTime());
         assertNotNull(result.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, result.getType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, result.getStatus());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, result.getType());
+        assertEquals(StudyStatusEntity.ACTIVE, result.getStatus());
     }
 
     @Test
     public void testSendingUpdateCourseUnitMessage_shouldSucceedContainsForwardSlash() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 "I/D1", "RAI/RAI", organizingOrganisationId, Collections.singletonList(network), originalName);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-                "{\n" +
-                "\t\"courseUnit\": {\n" +
-                "\t\t\"studyElementId\": \"I/D1\",\n" +
-                "\t\t\"status\": \"ARCHIVED\",\n" +
-                "\t\t\"name\": {\n" +
-                "\t\t\t\"values\": {\n" +
-                "\t\t\t\t\"fi\": \"jaksonnimi2 fi\",\n" +
-                "\t\t\t\t\"en\": \"jaksonnimi2 en\",\n" +
-                "\t\t\t\t\"sv\": \"jaksonnimi2 sv\"\n" +
-                "\t\t\t}\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+                """
+                    {
+                    	"courseUnit": {
+                    		"studyElementId": "I/D1",
+                    		"status": "ARCHIVED",
+                    		"name": {
+                    			"values": {
+                    				"fi": "jaksonnimi2 fi",
+                    				"en": "jaksonnimi2 en",
+                    				"sv": "jaksonnimi2 sv"
+                    			}
+                    		}
+                    	}
+                    }
+                """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -663,8 +812,8 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("jaksonnimi2 sv", result.getName().getValue("sv"));
         assertNotNull(result.getCreatedTime());
         assertNotNull(result.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, result.getType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ARCHIVED, result.getStatus());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, result.getType());
+        assertEquals(StudyStatusEntity.ARCHIVED, result.getStatus());
     }
 
     @Test
@@ -679,14 +828,14 @@ public class CourseUnitRouteV8IntegrationTest {
         organisationService.create(organisationEntity);
 
         CourseUnitEntity courseUnit1 = EntityInitializer.getCourseUnitEntity(id1, code1, organisationId1, null,
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv"));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv"));
 
         CourseUnitEntity courseUnit2 = EntityInitializer.getCourseUnitEntity("ID2", code2, organisationId1, null,
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi 2 fi", "jaksonnimi 2 en", "jaksonnimi 2 sv"));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi 2 fi", "jaksonnimi 2 en", "jaksonnimi 2 sv"));
 
         CourseUnitEntity courseUnit3 = EntityInitializer.getCourseUnitEntity("ID3", code1, organisationId2, null,
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi 3 fi", "jaksonnimi 3 en", "jaksonnimi 3 sv"));
-        
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi 3 fi", "jaksonnimi 3 en", "jaksonnimi 3 sv"));
+
         courseUnitRepository.create(courseUnit1);
         courseUnitRepository.create(courseUnit2);
         courseUnitRepository.create(courseUnit3);
@@ -721,17 +870,19 @@ public class CourseUnitRouteV8IntegrationTest {
     @Test
     public void testSendingUpdateCourseUnitMessage_missingStudyElementId_shouldFail() throws JMSException {
         String updateCourseUnitJson =
-                "{\n" +
-                "\t\"courseUnit\": {\n" +
-                "\t\t\"name\": {\n" +
-                "\t\t\t\"values\": {\n" +
-                "\t\t\t\t\"fi\": \"jaksonnimi2 fi\",\n" +
-                "\t\t\t\t\"en\": \"jaksonnimi2 en\",\n" +
-                "\t\t\t\t\"sv\": \"jaksonnimi2 sv\"\n" +
-                "\t\t\t}\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+                """
+                    {
+                    	"courseUnit": {
+                    		"name": {
+                    			"values": {
+                    				"fi": "jaksonnimi2 fi",
+                    				"en": "jaksonnimi2 en",
+                    				"sv": "jaksonnimi2 sv"
+                    			}
+                    		}
+                    	}
+                    }
+                """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateCourseUnitJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), "TUNI");
         JsonValidationFailedResponse resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -742,18 +893,20 @@ public class CourseUnitRouteV8IntegrationTest {
     @Test
     public void testSendingUpdateCourseUnitMessage_shouldFailBrokenJson() throws JMSException {
         String updateCourseUnitJson =
-                "{\n" +
-                "\t\"courseUnit\": {\n" +
-                "\t\t\"studyElementId\": \"IDASDASD\",,,,,,,\n" +
-                "\t\t\"name\": {\n" +
-                "\t\t\t\"values\": {\n" +
-                "\t\t\t\t\"fi\": \"jaksonnimi2 fi\",\n" +
-                "\t\t\t\t\"en\": \"jaksonnimi2 en\",\n" +
-                "\t\t\t\t\"sv\": \"jaksonnimi2 sv\"\n" +
-                "\t\t\t}\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+                """
+                    {
+                    	"courseUnit": {
+                    		"studyElementId": "IDASDASD",,,,,,,
+                    		"name": {
+                    			"values": {
+                    				"fi": "jaksonnimi2 fi",
+                    				"en": "jaksonnimi2 en",
+                    				"sv": "jaksonnimi2 sv"
+                    			}
+                    		}
+                    	}
+                    }
+                """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateCourseUnitJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), "TUNI");
         JsonValidationFailedResponse resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -767,46 +920,48 @@ public class CourseUnitRouteV8IntegrationTest {
         NetworkEntity networkEntity1 = persistNetworkEntity("CN-1", null, Collections.singletonList(organizingOrganisationId));
         NetworkEntity networkEntity2 = persistNetworkEntity("CN-3", null, Collections.singletonList(organizingOrganisationId));
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(networkEntity1.getId(), networkEntity1.getName(),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(networkEntity1.getId(), networkEntity1.getName(),
                 true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
         courseUnitRepository.create(courseUnit);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference reference = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity reference = EntityInitializer.getStudyElementReferenceForCourseUnit(
                 courseUnit.getStudyElementId(), organizingOrganisationId);
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("R1", "RCODE1", organizingOrganisationId,
                 Collections.singletonList(reference), Collections.singletonList(network));
         realisationRepository.create(realisationEntity);
 
         String updateCourseUnitJson =
-                "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"" + courseUnit.getStudyElementId() + "\",\n" +
-                "        \"name\": {\n" +
-                "            \"values\": {\n" +
-                "                \"fi\": \"jaksonnimi2 fi\",\n" +
-                "                \"en\": \"jaksonnimi2 en\",\n" +
-                "                \"sv\": \"jaksonnimi2 sv\"\n" +
-                "            }\n" +
-                "        },\n" +
-                "        \"cooperationNetworks\": [\n" +
-                "            {\n" +
-                "                \"id\": \"" + networkEntity2.getId() + "\",\n" +
-                "                \"name\": {\n" +
-                "                    \"values\": {\n" +
-                "                        \"fi\": \"Verkosto 3\",\n" +
-                "                        \"en\": \"Network 3\",\n" +
-                "                        \"sv\": null\n" +
-                "                    }\n" +
-                "                },\n" +
-                "                \"enrollable\": true\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "courseUnit": {
+                            "studyElementId": "%s",
+                            "name": {
+                                "values": {
+                                    "fi": "jaksonnimi2 fi",
+                                    "en": "jaksonnimi2 en",
+                                    "sv": "jaksonnimi2 sv"
+                                }
+                            },
+                            "cooperationNetworks": [
+                                {
+                                    "id": "%s",
+                                    "name": {
+                                        "values": {
+                                            "fi": "Verkosto 3",
+                                            "en": "Network 3",
+                                            "sv": null
+                                        }
+                                    },
+                                    "enrollable": true
+                                }
+                            ]
+                        }
+                    }
+                """.formatted(courseUnit.getStudyElementId(), networkEntity2.getId());
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateCourseUnitJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), "TUNI");
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -820,32 +975,34 @@ public class CourseUnitRouteV8IntegrationTest {
         NetworkEntity networkEntity1 = persistNetworkEntity("CN-1", null, Collections.singletonList(organizingOrganisationId));
         NetworkEntity networkEntity2 = persistNetworkEntity("CN-3", null, Collections.singletonList(organizingOrganisationId));
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(networkEntity1.getId(), networkEntity1.getName(),
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(networkEntity1.getId(), networkEntity1.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
             "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
         courseUnitRepository.create(courseUnit);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference reference = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity reference = EntityInitializer.getStudyElementReferenceForCourseUnit(
             courseUnit.getStudyElementId(), organizingOrganisationId);
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("R1", "RCODE1", organizingOrganisationId,
             Collections.singletonList(reference), Collections.singletonList(network));
         realisationRepository.create(realisationEntity);
 
         String updateCourseUnitJson =
-            "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"" + courseUnit.getStudyElementId() + "\",\n" +
-                "        \"teachingLanguage\": [\n" +
-                "            \"FI\"\n" +
-                "        ],\n" +
-                "        \"languagesOfCompletion\": [\n" +
-                "            \"EN\"\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "courseUnit": {
+                        "studyElementId": "%s",
+                        "teachingLanguage": [
+                            "FI"
+                        ],
+                        "languagesOfCompletion": [
+                            "EN"
+                        ]
+                    }
+                }
+            """.formatted(courseUnit.getStudyElementId());
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateCourseUnitJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), "TUNI");
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -858,17 +1015,19 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("en", courseUnitEntities.get(0).getLanguagesOfCompletion().get(0));
 
         updateCourseUnitJson =
-            "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"" + courseUnit.getStudyElementId() + "\",\n" +
-                "        \"teachingLanguage\": [\n" +
-                "            \"FICZXCX\"\n" +
-                "        ],\n" +
-                "        \"languagesOfCompletion\": [\n" +
-                "            \"23423\"\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "courseUnit": {
+                        "studyElementId": "%s",
+                        "teachingLanguage": [
+                            "FICZXCX"
+                        ],
+                        "languagesOfCompletion": [
+                            "23423"
+                        ]
+                    }
+                }
+            """.formatted(courseUnit.getStudyElementId());
 
         responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateCourseUnitJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), "TUNI");
         resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -888,7 +1047,7 @@ public class CourseUnitRouteV8IntegrationTest {
         organisationService.create(organisationEntity);
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
@@ -950,7 +1109,7 @@ public class CourseUnitRouteV8IntegrationTest {
     public void testSendingCreateCourseUnitMessageWithRealisations_shouldSuccess() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
-        NetworkEntity networkEntity = persistNetworkEntity("CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+        NetworkEntity networkEntity = persistNetworkEntity("CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(networkEntity.getId(),
@@ -988,7 +1147,7 @@ public class CourseUnitRouteV8IntegrationTest {
                 courseUnit.getStudyElementId(), organisingOrganisationId).orElse(null);
         assertNotNull(createdCourseUnit);
         assertNotNull(createdCourseUnit.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdCourseUnit.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, createdCourseUnit.getStatus());
         assertEquals(organisation.getOrganisationTkCode(), createdCourseUnit.getOrganizingOrganisationId());
 
         RealisationEntity createdRealisation = realisationService.findByIdAndOrganizingOrganisationId(
@@ -997,9 +1156,9 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals(1, createdRealisation.getStudyElementReferences().size());
         assertEquals(courseUnit.getStudyElementId(), createdRealisation.getStudyElementReferences().get(0).getReferenceIdentifier());
         assertEquals(createdCourseUnit.getOrganizingOrganisationId(), createdRealisation.getStudyElementReferences().get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT, createdRealisation.getStudyElementReferences().get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT, createdRealisation.getStudyElementReferences().get(0).getReferenceType());
         assertNotNull(createdRealisation.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdRealisation.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, createdRealisation.getStatus());
 
         // Verify data denormalized
         assertEquals(1, createdCourseUnit.getRealisations().size());
@@ -1023,7 +1182,7 @@ public class CourseUnitRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -1069,7 +1228,7 @@ public class CourseUnitRouteV8IntegrationTest {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         fi.uta.ristiinopiskelu.datamodel.dto.v8.CooperationNetwork network = DtoInitializerV8.getCooperationNetwork(
                 networkEntity.getId(), new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -1127,7 +1286,7 @@ public class CourseUnitRouteV8IntegrationTest {
                 courseUnit.getStudyElementId(), organisingOrganisationId).orElse(null);
         assertNotNull(createdCourseUnit);
         assertNotNull(createdCourseUnit.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdCourseUnit.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, createdCourseUnit.getStatus());
         assertEquals(organisation.getOrganisationTkCode(), createdCourseUnit.getOrganizingOrganisationId());
         assertEquals(completionOption.getName().getValue("fi"), createdCourseUnit.getCompletionOptions().stream()
                 .filter(co -> co.getCompletionOptionId().equals(completionOption.getCompletionOptionId()))
@@ -1155,23 +1314,23 @@ public class CourseUnitRouteV8IntegrationTest {
         assertNotNull(createdRealisation);
         assertEquals(1, createdRealisation.getStudyElementReferences().size());
         assertTrue(createdRealisation.getStudyElementReferences().stream().anyMatch(sr ->
-                sr.getReferenceType().equals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.ASSESSMENT_ITEM)
+                sr.getReferenceType().equals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.ASSESSMENT_ITEM)
                     && sr.getReferenceIdentifier().equals(courseUnit.getStudyElementId())
                     && sr.getReferenceAssessmentItemId().equals(assessmentItem.getAssessmentItemId())));
         assertNotNull(createdRealisation.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdRealisation.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, createdRealisation.getStatus());
 
         RealisationEntity createdRealisation2 = realisationService.findByIdAndOrganizingOrganisationId(realisation2.getRealisationId(),
                 organisingOrganisationId).orElse(null);
         assertNotNull(createdRealisation2);
         assertEquals(1, createdRealisation2.getStudyElementReferences().size());
         assertTrue(createdRealisation2.getStudyElementReferences().stream().anyMatch(sr ->
-                sr.getReferenceType().equals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.ASSESSMENT_ITEM)
+                sr.getReferenceType().equals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.ASSESSMENT_ITEM)
                     && sr.getReferenceIdentifier().equals(courseUnit.getStudyElementId())
                     && sr.getReferenceAssessmentItemId().equals(assessmentItem2.getAssessmentItemId())));
 
         assertNotNull(createdRealisation2.getCreatedTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, createdRealisation2.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, createdRealisation2.getStatus());
 
         // Verify data denormalized
         assertEquals(1, createdCourseUnit.getAssessmentItems().stream()
@@ -1192,7 +1351,6 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals(createdRealisation.getEndDate(), courseUnitRealisation.getEndDate());
         assertEquals(createdRealisation.getEnrollmentStartDateTime(), courseUnitRealisation.getEnrollmentStartDateTime());
         assertEquals(createdRealisation.getEnrollmentEndDateTime(), courseUnitRealisation.getEnrollmentEndDateTime());
-
 
         assertEquals(1, createdCourseUnit.getAssessmentItems().stream()
             .filter(ai -> ai.getAssessmentItemId().equals(assessmentItem2.getAssessmentItemId()))
@@ -1219,10 +1377,10 @@ public class CourseUnitRouteV8IntegrationTest {
 
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("1", null, null, this.messageSchemaVersion);
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("1", "TEST1", "1",
-                Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+                Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("2", "TEST2", "1",
-                Collections.singletonList(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("1", "1",
-                    fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT)),
+                Collections.singletonList(new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("1", "1",
+                    fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT)),
                 Collections.emptyList());
 
         organisationService.create(organisationEntity);
@@ -1250,22 +1408,22 @@ public class CourseUnitRouteV8IntegrationTest {
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("1", null, null, this.messageSchemaVersion);
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "TEST1", "1",
-            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
 
         CourseUnitEntity courseUnit2 = EntityInitializer.getCourseUnitEntity("CU2", "TEST2", "1",
-            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("REAL1", "REAL1", "1",
-            Collections.singletonList(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("CU1", "1",
-                fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT)),
+            Collections.singletonList(new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("CU1", "1",
+                fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT)),
             Collections.emptyList());
 
         RealisationEntity realisation2 = EntityInitializer.getRealisationEntity("REAL2", "REAL2", "1",
             Arrays.asList(
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("CU1", "1",
-                    fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("CU2", "1",
-                    fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT)),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("CU1", "1",
+                    fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT),
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("CU2", "1",
+                    fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT)),
             Collections.emptyList());
 
         organisationService.create(organisationEntity);
@@ -1308,21 +1466,21 @@ public class CourseUnitRouteV8IntegrationTest {
             hasProperty("realisationId", is(realisation2.getRealisationId()))
         ));
 
-        List<fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference> references = realisationEntities.get(0).getStudyElementReferences();
+        List<fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity> references = realisationEntities.get(0).getStudyElementReferences();
         assertEquals(1, references.size());
         assertEquals(courseUnit2.getStudyElementId(), references.get(0).getReferenceIdentifier());
         assertEquals(courseUnit2.getOrganizingOrganisationId(), references.get(0).getReferenceOrganizer());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT, references.get(0).getReferenceType());
+        assertEquals(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT, references.get(0).getReferenceType());
     }
 
     @Test
     public void testSendingDeleteCourseUnitMessageWithRealisations_shouldFail() throws JMSException {
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("1", "TEST1", "1",
-                Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+                Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("2", "TEST2", "1",
-                Collections.singletonList(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("1",  "1",
-                    fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT)), Collections.emptyList());
+                Collections.singletonList(new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("1",  "1",
+                    fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT)), Collections.emptyList());
 
         courseUnitRepository.create(courseUnit);
         realisationRepository.create(realisation);
@@ -1343,19 +1501,19 @@ public class CourseUnitRouteV8IntegrationTest {
 
     @Test
     public void testSendingDeleteCourseUnitMessageWithMultipleCourseUnitReferences_shouldSucceed() throws JMSException {
-        
+
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("ORG1", null, null, this.messageSchemaVersion);
         organisationService.create(organisationEntity);
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "ORG1",
                 Collections.emptyList(),
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
 
-        List<fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference> references = new ArrayList<>();
-        references.add(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("CU1",  "ORG1",
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT));
-        references.add(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("CU2",  "ORG2",
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT));
+        List<fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity> references = new ArrayList<>();
+        references.add(new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("CU1",  "ORG1",
+            fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT));
+        references.add(new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("CU2",  "ORG2",
+            fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT));
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("RS1", "RS1_CODE1", "ORG1",
                 references,
@@ -1410,28 +1568,29 @@ public class CourseUnitRouteV8IntegrationTest {
     public void testSendingUpdateCourseUnitMessage_shouldSuccessAndIgnoreType() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-                "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"type\": \"COURSE_UNIT\"," +
-                "        \"name\": {\n" +
-                "            \"values\": {\n" +
-                "                \"fi\": \"jaksonnimi2 fi\",\n" +
-                "                \"en\": \"jaksonnimi2 en\",\n" +
-                "                \"sv\": \"jaksonnimi2 sv\"\n" +
-                "            }\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "courseUnit": {
+                            "studyElementId": "ID1",
+                            "type": "COURSE_UNIT",        "name": {
+                                "values": {
+                                    "fi": "jaksonnimi2 fi",
+                                    "en": "jaksonnimi2 en",
+                                    "sv": "jaksonnimi2 sv"
+                                }
+                            }
+                        }
+                    }
+                """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         assertNotNull(responseMessage);
@@ -1453,7 +1612,7 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("jaksonnimi2 sv", result.getName().getValue("sv"));
         assertNotNull(result.getCreatedTime());
         assertNotNull(result.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, result.getType());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, result.getType());
     }
 
     @Test
@@ -1466,15 +1625,15 @@ public class CourseUnitRouteV8IntegrationTest {
                 "TEST1",
                 "1",
                 Collections.emptyList(),
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference courseUnitRef =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference(courseUnit.getStudyElementId(),
-                courseUnit.getOrganizingOrganisationId(), fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity courseUnitRef =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity(courseUnit.getStudyElementId(),
+                courseUnit.getOrganizingOrganisationId(), fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference extraRef =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference("123",  "1",
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity extraRef =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity("123",  "1",
+            fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT);
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity(
                 "2",
@@ -1524,27 +1683,29 @@ public class CourseUnitRouteV8IntegrationTest {
     public void testSendingUpdateCourseUnitMessage_shouldSuccessAndSuccessfullySaveHistory() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName = new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName = new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-                "{\n" +
-                        "    \"courseUnit\": {\n" +
-                        "        \"studyElementId\": \"ID1\",\n" +
-                        "        \"studyElementIdentifierCode\": \"RAIRAI\",\n" +
-                        "        \"name\": {\n" +
-                        "            \"values\": {\n" +
-                        "                \"fi\": \"jaksonnimi2 fi\",\n" +
-                        "                \"en\": \"jaksonnimi2 en\",\n" +
-                        "                \"sv\": \"jaksonnimi2 sv\"\n" +
-                        "            }\n" +
-                        "        }\n" +
-                        "    }\n" +
-                        "}";
+                """
+                    {
+                        "courseUnit": {
+                            "studyElementId": "ID1",
+                            "studyElementIdentifierCode": "RAIRAI",
+                            "name": {
+                                "values": {
+                                    "fi": "jaksonnimi2 fi",
+                                    "en": "jaksonnimi2 en",
+                                    "sv": "jaksonnimi2 sv"
+                                }
+                            }
+                        }
+                    }
+                """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         assertNotNull(responseMessage);
@@ -1566,7 +1727,7 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("jaksonnimi2 sv", updatedCourseUnit.getName().getValue("sv"));
         assertNotNull(updatedCourseUnit.getCreatedTime());
         assertNotNull(updatedCourseUnit.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, updatedCourseUnit.getType());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, updatedCourseUnit.getType());
 
         List<CourseUnitEntity> historyEntities = HistoryHelper.queryHistoryIndex(
                 elasticsearchTemplate,"opintojaksot-history", CourseUnitEntity.class);
@@ -1579,19 +1740,21 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals(courseUnit.getName().getValue("sv"), historyEntity.getName().getValue("sv"));
 
         String courseUnitUpdateJson2 =
-                "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"studyElementIdentifierCode\": \"RAIRAI\",\n" +
-                "        \"name\": {\n" +
-                "            \"values\": {\n" +
-                "                \"fi\": \"jaksonnimi3 fi\",\n" +
-                "                \"en\": \"jaksonnimi3 en\",\n" +
-                "                \"sv\": \"jaksonnimi3 sv\"\n" +
-                "            }\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "courseUnit": {
+                            "studyElementId": "ID1",
+                            "studyElementIdentifierCode": "RAIRAI",
+                            "name": {
+                                "values": {
+                                    "fi": "jaksonnimi3 fi",
+                                    "en": "jaksonnimi3 en",
+                                    "sv": "jaksonnimi3 sv"
+                                }
+                            }
+                        }
+                    }
+                """;
 
         responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson2, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         assertNotNull(responseMessage);
@@ -1612,7 +1775,7 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("jaksonnimi3 sv", updatedCourseUnit2.getName().getValue("sv"));
         assertNotNull(updatedCourseUnit2.getCreatedTime());
         assertNotNull(updatedCourseUnit2.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, updatedCourseUnit2.getType());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, updatedCourseUnit2.getType());
 
         historyEntities = HistoryHelper.queryHistoryIndex(
                 elasticsearchTemplate,"opintojaksot-history", CourseUnitEntity.class);
@@ -1631,16 +1794,16 @@ public class CourseUnitRouteV8IntegrationTest {
 
     @Test
     public void testSendingDeleteCourseUnitMessageWithRealisations_shouldSuccessAndCreateHistory() throws JMSException {
-        
+
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("1", null, null, this.messageSchemaVersion);
         organisationService.create(organisationEntity);
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("1", "TEST1", "1",
-                Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", "test", "test"));
+                Collections.emptyList(), new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", "test", "test"));
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("2", "TEST2", courseUnit.getOrganizingOrganisationId(),
-                Collections.singletonList(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference(courseUnit.getStudyElementId(),
-                    courseUnit.getOrganizingOrganisationId(), fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT)),
+                Collections.singletonList(new fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity(courseUnit.getStudyElementId(),
+                    courseUnit.getOrganizingOrganisationId(), fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT)),
                 Collections.emptyList());
 
         courseUnitRepository.create(courseUnit);
@@ -1686,30 +1849,32 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals(1, realisationHistoryEntity.getStudyElementReferences().size());
         assertTrue(realisationHistoryEntity.getStudyElementReferences().stream().anyMatch(
                 sr -> sr.getReferenceIdentifier().equals(courseUnit.getStudyElementId())
-                        && sr.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType.COURSE_UNIT));
+                        && sr.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.COURSE_UNIT));
     }
 
     @Test
     public void testSendingUpdateCourseUnitMessage_shouldNotFailBecauseOfExtraField() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-                "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"studyElementIdentifierCode\": \"RAIRAI\",\n" +
-                "        \"type\": \"COURSE_UNIT\"," +
-                "        \"thisdoesnotexist\": \"somerandomcontent\"" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "courseUnit": {
+                        "studyElementId": "ID1",
+                        "studyElementIdentifierCode": "RAIRAI",
+                        "type": "COURSE_UNIT",
+                        "thisdoesnotexist": "somerandomcontent"
+                    }
+                }
+            """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         assertNotNull(responseMessage);
@@ -1737,22 +1902,24 @@ public class CourseUnitRouteV8IntegrationTest {
     public void testSendingUpdateCourseUnitMessage_shouldFailStatusNull() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-                "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+                "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
                 "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-                "{\n" +
-                "\t\"courseUnit\": {\n" +
-                "\t\t\"studyElementId\": \"ID1\",\n" +
-                "\t\t\"status\": null\n" +
-                "\t}\n" +
-                "}";
+                """
+                    {
+                    	"courseUnit": {
+                    		"studyElementId": "ID1",
+                    		"status": null
+                    	}
+                    }
+                """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         JsonValidationFailedResponse resp = (JsonValidationFailedResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -1764,29 +1931,31 @@ public class CourseUnitRouteV8IntegrationTest {
 
         CourseUnitEntity result = savedCourseUnits.get(0);
         assertNull(result.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, result.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, result.getStatus());
     }
 
     @Test
     public void testSendingUpdateCourseUnitMessage_shouldSucceedCooperationNetworksEmpty() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
             "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-            "{\n" +
-                "\t\"courseUnit\": {\n" +
-                "\t\t\"studyElementId\": \"ID1\",\n" +
-                "\t\t\"cooperationNetworks\": []\n" +
-                "\t}\n" +
-                "}";
+            """
+                {
+                	"courseUnit": {
+                		"studyElementId": "ID1",
+                		"cooperationNetworks": []
+                	}
+                }
+            """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -1804,22 +1973,24 @@ public class CourseUnitRouteV8IntegrationTest {
     public void testSendingUpdateCourseUnitMessage_shouldSucceedCooperationNetworksNull() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
             "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-            "{\n" +
-                "\t\"courseUnit\": {\n" +
-                "\t\t\"studyElementId\": \"ID1\",\n" +
-                "\t\t\"cooperationNetworks\": null\n" +
-                "\t}\n" +
-                "}";
+            """
+                {
+                	"courseUnit": {
+                		"studyElementId": "ID1",
+                		"cooperationNetworks": null
+                	}
+                }
+            """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -1833,314 +2004,315 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals(null, result.getCooperationNetworks());
     }
 
-
     @Test
     public void testSendingUpdateCourseUnitMessage_containsRealisations_shouldNotUpdateRealisationInfoAndSucceed() throws JMSException, IOException {
         String organizingOrganisationId = "TUNI";
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity(
             "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName);
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
         courseUnitRepository.create(courseUnit);
 
         String courseUnitUpdateJson =
-            "{\n" +
-            "    \"courseUnit\": {\n" +
-            "        \"studyElementId\": \"ID1\",\n" +
-            "        \"studyElementIdentifierCode\": \"RAIRAI\",\n" +
-            "        \"name\": {\n" +
-            "            \"values\": {\n" +
-            "                \"fi\": \"jaksonnimi 2 fi\",\n" +
-            "                \"en\": \"jaksonnimi 2 en\",\n" +
-            "                \"sv\": \"jaksonnimi 2 sv\"\n" +
-            "            }\n" +
-            "        },\n" +
-            "        \"completionOptions\": [\n" +
-            "            {\n" +
-            "                \"assessmentItems\": [\n" +
-            "                    {\n" +
-            "                        \"primaryCourseUnitId\": null,\n" +
-            "                        \"name\": {\n" +
-            "                            \"values\": {\n" +
-            "                                \"fi\": \"arvioinninkohde 1\"\n" +
-            "                            }\n" +
-            "                        },\n" +
-            "                        \"realisations\": [\n" +
-            "                            {\n" +
-            "                                \"realisationId\": \"ID1\",\n" +
-            "                                \"realisationIdentifierCode\": \"IDENTIFIERCODE\",\n" +
-            "                                \"selections\": null,\n" +
-            "                                \"questionSets\": null,\n" +
-            "                                \"enrollmentStartDateTime\": \"2019-12-24T15:55:52.134+02:00\",\n" +
-            "                                \"enrollmentEndDateTime\": \"2020-01-23T15:55:52.134+02:00\",\n" +
-            "                                \"startDate\": \"2019-12-08\",\n" +
-            "                                \"endDate\": \"2020-02-08\",\n" +
-            "                                \"personReferences\": null,\n" +
-            "                                \"minSeats\": null,\n" +
-            "                                \"maxSeats\": null,\n" +
-            "                                \"location\": null,\n" +
-            "                                \"organisationSpecificDescriptions\": null,\n" +
-            "                                \"studyElementReferences\": [\n" +
-            "                                    {\n" +
-            "                                        \"referenceIdentifier\": \"ID1\",\n" +
-            "                                        \"referenceOrganizer\": \"TUNI\",\n" +
-            "                                        \"referenceType\": \"ASSESSMENT_ITEM\",\n" +
-            "                                        \"referenceAssessmentItemId\": \"AI-1\"\n" +
-            "                                    }\n" +
-            "                                ],\n" +
-            "                                \"name\": {\n" +
-            "                                    \"values\": {\n" +
-            "                                        \"fi\": \"nimi\"\n" +
-            "                                    }\n" +
-            "                                },\n" +
-            "                                \"organisationReferences\": [\n" +
-            "                                    {\n" +
-            "                                        \"percent\": 100,\n" +
-            "                                        \"organisationRole\": 1,\n" +
-            "                                        \"target\": {\n" +
-            "                                            \"organisationIdentifier\": \"TUNI\",\n" +
-            "                                            \"organisationTkCode\": \"TUNI\",\n" +
-            "                                            \"organisationName\": null,\n" +
-            "                                            \"unitName\": null,\n" +
-            "                                            \"nameDescription\": null,\n" +
-            "                                            \"postalAddress\": null,\n" +
-            "                                            \"streetAddress\": null,\n" +
-            "                                            \"municipalityCode\": null,\n" +
-            "                                            \"phone\": null,\n" +
-            "                                            \"url\": null\n" +
-            "                                        },\n" +
-            "                                        \"description\": null\n" +
-            "                                    }\n" +
-            "                                ],\n" +
-            "                                \"groupSelections\": null,\n" +
-            "                                \"cooperationNetworks\": [\n" +
-            "                                    {\n" +
-            "                                        \"validityStartDate\": \"2019-01-08\",\n" +
-            "                                        \"validityEndDate\": \"2021-01-08\",\n" +
-            "                                        \"enrollable\": true,\n" +
-            "                                        \"id\": \"CN-1\",\n" +
-            "                                        \"name\": {\n" +
-            "                                            \"values\": {\n" +
-            "                                                \"fi\": \"Verkosto 1\",\n" +
-            "                                                \"sv\": \"Verkosto sv\",\n" +
-            "                                                \"en\": \"Verkosto en\"\n" +
-            "                                            }\n" +
-            "                                        }\n" +
-            "                                    }\n" +
-            "                                ],\n" +
-            "                                \"createdTime\": null,\n" +
-            "                                \"updateTime\": null,\n" +
-            "                                \"groupQuotas\": null,\n" +
-            "                                \"status\": null,\n" +
-            "                                \"creditsMin\": null,\n" +
-            "                                \"creditsMax\": null,\n" +
-            "                                \"teachingLanguage\": null,\n" +
-            "                                \"minEduGuidanceArea\": null\n" +
-            "                            },\n" +
-            "                            {\n" +
-            "                                \"realisationId\": \"ID2\",\n" +
-            "                                \"realisationIdentifierCode\": \"IDENTIFIERCODE2\",\n" +
-            "                                \"selections\": null,\n" +
-            "                                \"questionSets\": null,\n" +
-            "                                \"enrollmentStartDateTime\": \"2019-12-19T15:55:52.134+02:00\",\n" +
-            "                                \"enrollmentEndDateTime\": \"2020-01-28T15:55:52.134+02:00\",\n" +
-            "                                \"startDate\": \"2019-11-08\",\n" +
-            "                                \"endDate\": \"2020-03-08\",\n" +
-            "                                \"personReferences\": null,\n" +
-            "                                \"minSeats\": null,\n" +
-            "                                \"maxSeats\": null,\n" +
-            "                                \"location\": null,\n" +
-            "                                \"organisationSpecificDescriptions\": null,\n" +
-            "                                \"studyElementReferences\": [\n" +
-            "                                    {\n" +
-            "                                        \"referenceIdentifier\": \"ID1\",\n" +
-            "                                        \"referenceOrganizer\": \"TUNI\",\n" +
-            "                                        \"referenceType\": \"ASSESSMENT_ITEM\",\n" +
-            "                                        \"referenceAssessmentItemId\": \"AI-2\"\n" +
-            "                                    }\n" +
-            "                                ],\n" +
-            "                                \"name\": {\n" +
-            "                                    \"values\": {\n" +
-            "                                        \"fi\": \"nimi2\"\n" +
-            "                                    }\n" +
-            "                                },\n" +
-            "                                \"organisationReferences\": [\n" +
-            "                                    {\n" +
-            "                                        \"percent\": 100,\n" +
-            "                                        \"organisationRole\": 1,\n" +
-            "                                        \"target\": {\n" +
-            "                                            \"organisationIdentifier\": \"TUNI\",\n" +
-            "                                            \"organisationTkCode\": \"TUNI\",\n" +
-            "                                            \"organisationName\": null,\n" +
-            "                                            \"unitName\": null,\n" +
-            "                                            \"nameDescription\": null,\n" +
-            "                                            \"postalAddress\": null,\n" +
-            "                                            \"streetAddress\": null,\n" +
-            "                                            \"municipalityCode\": null,\n" +
-            "                                            \"phone\": null,\n" +
-            "                                            \"url\": null\n" +
-            "                                        },\n" +
-            "                                        \"description\": null\n" +
-            "                                    }\n" +
-            "                                ],\n" +
-            "                                \"groupSelections\": null,\n" +
-            "                                \"cooperationNetworks\": [\n" +
-            "                                    {\n" +
-            "                                        \"validityStartDate\": \"2019-01-08\",\n" +
-            "                                        \"validityEndDate\": \"2021-01-08\",\n" +
-            "                                        \"enrollable\": true,\n" +
-            "                                        \"id\": \"CN-1\",\n" +
-            "                                        \"name\": {\n" +
-            "                                            \"values\": {\n" +
-            "                                                \"fi\": \"Verkosto 1\",\n" +
-            "                                                \"sv\": \"Verkosto sv\",\n" +
-            "                                                \"en\": \"Verkosto en\"\n" +
-            "                                            }\n" +
-            "                                        }\n" +
-            "                                    }\n" +
-            "                                ],\n" +
-            "                                \"createdTime\": null,\n" +
-            "                                \"updateTime\": null,\n" +
-            "                                \"groupQuotas\": null,\n" +
-            "                                \"status\": null,\n" +
-            "                                \"creditsMin\": null,\n" +
-            "                                \"creditsMax\": null,\n" +
-            "                                \"teachingLanguage\": null,\n" +
-            "                                \"minEduGuidanceArea\": null\n" +
-            "                            }\n" +
-            "                        ],\n" +
-            "                        \"type\": null,\n" +
-            "                        \"assessmentItemId\": \"AI-1\",\n" +
-            "                        \"creditsMin\": null,\n" +
-            "                        \"creditsMax\": null\n" +
-            "                    }\n" +
-            "                ],\n" +
-            "                \"name\": {\n" +
-            "                    \"values\": {\n" +
-            "                        \"fi\": \"suoritustapa 1\"\n" +
-            "                    }\n" +
-            "                },\n" +
-            "                \"completionOptionId\": \"CO-1\",\n" +
-            "                \"description\": \"kuvaus\"\n" +
-            "            },\n" +
-            "            {\n" +
-            "                \"assessmentItems\": [\n" +
-            "                    {\n" +
-            "                        \"primaryCourseUnitId\": null,\n" +
-            "                        \"name\": null,\n" +
-            "                        \"realisations\": null,\n" +
-            "                        \"type\": null,\n" +
-            "                        \"assessmentItemId\": \"AI-2\",\n" +
-            "                        \"creditsMin\": null,\n" +
-            "                        \"creditsMax\": null\n" +
-            "                    }\n" +
-            "                ],\n" +
-            "                \"name\": null,\n" +
-            "                \"completionOptionId\": \"CO-2\",\n" +
-            "                \"description\": \"kuvaus\"\n" +
-            "            }\n" +
-            "        ],\n" +
-            "        \"realisations\": [\n" +
-            "            {\n" +
-            "                \"realisationId\": \"ID3\",\n" +
-            "                \"realisationIdentifierCode\": \"IDENTIFIERCODE3\",\n" +
-            "                \"selections\": null,\n" +
-            "                \"questionSets\": null,\n" +
-            "                \"enrollmentStartDateTime\": \"2019-12-19T15:55:52.134+02:00\",\n" +
-            "                \"enrollmentEndDateTime\": \"2020-01-28T15:55:52.134+02:00\",\n" +
-            "                \"startDate\": \"2019-11-08\",\n" +
-            "                \"endDate\": \"2020-03-08\",\n" +
-            "                \"personReferences\": null,\n" +
-            "                \"minSeats\": null,\n" +
-            "                \"maxSeats\": null,\n" +
-            "                \"location\": null,\n" +
-            "                \"organisationSpecificDescriptions\": null,\n" +
-            "                \"studyElementReferences\": [\n" +
-            "                    {\n" +
-            "                        \"referenceIdentifier\": \"ID1\",\n" +
-            "                        \"referenceOrganizer\": \"TUNI\",\n" +
-            "                        \"referenceType\": \"ASSESSMENT_ITEM\",\n" +
-            "                        \"referenceAssessmentItemId\": \"AI-2\"\n" +
-            "                    }\n" +
-            "                ],\n" +
-            "                \"name\": {\n" +
-            "                    \"values\": {\n" +
-            "                        \"fi\": \"nimi3\"\n" +
-            "                    }\n" +
-            "                },\n" +
-            "                \"organisationReferences\": [\n" +
-            "                    {\n" +
-            "                        \"percent\": 100,\n" +
-            "                        \"organisationRole\": 1,\n" +
-            "                        \"target\": {\n" +
-            "                            \"organisationIdentifier\": \"TUNI\",\n" +
-            "                            \"organisationTkCode\": \"TUNI\",\n" +
-            "                            \"organisationName\": null,\n" +
-            "                            \"unitName\": null,\n" +
-            "                            \"nameDescription\": null,\n" +
-            "                            \"postalAddress\": null,\n" +
-            "                            \"streetAddress\": null,\n" +
-            "                            \"municipalityCode\": null,\n" +
-            "                            \"phone\": null,\n" +
-            "                            \"url\": null\n" +
-            "                        },\n" +
-            "                        \"description\": null\n" +
-            "                    }\n" +
-            "                ],\n" +
-            "                \"groupSelections\": null,\n" +
-            "                \"cooperationNetworks\": [\n" +
-            "                    {\n" +
-            "                        \"validityStartDate\": \"2019-01-08\",\n" +
-            "                        \"validityEndDate\": \"2021-01-08\",\n" +
-            "                        \"enrollable\": true,\n" +
-            "                        \"id\": \"CN-1\",\n" +
-            "                        \"name\": {\n" +
-            "                            \"values\": {\n" +
-            "                                \"fi\": \"Verkosto 1\",\n" +
-            "                                \"sv\": \"Verkosto sv\",\n" +
-            "                                \"en\": \"Verkosto en\"\n" +
-            "                            }\n" +
-            "                        }\n" +
-            "                    }\n" +
-            "                ],\n" +
-            "                \"createdTime\": null,\n" +
-            "                \"updateTime\": null,\n" +
-            "                \"groupQuotas\": null,\n" +
-            "                \"status\": null,\n" +
-            "                \"creditsMin\": null,\n" +
-            "                \"creditsMax\": null,\n" +
-            "                \"teachingLanguage\": null,\n" +
-            "                \"minEduGuidanceArea\": null\n" +
-            "            }\n" +
-            "        ],\n" +
-            "        \"sendingTime\": \"2020-01-08T15:55:52.134+02:00\",\n" +
-            "        \"creditsMin\": 2.5,\n" +
-            "        \"creditsMax\": 5,\n" +
-            "        \"organisationReferences\": [\n" +
-            "            {\n" +
-            "                \"percent\": 100,\n" +
-            "                \"organisationRole\": 1,\n" +
-            "                \"target\": {\n" +
-            "                    \"organisationIdentifier\": \"TUNI\",\n" +
-            "                    \"organisationTkCode\": \"TUNI\",\n" +
-            "                    \"organisationName\": null,\n" +
-            "                    \"unitName\": null,\n" +
-            "                    \"nameDescription\": null,\n" +
-            "                    \"postalAddress\": null,\n" +
-            "                    \"streetAddress\": null,\n" +
-            "                    \"municipalityCode\": null,\n" +
-            "                    \"phone\": null,\n" +
-            "                    \"url\": null\n" +
-            "                },\n" +
-            "                \"description\": null\n" +
-            "            }\n" +
-            "        ]\n" +
-            "    }\n" +
-            "}";
+            """
+                {
+                    "courseUnit": {
+                        "studyElementId": "ID1",
+                        "studyElementIdentifierCode": "RAIRAI",
+                        "name": {
+                            "values": {
+                                "fi": "jaksonnimi 2 fi",
+                                "en": "jaksonnimi 2 en",
+                                "sv": "jaksonnimi 2 sv"
+                            }
+                        },
+                        "completionOptions": [
+                            {
+                                "assessmentItems": [
+                                    {
+                                        "primaryCourseUnitId": null,
+                                        "name": {
+                                            "values": {
+                                                "fi": "arvioinninkohde 1"
+                                            }
+                                        },
+                                        "realisations": [
+                                            {
+                                                "realisationId": "ID1",
+                                                "realisationIdentifierCode": "IDENTIFIERCODE",
+                                                "selections": null,
+                                                "questionSets": null,
+                                                "enrollmentStartDateTime": "2019-12-24T15:55:52.134+02:00",
+                                                "enrollmentEndDateTime": "2020-01-23T15:55:52.134+02:00",
+                                                "startDate": "2019-12-08",
+                                                "endDate": "2020-02-08",
+                                                "personReferences": null,
+                                                "minSeats": null,
+                                                "maxSeats": null,
+                                                "location": null,
+                                                "organisationSpecificDescriptions": null,
+                                                "studyElementReferences": [
+                                                    {
+                                                        "referenceIdentifier": "ID1",
+                                                        "referenceOrganizer": "TUNI",
+                                                        "referenceType": "ASSESSMENT_ITEM",
+                                                        "referenceAssessmentItemId": "AI-1"
+                                                    }
+                                                ],
+                                                "name": {
+                                                    "values": {
+                                                        "fi": "nimi"
+                                                    }
+                                                },
+                                                "organisationReferences": [
+                                                    {
+                                                        "percent": 100,
+                                                        "organisationRole": 1,
+                                                        "target": {
+                                                            "organisationIdentifier": "TUNI",
+                                                            "organisationTkCode": "TUNI",
+                                                            "organisationName": null,
+                                                            "unitName": null,
+                                                            "nameDescription": null,
+                                                            "postalAddress": null,
+                                                            "streetAddress": null,
+                                                            "municipalityCode": null,
+                                                            "phone": null,
+                                                            "url": null
+                                                        },
+                                                        "description": null
+                                                    }
+                                                ],
+                                                "groupSelections": null,
+                                                "cooperationNetworks": [
+                                                    {
+                                                        "validityStartDate": "2019-01-08",
+                                                        "validityEndDate": "2021-01-08",
+                                                        "enrollable": true,
+                                                        "id": "CN-1",
+                                                        "name": {
+                                                            "values": {
+                                                                "fi": "Verkosto 1",
+                                                                "sv": "Verkosto sv",
+                                                                "en": "Verkosto en"
+                                                            }
+                                                        }
+                                                    }
+                                                ],
+                                                "createdTime": null,
+                                                "updateTime": null,
+                                                "groupQuotas": null,
+                                                "status": null,
+                                                "creditsMin": null,
+                                                "creditsMax": null,
+                                                "teachingLanguage": null,
+                                                "minEduGuidanceArea": null
+                                            },
+                                            {
+                                                "realisationId": "ID2",
+                                                "realisationIdentifierCode": "IDENTIFIERCODE2",
+                                                "selections": null,
+                                                "questionSets": null,
+                                                "enrollmentStartDateTime": "2019-12-19T15:55:52.134+02:00",
+                                                "enrollmentEndDateTime": "2020-01-28T15:55:52.134+02:00",
+                                                "startDate": "2019-11-08",
+                                                "endDate": "2020-03-08",
+                                                "personReferences": null,
+                                                "minSeats": null,
+                                                "maxSeats": null,
+                                                "location": null,
+                                                "organisationSpecificDescriptions": null,
+                                                "studyElementReferences": [
+                                                    {
+                                                        "referenceIdentifier": "ID1",
+                                                        "referenceOrganizer": "TUNI",
+                                                        "referenceType": "ASSESSMENT_ITEM",
+                                                        "referenceAssessmentItemId": "AI-2"
+                                                    }
+                                                ],
+                                                "name": {
+                                                    "values": {
+                                                        "fi": "nimi2"
+                                                    }
+                                                },
+                                                "organisationReferences": [
+                                                    {
+                                                        "percent": 100,
+                                                        "organisationRole": 1,
+                                                        "target": {
+                                                            "organisationIdentifier": "TUNI",
+                                                            "organisationTkCode": "TUNI",
+                                                            "organisationName": null,
+                                                            "unitName": null,
+                                                            "nameDescription": null,
+                                                            "postalAddress": null,
+                                                            "streetAddress": null,
+                                                            "municipalityCode": null,
+                                                            "phone": null,
+                                                            "url": null
+                                                        },
+                                                        "description": null
+                                                    }
+                                                ],
+                                                "groupSelections": null,
+                                                "cooperationNetworks": [
+                                                    {
+                                                        "validityStartDate": "2019-01-08",
+                                                        "validityEndDate": "2021-01-08",
+                                                        "enrollable": true,
+                                                        "id": "CN-1",
+                                                        "name": {
+                                                            "values": {
+                                                                "fi": "Verkosto 1",
+                                                                "sv": "Verkosto sv",
+                                                                "en": "Verkosto en"
+                                                            }
+                                                        }
+                                                    }
+                                                ],
+                                                "createdTime": null,
+                                                "updateTime": null,
+                                                "groupQuotas": null,
+                                                "status": null,
+                                                "creditsMin": null,
+                                                "creditsMax": null,
+                                                "teachingLanguage": null,
+                                                "minEduGuidanceArea": null
+                                            }
+                                        ],
+                                        "type": null,
+                                        "assessmentItemId": "AI-1",
+                                        "creditsMin": null,
+                                        "creditsMax": null
+                                    }
+                                ],
+                                "name": {
+                                    "values": {
+                                        "fi": "suoritustapa 1"
+                                    }
+                                },
+                                "completionOptionId": "CO-1",
+                                "description": "kuvaus"
+                            },
+                            {
+                                "assessmentItems": [
+                                    {
+                                        "primaryCourseUnitId": null,
+                                        "name": null,
+                                        "realisations": null,
+                                        "type": null,
+                                        "assessmentItemId": "AI-2",
+                                        "creditsMin": null,
+                                        "creditsMax": null
+                                    }
+                                ],
+                                "name": null,
+                                "completionOptionId": "CO-2",
+                                "description": "kuvaus"
+                            }
+                        ],
+                        "realisations": [
+                            {
+                                "realisationId": "ID3",
+                                "realisationIdentifierCode": "IDENTIFIERCODE3",
+                                "selections": null,
+                                "questionSets": null,
+                                "enrollmentStartDateTime": "2019-12-19T15:55:52.134+02:00",
+                                "enrollmentEndDateTime": "2020-01-28T15:55:52.134+02:00",
+                                "startDate": "2019-11-08",
+                                "endDate": "2020-03-08",
+                                "personReferences": null,
+                                "minSeats": null,
+                                "maxSeats": null,
+                                "location": null,
+                                "organisationSpecificDescriptions": null,
+                                "studyElementReferences": [
+                                    {
+                                        "referenceIdentifier": "ID1",
+                                        "referenceOrganizer": "TUNI",
+                                        "referenceType": "ASSESSMENT_ITEM",
+                                        "referenceAssessmentItemId": "AI-2"
+                                    }
+                                ],
+                                "name": {
+                                    "values": {
+                                        "fi": "nimi3"
+                                    }
+                                },
+                                "organisationReferences": [
+                                    {
+                                        "percent": 100,
+                                        "organisationRole": 1,
+                                        "target": {
+                                            "organisationIdentifier": "TUNI",
+                                            "organisationTkCode": "TUNI",
+                                            "organisationName": null,
+                                            "unitName": null,
+                                            "nameDescription": null,
+                                            "postalAddress": null,
+                                            "streetAddress": null,
+                                            "municipalityCode": null,
+                                            "phone": null,
+                                            "url": null
+                                        },
+                                        "description": null
+                                    }
+                                ],
+                                "groupSelections": null,
+                                "cooperationNetworks": [
+                                    {
+                                        "validityStartDate": "2019-01-08",
+                                        "validityEndDate": "2021-01-08",
+                                        "enrollable": true,
+                                        "id": "CN-1",
+                                        "name": {
+                                            "values": {
+                                                "fi": "Verkosto 1",
+                                                "sv": "Verkosto sv",
+                                                "en": "Verkosto en"
+                                            }
+                                        }
+                                    }
+                                ],
+                                "createdTime": null,
+                                "updateTime": null,
+                                "groupQuotas": null,
+                                "status": null,
+                                "creditsMin": null,
+                                "creditsMax": null,
+                                "teachingLanguage": null,
+                                "minEduGuidanceArea": null
+                            }
+                        ],
+                        "sendingTime": "2020-01-08T15:55:52.134+02:00",
+                        "creditsMin": 2.5,
+                        "creditsMax": 5,
+                        "organisationReferences": [
+                            {
+                                "percent": 100,
+                                "organisationRole": 1,
+                                "target": {
+                                    "organisationIdentifier": "TUNI",
+                                    "organisationTkCode": "TUNI",
+                                    "organisationName": null,
+                                    "unitName": null,
+                                    "nameDescription": null,
+                                    "postalAddress": null,
+                                    "streetAddress": null,
+                                    "municipalityCode": null,
+                                    "phone": null,
+                                    "url": null
+                                },
+                                "description": null
+                            }
+                        ]
+                    }
+                }
+            """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, courseUnitUpdateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -2160,8 +2332,8 @@ public class CourseUnitRouteV8IntegrationTest {
         assertEquals("jaksonnimi 2 sv", result.getName().getValue("sv"));
         assertNotNull(result.getCreatedTime());
         assertNotNull(result.getUpdateTime());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType.COURSE_UNIT, result.getType());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE, result.getStatus());
+        assertEquals(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT, result.getType());
+        assertEquals(StudyStatusEntity.ACTIVE, result.getStatus());
         assertTrue(result.getCooperationNetworks().stream()
             .allMatch(resultCn -> courseUnit.getCooperationNetworks().stream()
                 .anyMatch(cn -> cn.getId().equals(resultCn.getId())
@@ -2172,7 +2344,6 @@ public class CourseUnitRouteV8IntegrationTest {
         assertNull(result.getRealisations());
         assertNull(result.getCompletionOptions().get(0).getAssessmentItems().get(0).getRealisations());
     }
-
 
     @Test
     public void testSendingUpdateCourseUnitMessage_removesAssessmentItemWithExistingRealisation_shouldFail() throws JMSException, IOException {
@@ -2187,21 +2358,21 @@ public class CourseUnitRouteV8IntegrationTest {
         CompletionOptionEntity completionOptionEntity = EntityInitializer.getCompletionOptionEntity("CO-1", Collections.singletonList(assessmentItemEntity));
         CompletionOptionEntity completionOptionEntity2 = EntityInitializer.getCompletionOptionEntity("CO-2", Collections.singletonList(removedAssessmentItemEntity));
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntityWithCompletionOptions(
             "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName, Arrays.asList(completionOptionEntity, completionOptionEntity2));
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
 
         courseUnitRepository.create(courseUnit);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference studyElementReference = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity studyElementReference = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             courseUnit.getStudyElementId(), organisation.getOrganisationTkCode(), assessmentItemEntity.getAssessmentItemId());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference removedReference = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity removedReference = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             courseUnit.getStudyElementId(), organisation.getOrganisationTkCode(), removedAssessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("ID1", courseUnit.getOrganizingOrganisationId(),
@@ -2215,43 +2386,44 @@ public class CourseUnitRouteV8IntegrationTest {
         realisationRepository.create(realisationWithRefToRemovedAssessmentItem);
 
         String updateJson =
-            "{\n" +
-            "    \"courseUnit\": {\n" +
-            "        \"studyElementId\": \"" + courseUnit.getStudyElementId() + "\",\n" +
-            "        \"completionOptions\": [\n" +
-            "            {\n" +
-            "                \"completionOptionId\": \"" + completionOptionEntity.getCompletionOptionId() + "\",\n" +
-            "                \"description\": \"aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtävien tekeminen, itsenäinen opiskelu sekä moodle-tentti\",\n" +
-            "                \"assessmentItems\": [\n" +
-            "                    {\n" +
-            "                        \"assessmentItemId\": \"" + assessmentItemEntity.getAssessmentItemId() + "\",\n" +
-            "                        \"primaryCourseUnitId\": null,\n" +
-            "                        \"name\": {\n" +
-            "                            \"values\": {\n" +
-            "                                \"fi\": \"arvioinninkohde 1\"\n" +
-            "                            }\n" +
-            "                         }\n" +
-            "                    }\n" +
-            "                ]\n" +
-            "            },\n" +
-            "            {\n" +
-            "                \"completionOptionId\": \"" + completionOptionEntity2.getCompletionOptionId() + "\",\n" +
-            "                \"description\": \"completion option in which assessment item is removed that has realisation reference \",\n" +
-            "                \"assessmentItems\": [\n" +
-            "                    {\n" +
-            "                        \"assessmentItemId\": \"NEWASSESSMENTITEM\",\n" +
-            "                        \"primaryCourseUnitId\": null,\n" +
-            "                        \"name\": {\n" +
-            "                            \"values\": {\n" +
-            "                                \"fi\": \"uusi arvioinninkohde\"\n" +
-            "                            }\n" +
-            "                        }\n" +
-            "                    }\n" +
-            "                ]" +
-            "            }\n" +
-            "        ]\n" +
-            "    }\n" +
-            "}";
+            """
+                {
+                    "courseUnit": {
+                        "studyElementId": "%s",
+                        "completionOptions": [
+                            {
+                                "completionOptionId": "%s",
+                                "description": "aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtÃ¤vien tekeminen, itsenÃ¤inen opiskelu sekÃ¤ moodle-tentti",
+                                "assessmentItems": [
+                                    {
+                                        "assessmentItemId": "%s",
+                                        "primaryCourseUnitId": null,
+                                        "name": {
+                                            "values": {
+                                                "fi": "arvioinninkohde 1"
+                                            }
+                                         }
+                                    }
+                                ]
+                            },
+                            {
+                                "completionOptionId": "%s",
+                                "description": "completion option in which assessment item is removed that has realisation reference ",
+                                "assessmentItems": [
+                                    {
+                                        "assessmentItemId": "NEWASSESSMENTITEM",
+                                        "primaryCourseUnitId": null,
+                                        "name": {
+                                            "values": {
+                                                "fi": "uusi arvioinninkohde"
+                                            }
+                                        }
+                                    }
+                                ]            }
+                        ]
+                    }
+                }
+            """.formatted(courseUnit.getStudyElementId(), completionOptionEntity.getCompletionOptionId(), assessmentItemEntity.getAssessmentItemId(), completionOptionEntity2.getCompletionOptionId());
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -2275,26 +2447,26 @@ public class CourseUnitRouteV8IntegrationTest {
         CompletionOptionEntity completionOptionEntity = EntityInitializer.getCompletionOptionEntity("CO-1", Collections.singletonList(assessmentItemEntity));
         CompletionOptionEntity completionOptionEntity2 = EntityInitializer.getCompletionOptionEntity("CO-2", Arrays.asList(assessmentItemEntity2, removedAssessmentItemEntity));
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString originalName =
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity originalName =
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv");
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntityWithCompletionOptions(
             "ID1", "RAIRAI", organizingOrganisationId, Collections.singletonList(network), originalName, Arrays.asList(completionOptionEntity, completionOptionEntity2));
-        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.ACTIVE);
+        courseUnit.setStatus(fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity.ACTIVE);
 
         courseUnitRepository.create(courseUnit);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference studyElementReference = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity studyElementReference = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             courseUnit.getStudyElementId(), organisation.getOrganisationTkCode(), assessmentItemEntity.getAssessmentItemId());
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference studyElementReference2 = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity studyElementReference2 = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             courseUnit.getStudyElementId(), organisation.getOrganisationTkCode(), assessmentItemEntity2.getAssessmentItemId());
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("ID1", courseUnit.getOrganizingOrganisationId(),
             Arrays.asList(studyElementReference), Collections.singletonList(network));
-        realisation.setName(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Toteutus 1", "Realisation1", "Real1"));
+        realisation.setName(new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Toteutus 1", "Realisation1", "Real1"));
         realisation.setStartDate(LocalDate.now().minusMonths(1));
         realisation.setEndDate(LocalDate.now().plusMonths(1));
         realisation.setEnrollmentStartDateTime(OffsetDateTime.now().minusDays(15));
@@ -2304,7 +2476,7 @@ public class CourseUnitRouteV8IntegrationTest {
 
         RealisationEntity realisation2 = EntityInitializer.getRealisationEntity("ID2", courseUnit.getOrganizingOrganisationId(),
             Collections.singletonList(studyElementReference2), Collections.singletonList(network));
-        realisation2.setName(new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Toteutus 2", "Realisation2", "Real2"));
+        realisation2.setName(new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("Toteutus 2", "Realisation2", "Real2"));
         realisation2.setStartDate(LocalDate.now().minusMonths(2));
         realisation2.setEndDate(LocalDate.now().plusMonths(2));
         realisation2.setEnrollmentStartDateTime(OffsetDateTime.now().minusDays(20));
@@ -2313,43 +2485,44 @@ public class CourseUnitRouteV8IntegrationTest {
         realisationRepository.create(realisation2);
 
         String updateJson =
-                "{\n" +
-                "    \"courseUnit\": {\n" +
-                "        \"studyElementId\": \"" + courseUnit.getStudyElementId() + "\",\n" +
-                "        \"completionOptions\": [\n" +
-                "            {\n" +
-                "                \"completionOptionId\": \"" + completionOptionEntity.getCompletionOptionId() + "\",\n" +
-                "                \"description\": \"aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtävien tekeminen, itsenäinen opiskelu sekä moodle-tentti\",\n" +
-                "                \"assessmentItems\": [\n" +
-                "                    {\n" +
-                "                        \"assessmentItemId\": \"" + assessmentItemEntity.getAssessmentItemId() + "\",\n" +
-                "                        \"primaryCourseUnitId\": null,\n" +
-                "                        \"name\": {\n" +
-                "                            \"values\": {\n" +
-                "                                \"fi\": \"arvioinninkohde 1\"\n" +
-                "                            }\n" +
-                "                         }\n" +
-                "                    }\n" +
-                "                ]\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"completionOptionId\": \"" + completionOptionEntity2.getCompletionOptionId() + "\",\n" +
-                "                \"description\": \"completion option in which one assessment item is removed \",\n" +
-                "                \"assessmentItems\": [\n" +
-                "                    {\n" +
-                "                        \"assessmentItemId\": \"" + assessmentItemEntity2.getAssessmentItemId() + "\",\n" +
-                "                        \"primaryCourseUnitId\": null,\n" +
-                "                        \"name\": {\n" +
-                "                            \"values\": {\n" +
-                "                                \"fi\": \"uusi arvioinninkohde\"\n" +
-                "                            }\n" +
-                "                        }\n" +
-                "                    }\n" +
-                "                ]" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+                """
+                    {
+                        "courseUnit": {
+                            "studyElementId": "%s",
+                            "completionOptions": [
+                                {
+                                    "completionOptionId": "%s",
+                                    "description": "aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtÃ¤vien tekeminen, itsenÃ¤inen opiskelu sekÃ¤ moodle-tentti",
+                                    "assessmentItems": [
+                                        {
+                                            "assessmentItemId": "%s",
+                                            "primaryCourseUnitId": null,
+                                            "name": {
+                                                "values": {
+                                                    "fi": "arvioinninkohde 1"
+                                                }
+                                             }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "completionOptionId": "%s",
+                                    "description": "completion option in which one assessment item is removed ",
+                                    "assessmentItems": [
+                                        {
+                                            "assessmentItemId": "%s",
+                                            "primaryCourseUnitId": null,
+                                            "name": {
+                                                "values": {
+                                                    "fi": "uusi arvioinninkohde"
+                                                }
+                                            }
+                                        }
+                                    ]            }
+                            ]
+                        }
+                    }
+                """.formatted(courseUnit.getStudyElementId(), completionOptionEntity.getCompletionOptionId(), assessmentItemEntity.getAssessmentItemId(), completionOptionEntity2.getCompletionOptionId(), assessmentItemEntity2.getAssessmentItemId());
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_COURSEUNIT_REQUEST.name(), organizingOrganisationId);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -2402,12 +2575,12 @@ public class CourseUnitRouteV8IntegrationTest {
     // TODO: move to a separate service layer integration test someday?
     @Test
     public void testCreatingDuplicateCourseUnits_shouldFail() {
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation org = DtoInitializer.getOrganisation("TESTORG", "TESTORG");
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference organisationRef = DtoInitializer.getOrganisationReference(org,
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole.ROLE_MAIN_ORGANIZER);
+        fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationDataEntity org = EntityInitializer.getOrganisation("TESTORG", "TESTORG");
+        fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationReferenceEntity organisationRef =
+            EntityInitializer.getOrganisationReference(org, fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationRoleEntity.ROLE_MAIN_ORGANIZER);
 
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("TESTORG", "blaa",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("test", null, null), 8);
+            new fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity("test", null, null), 8);
         organisationService.create(organisationEntity);
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("TESTID", "TESTORG", null, null);
@@ -2418,494 +2591,502 @@ public class CourseUnitRouteV8IntegrationTest {
         assertThrows(CreateFailedException.class, () -> courseUnitService.create(courseUnitEntity));
     }
 
-    private NetworkEntity persistNetworkEntity(String id, fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString name,
+    private NetworkEntity persistNetworkEntity(String id, fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity name,
                                                List<String> organisationIds) {
-        List<fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation> networkOrgs = new ArrayList<>();
+        List<fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity> networkOrgs = new ArrayList<>();
         for (String orgId : organisationIds) {
-            fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation networkOrganisation =
-                new fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation();
-            networkOrganisation.setOrganisationTkCode(orgId);
-            networkOrganisation.setValidityInNetwork(DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now()));
-            networkOrganisation.setIsCoordinator(true);
+            fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity validity =
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now());
+            fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity networkOrganisation =
+                new fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity(orgId, true, validity);
             networkOrgs.add(networkOrganisation);
         }
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(id, name, networkOrgs,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
 
         return networkRepository.create(networkEntity);
     }
 
     private final String createCourseUnitJson =
-            "{\n" +
-            "    \"courseUnits\": [\n" +
-            "        {\n" +
-            "            \"studyElementId\": \"78780\",\n" +
-            "            \"studyElementIdentifierCode\": \"4SAVYONT\",\n" +
-            "            \"type\": \"COURSE_UNIT\",\n" +
-            "            \"abbreviation\": \"Opinetyö\",\n" +
-            "            \"validityStartDate\": \"2019-06-06\",\n" +
-            "            \"personReferences\": [\n" +
-            "               {\n" +
-            "                   \"personRole\": {\n" +
-            "                       \"key\": \"asd\",\n" +
-            "                       \"codeSetKey\": \"dasd\"\n" +
-            "                   },\n" +
-            "                   \"person\": {\n" +
-            "                       \"homeEppn\": \"1234\",\n" +
-            "                       \"hostEppn\": null,\n" +
-            "                       \"firstNames\": \"Jaska\",\n" +
-            "                       \"givenName\": \"J\",\n" +
-            "                       \"surName\": \"Jokunen\"\n" +
-            "                   },\n" +
-            "                   \"definition\": \"\"\n" +
-            "               }\n" +
-            "            ]," +
-            "            \"sendingTime\": \"2019-06-06T21:00:00.000+03:00\",\n" +
-            "            \"teachingLanguage\": [\n" +
-            "                \"EN\"\n" +
-            "            ],\n" +
-            "            \"assessmentScale\": 1,\n" +
-            "            \"name\": {\n" +
-            "                \"values\": {\n" +
-            "                    \"fi\": \"Opinnäytetyö\",\n" +
-            "                    \"en\": \"Final Thesis\",\n" +
-            "                    \"sv\": null\n" +
-            "                }\n" +
-            "            },\n" +
-            "            \"learningMaterials\": null,\n" +
-            "            \"groupSize\": 122,\n" +
-            "            \"completionOptions\": [\n" +
-            "                {\n" +
-            "                    \"completionOptionId\": \"yfIE\",\n" +
-            "                    \"description\": \"aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtävien tekeminen, itsenäinen opiskelu sekä moodle-tentti\"\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"creditsMin\": 15,\n" +
-            "            \"creditsMax\": 35,\n" +
-            "            \"cooperationNetworks\": [\n" +
-            "                {\n" +
-            "                    \"id\": \"CN-1\",\n" +
-            "                    \"name\": {\n" +
-            "                        \"values\": {\n" +
-            "                            \"fi\": \"Verkosto 1\",\n" +
-            "                            \"en\": \"Network 1\",\n" +
-            "                            \"sv\": null\n" +
-            "                        }\n" +
-            "                    },\n" +
-            "                    \"enrollable\": true\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"organisationReferences\": [\n" +
-            "                {\n" +
-            "					 \"organisationRole\": 1,\n" +
-            "                    \"target\": {\n" +
-            "                        \"organisationIdentifier\": \"TUNI\",\n" +
-            "                        \"organisationTkCode\": \"TUNI\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"keywords\": [\n" +
-            "                {\n" +
-            "                    \"key\": \"testkey\",\n" +
-            "                    \"value\": {\n" +
-            "                        \"values\": {\n" +
-            "                            \"fi\": \"value fi\",\n" +
-            "                            \"en\": \"value en\",\n" +
-            "                            \"sv\": \"value sv\"\n" +
-            "                        }\n" +
-            "                    },\n" +
-            "                    \"keySet\": \"testkeyset\"\n" +
-            "                }\n" +
-            "            ]" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+            """
+                {
+                    "courseUnits": [
+                        {
+                            "studyElementId": "78780",
+                            "studyElementIdentifierCode": "4SAVYONT",
+                            "type": "COURSE_UNIT",
+                            "abbreviation": "OpinetyÃ¶",
+                            "validityStartDate": "2019-06-06",
+                            "personReferences": [
+                               {
+                                   "personRole": {
+                                       "key": "asd",
+                                       "codeSetKey": "dasd"
+                                   },
+                                   "person": {
+                                       "homeEppn": "1234",
+                                       "hostEppn": null,
+                                       "firstNames": "Jaska",
+                                       "givenName": "J",
+                                       "surName": "Jokunen"
+                                   },
+                                   "definition": ""
+                               }
+                            ],            "sendingTime": "2019-06-06T21:00:00.000+03:00",
+                            "teachingLanguage": [
+                                "EN"
+                            ],
+                            "assessmentScale": 1,
+                            "name": {
+                                "values": {
+                                    "fi": "OpinnÃ¤ytetyÃ¶",
+                                    "en": "Final Thesis",
+                                    "sv": null
+                                }
+                            },
+                            "learningMaterials": null,
+                            "groupSize": 122,
+                            "completionOptions": [
+                                {
+                                    "completionOptionId": "yfIE",
+                                    "description": "aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtÃ¤vien tekeminen, itsenÃ¤inen opiskelu sekÃ¤ moodle-tentti"
+                                }
+                            ],
+                            "creditsMin": 15,
+                            "creditsMax": 35,
+                            "cooperationNetworks": [
+                                {
+                                    "id": "CN-1",
+                                    "name": {
+                                        "values": {
+                                            "fi": "Verkosto 1",
+                                            "en": "Network 1",
+                                            "sv": null
+                                        }
+                                    },
+                                    "enrollable": true
+                                }
+                            ],
+                            "organisationReferences": [
+                                {
+                					 "organisationRole": 1,
+                                    "target": {
+                                        "organisationIdentifier": "TUNI",
+                                        "organisationTkCode": "TUNI"
+                                    }
+                                }
+                            ],
+                            "keywords": [
+                                {
+                                    "key": "testkey",
+                                    "value": {
+                                        "values": {
+                                            "fi": "value fi",
+                                            "en": "value en",
+                                            "sv": "value sv"
+                                        }
+                                    },
+                                    "keySet": "testkeyset"
+                                }
+                            ]        }
+                    ]
+                }
+            """;
 
     private final String createCourseUnitJsonWitSpecialCharacters =
-        "{\n" +
-            "    \"courseUnits\": [\n" +
-            "        {\n" +
-            "            \"studyElementId\": \"78780\",\n" +
-            "            \"studyElementIdentifierCode\": \"4SAVYONT\",\n" +
-            "            \"type\": \"COURSE_UNIT\",\n" +
-            "            \"abbreviation\": \"Opinetyö\",\n" +
-            "            \"validityStartDate\": \"2019-06-06\",\n" +
-            "            \"personReferences\": [\n" +
-            "               {\n" +
-            "                   \"personRole\": {\n" +
-            "                       \"key\": \"asd\",\n" +
-            "                       \"codeSetKey\": \"dasd\"\n" +
-            "                   },\n" +
-            "                   \"person\": {\n" +
-            "                       \"homeEppn\": \"1234\",\n" +
-            "                       \"hostEppn\": null,\n" +
-            "                       \"firstNames\": \"Jaska\",\n" +
-            "                       \"givenName\": \"J\",\n" +
-            "                       \"surName\": \"Jokunen\"\n" +
-            "                   },\n" +
-            "                   \"definition\": \"\"\n" +
-            "               }\n" +
-            "            ]," +
-            "            \"sendingTime\": \"2019-06-06T21:00:00.000+03:00\",\n" +
-            "            \"teachingLanguage\": [\n" +
-            "                \"en\"\n" +
-            "            ],\n" +
-            "            \"assessmentScale\": 1,\n" +
-            "            \"name\": {\n" +
-            "                \"values\": {\n" +
-            "                    \"fi\": \"<xc\",\n" +
-            "                    \"en\": \"<b>test</b>Final Thesis\",\n" +
-            "                    \"sv\": \"<script type='text/javascript'>xss test</script>\"\n" +
-            "                }\n" +
-            "            },\n" +
-            "            \"learningMaterials\": null,\n" +
-            "            \"groupSize\": 122,\n" +
-            "            \"completionOptions\": [\n" +
-            "                {\n" +
-            "                    \"completionOptionId\": \"yfIE\",\n" +
-            "                    \"description\": \"aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtävien tekeminen, itsenäinen opiskelu sekä moodle-tentti\"\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"creditsMin\": 15,\n" +
-            "            \"creditsMax\": 35,\n" +
-            "            \"cooperationNetworks\": [\n" +
-            "                {\n" +
-            "                    \"id\": \"CN-1\",\n" +
-            "                    \"name\": {\n" +
-            "                        \"values\": {\n" +
-            "                            \"fi\": \"Verkosto 1 < dsac > <> #!#¤¤&%&/(@\",\n" +
-            "                            \"en\": \"Network 1\",\n" +
-            "                            \"sv\": null\n" +
-            "                        }\n" +
-            "                    },\n" +
-            "                    \"enrollable\": true\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"organisationReferences\": [\n" +
-            "                {\n" +
-            "					 \"organisationRole\": 1,\n" +
-            "                    \"target\": {\n" +
-            "                        \"organisationIdentifier\": \"TUNI\",\n" +
-            "                        \"organisationTkCode\": \"TUNI\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"keywords\": [\n" +
-            "                {\n" +
-            "                    \"key\": \"testkey\",\n" +
-            "                    \"value\": {\n" +
-            "                        \"values\": {\n" +
-            "                            \"fi\": \"value fi\",\n" +
-            "                            \"en\": \"value en\",\n" +
-            "                            \"sv\": \"value sv\"\n" +
-            "                        }\n" +
-            "                    },\n" +
-            "                    \"keySet\": \"testkeyset\"\n" +
-            "                }\n" +
-            "            ]" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+        """
+            {
+                "courseUnits": [
+                    {
+                        "studyElementId": "78780",
+                        "studyElementIdentifierCode": "4SAVYONT",
+                        "type": "COURSE_UNIT",
+                        "abbreviation": "OpinetyÃ¶",
+                        "validityStartDate": "2019-06-06",
+                        "personReferences": [
+                           {
+                               "personRole": {
+                                   "key": "asd",
+                                   "codeSetKey": "dasd"
+                               },
+                               "person": {
+                                   "homeEppn": "1234",
+                                   "hostEppn": null,
+                                   "firstNames": "Jaska",
+                                   "givenName": "J",
+                                   "surName": "Jokunen"
+                               },
+                               "definition": ""
+                           }
+                        ],            "sendingTime": "2019-06-06T21:00:00.000+03:00",
+                        "teachingLanguage": [
+                            "en"
+                        ],
+                        "assessmentScale": 1,
+                        "name": {
+                            "values": {
+                                "fi": "<xc",
+                                "en": "<b>test</b>Final Thesis",
+                                "sv": "<script type='text/javascript'>xss test</script>"
+                            }
+                        },
+                        "learningMaterials": null,
+                        "groupSize": 122,
+                        "completionOptions": [
+                            {
+                                "completionOptionId": "yfIE",
+                                "description": "aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtÃ¤vien tekeminen, itsenÃ¤inen opiskelu sekÃ¤ moodle-tentti"
+                            }
+                        ],
+                        "creditsMin": 15,
+                        "creditsMax": 35,
+                        "cooperationNetworks": [
+                            {
+                                "id": "CN-1",
+                                "name": {
+                                    "values": {
+                                        "fi": "Verkosto 1 < dsac > <> #!#Â¤Â¤&%&/(@",
+                                        "en": "Network 1",
+                                        "sv": null
+                                    }
+                                },
+                                "enrollable": true
+                            }
+                        ],
+                        "organisationReferences": [
+                            {
+            					 "organisationRole": 1,
+                                "target": {
+                                    "organisationIdentifier": "TUNI",
+                                    "organisationTkCode": "TUNI"
+                                }
+                            }
+                        ],
+                        "keywords": [
+                            {
+                                "key": "testkey",
+                                "value": {
+                                    "values": {
+                                        "fi": "value fi",
+                                        "en": "value en",
+                                        "sv": "value sv"
+                                    }
+                                },
+                                "keySet": "testkeyset"
+                            }
+                        ]        }
+                ]
+            }
+        """;
 
     private final String createCourseUnitJsonMissingCooperationNetwork =
-            "{\n" +
-            "    \"courseUnits\": [\n" +
-            "        {\n" +
-            "            \"studyElementId\": \"78780\",\n" +
-            "            \"type\": \"COURSE_UNIT\",\n" +
-            "            \"abbreviation\": \"Opinetyö\",\n" +
-            "            \"sendingTime\": \"2019-06-06T21:00:00.000Z\",\n" +
-            "            \"teachingLanguage\": [\n" +
-            "                \"en\"\n" +
-            "            ],\n" +
-            "            \"assessmentScale\": 1,\n" +
-            "            \"name\": {\n" +
-            "                \"values\": {\n" +
-            "                    \"fi\": \"Opinnäytetyö\",\n" +
-            "                    \"en\": \"Final Thesis\",\n" +
-            "                    \"sv\": null\n" +
-            "                }\n" +
-            "            },\n" +
-            "            \"learningMaterials\": null,\n" +
-            "            \"groupSize\": 122,\n" +
-            "            \"completionOptions\": [\n" +
-            "                {\n" +
-            "                    \"completionOptionId\": \"yfIE\",\n" +
-            "                    \"description\": \"aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtävien tekeminen, itsenäinen opiskelu sekä moodle-tentti\"\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"creditsMin\": 15,\n" +
-            "            \"creditsMax\": 35,\n" +
-            "            \"cooperationNetworks\": [\n" +
-            "            ],\n" +
-            "            \"organisationReferences\": [\n" +
-            "                {\n" +
-            "					 \"organisationRole\": 1,\n" +
-            "                    \"target\": {\n" +
-            "                        \"organisationIdentifier\": \"JUY\",\n" +
-            "                        \"organisationTkCode\": \"JUY\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+            """
+                {
+                    "courseUnits": [
+                        {
+                            "studyElementId": "78780",
+                            "type": "COURSE_UNIT",
+                            "abbreviation": "OpinetyÃ¶",
+                            "sendingTime": "2019-06-06T21:00:00.000Z",
+                            "teachingLanguage": [
+                                "en"
+                            ],
+                            "assessmentScale": 1,
+                            "name": {
+                                "values": {
+                                    "fi": "OpinnÃ¤ytetyÃ¶",
+                                    "en": "Final Thesis",
+                                    "sv": null
+                                }
+                            },
+                            "learningMaterials": null,
+                            "groupSize": 122,
+                            "completionOptions": [
+                                {
+                                    "completionOptionId": "yfIE",
+                                    "description": "aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtÃ¤vien tekeminen, itsenÃ¤inen opiskelu sekÃ¤ moodle-tentti"
+                                }
+                            ],
+                            "creditsMin": 15,
+                            "creditsMax": 35,
+                            "cooperationNetworks": [
+                            ],
+                            "organisationReferences": [
+                                {
+                					 "organisationRole": 1,
+                                    "target": {
+                                        "organisationIdentifier": "JUY",
+                                        "organisationTkCode": "JUY"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            """;
 
     private final String createCourseUnitJsonTwoSameCourseUnits =
-            "{\n" +
-            "    \"courseUnits\": [\n" +
-            "        {\n" +
-            "            \"studyElementId\": \"78780\",\n" +
-            "            \"studyElementIdentifierCode\": \"4SAVYONT\",\n" +
-            "            \"type\": \"COURSE_UNIT\",\n" +
-            "            \"abbreviation\": \"Opinetyö\",\n" +
-            "            \"sendingTime\": \"2019-06-06T21:00:00.000Z\",\n" +
-            "            \"teachingLanguage\": [\n" +
-            "                \"en\"\n" +
-            "            ],\n" +
-            "            \"assessmentScale\": 1,\n" +
-            "            \"name\": {\n" +
-            "                \"values\": {\n" +
-            "                    \"fi\": \"Opinnäytetyö\",\n" +
-            "                    \"en\": \"Final Thesis\",\n" +
-            "                    \"sv\": null\n" +
-            "                }\n" +
-            "            },\n" +
-            "            \"learningMaterials\": null,\n" +
-            "            \"groupSize\": 122,\n" +
-            "            \"completionOptions\": [\n" +
-            "                {\n" +
-            "                    \"completionOptionId\": \"yfIE\",\n" +
-            "                    \"description\": \"aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtävien tekeminen, itsenäinen opiskelu sekä moodle-tentti\"\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"creditsMin\": 15,\n" +
-            "            \"creditsMax\": 35,\n" +
-            "            \"cooperationNetworks\": [\n" +
-            "                {\n" +
-            "                    \"id\": \"CN-1\",\n" +
-            "                    \"name\": {\n" +
-            "                        \"values\": {\n" +
-            "                            \"fi\": \"Verkosto 1\",\n" +
-            "                            \"en\": \"Network 1\",\n" +
-            "                            \"sv\": null\n" +
-            "                        }\n" +
-            "                    },\n" +
-            "                    \"enrollable\": true\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"organisationReferences\": [\n" +
-            "                {\n" +
-            "					 \"organisationRole\": 1,\n" +
-            "                    \"target\": {\n" +
-            "                        \"organisationIdentifier\": \"JUY\",\n" +
-            "                        \"organisationTkCode\": \"JUY\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ]\n" +
-            "        },\n" +
-            "        {\n" +
-            "            \"studyElementId\": \"78780\",\n" +
-            "            \"studyElementIdentifierCode\": \"4SAVYONT\",\n" +
-            "            \"type\": \"COURSE_UNIT\",\n" +
-            "            \"abbreviation\": \"Opinetyö\",\n" +
-            "            \"sendingTime\": \"2019-06-06T21:00:00.000Z\",\n" +
-            "            \"teachingLanguage\": [\n" +
-            "                \"en\"\n" +
-            "            ],\n" +
-            "            \"assessmentScale\": 1,\n" +
-            "            \"name\": {\n" +
-            "                \"values\": {\n" +
-            "                    \"fi\": \"Opinnäytetyö\",\n" +
-            "                    \"en\": \"Final Thesis\",\n" +
-            "                    \"sv\": null\n" +
-            "                }\n" +
-            "            },\n" +
-            "            \"learningMaterials\": null,\n" +
-            "            \"groupSize\": 122,\n" +
-            "            \"completionOptions\": [\n" +
-            "                {\n" +
-            "                    \"completionOptionId\": \"yfIE\",\n" +
-            "                    \"description\": \"aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtävien tekeminen, itsenäinen opiskelu sekä moodle-tentti\"\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"creditsMin\": 15,\n" +
-            "            \"creditsMax\": 35,\n" +
-            "            \"cooperationNetworks\": [\n" +
-            "                {\n" +
-            "                    \"id\": \"CN-1\",\n" +
-            "                    \"name\": {\n" +
-            "                        \"values\": {\n" +
-            "                            \"fi\": \"Verkosto 1\",\n" +
-            "                            \"en\": \"Network 1\",\n" +
-            "                            \"sv\": null\n" +
-            "                        }\n" +
-            "                    },\n" +
-            "                    \"enrollable\": true\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"organisationReferences\": [\n" +
-            "                {\n" +
-            "					 \"organisationRole\": 1,\n" +
-            "                    \"target\": {\n" +
-            "                        \"organisationIdentifier\": \"JUY\",\n" +
-            "                        \"organisationTkCode\": \"JUY\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+            """
+                {
+                    "courseUnits": [
+                        {
+                            "studyElementId": "78780",
+                            "studyElementIdentifierCode": "4SAVYONT",
+                            "type": "COURSE_UNIT",
+                            "abbreviation": "OpinetyÃ¶",
+                            "sendingTime": "2019-06-06T21:00:00.000Z",
+                            "teachingLanguage": [
+                                "en"
+                            ],
+                            "assessmentScale": 1,
+                            "name": {
+                                "values": {
+                                    "fi": "OpinnÃ¤ytetyÃ¶",
+                                    "en": "Final Thesis",
+                                    "sv": null
+                                }
+                            },
+                            "learningMaterials": null,
+                            "groupSize": 122,
+                            "completionOptions": [
+                                {
+                                    "completionOptionId": "yfIE",
+                                    "description": "aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtÃ¤vien tekeminen, itsenÃ¤inen opiskelu sekÃ¤ moodle-tentti"
+                                }
+                            ],
+                            "creditsMin": 15,
+                            "creditsMax": 35,
+                            "cooperationNetworks": [
+                                {
+                                    "id": "CN-1",
+                                    "name": {
+                                        "values": {
+                                            "fi": "Verkosto 1",
+                                            "en": "Network 1",
+                                            "sv": null
+                                        }
+                                    },
+                                    "enrollable": true
+                                }
+                            ],
+                            "organisationReferences": [
+                                {
+                					 "organisationRole": 1,
+                                    "target": {
+                                        "organisationIdentifier": "JUY",
+                                        "organisationTkCode": "JUY"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "studyElementId": "78780",
+                            "studyElementIdentifierCode": "4SAVYONT",
+                            "type": "COURSE_UNIT",
+                            "abbreviation": "OpinetyÃ¶",
+                            "sendingTime": "2019-06-06T21:00:00.000Z",
+                            "teachingLanguage": [
+                                "en"
+                            ],
+                            "assessmentScale": 1,
+                            "name": {
+                                "values": {
+                                    "fi": "OpinnÃ¤ytetyÃ¶",
+                                    "en": "Final Thesis",
+                                    "sv": null
+                                }
+                            },
+                            "learningMaterials": null,
+                            "groupSize": 122,
+                            "completionOptions": [
+                                {
+                                    "completionOptionId": "yfIE",
+                                    "description": "aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtÃ¤vien tekeminen, itsenÃ¤inen opiskelu sekÃ¤ moodle-tentti"
+                                }
+                            ],
+                            "creditsMin": 15,
+                            "creditsMax": 35,
+                            "cooperationNetworks": [
+                                {
+                                    "id": "CN-1",
+                                    "name": {
+                                        "values": {
+                                            "fi": "Verkosto 1",
+                                            "en": "Network 1",
+                                            "sv": null
+                                        }
+                                    },
+                                    "enrollable": true
+                                }
+                            ],
+                            "organisationReferences": [
+                                {
+                					 "organisationRole": 1,
+                                    "target": {
+                                        "organisationIdentifier": "JUY",
+                                        "organisationTkCode": "JUY"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            """;
 
     private final String createCourseUnitMissingMainlyResponsibleOrgRefJson =
-            "{\n" +
-            "	\"courseUnits\": [\n" +
-            "		{\n" +
-            "           \"status\": \"ACTIVE\",\n " +
-            "			\"studyElementId\": \"78780\",\n" +
-            "			\"studyElementIdentifierCode\": \"4SAVYONT\",\n" +
-            "			\"type\": \"COURSE_UNIT\",\n" +
-            "			\"abbreviation\": \"Opinetyö\",\n" +
-            "			\"validityStartDate\": \"2019-06-06\",\n" +
-            "           \"personReferences\": [\n" +
-            "               {\n" +
-            "                   \"personRole\": {\n" +
-            "                     \"key\": \"asd\",\n" +
-            "                     \"codeSetKey\": \"dasd\"\n" +
-            "                   },\n" +
-            "                   \"person\": {\n" +
-            "                      \"homeEppn\": \"1234\",\n" +
-            "                      \"hostEppn\": null,\n" +
-            "                      \"firstNames\": \"Jaska\",\n" +
-            "                      \"givenName\": \"J\",\n" +
-            "                      \"surName\": \"Jokunen\"\n" +
-            "                   },\n" +
-            "                   \"definition\": \"\"\n" +
-            "               }\n" +
-            "           ]," +
-            "			\"sendingTime\": \"2019-06-06T21:00:00.000+03:00\",\n" +
-            "			\"teachingLanguage\": [\n" +
-            "				\"en\"\n" +
-            "			],\n" +
-            "           \"assessmentScale\": 1,\n" +
-            "			\"name\": {\n" +
-            "				\"values\": {\n" +
-            "					\"fi\": \"Opinnäytetyö\",\n" +
-            "					\"en\": \"Final Thesis\",\n" +
-            "					\"sv\": null\n" +
-            "				}\n" +
-            "			},\n" +
-            "			\"learningMaterials\": null,\n" +
-            "			\"groupSize\": 122,\n" +
-            "			\"completionOptions\": [\n" +
-            "				{\n" +
-            "					\"completionOptionId\": \"yfIE\",\n" +
-            "					\"description\": \"aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtävien tekeminen, itsenäinen opiskelu sekä moodle-tentti\"\n" +
-            "				}\n" +
-            "			],\n" +
-            "			\"creditsMin\": 15,\n" +
-            "			\"creditsMax\": 35,\n" +
-            "			\"cooperationNetworks\": [\n" +
-            "				{\n" +
-            "					\"id\": \"CN-1\",\n" +
-            "					\"name\": {\n" +
-            "						\"values\": {\n" +
-            "							\"fi\": \"Verkosto 1\",\n" +
-            "							\"en\": \"Network 1\",\n" +
-            "							\"sv\": null\n" +
-            "						}\n" +
-            "					},\n" +
-            "					\"enrollable\": true\n" +
-            "				}\n" +
-            "			],\n" +
-            "			\"organisationReferences\": [\n" +
-            "				{\n" +
-            "					\"organisationRole\": 2,\n" +
-            "					\"target\": {\n" +
-            "						\"organisationIdentifier\": \"JUY\",\n" +
-            "						\"organisationTkCode\": \"JUY\"\n" +
-            "					}\n" +
-            "				}\n" +
-            "			]\n" +
-            "		}\n" +
-            "	]\n" +
-            "}";
+            """
+                {
+                	"courseUnits": [
+                		{
+                           "status": "ACTIVE",
+                 			"studyElementId": "78780",
+                			"studyElementIdentifierCode": "4SAVYONT",
+                			"type": "COURSE_UNIT",
+                			"abbreviation": "OpinetyÃ¶",
+                			"validityStartDate": "2019-06-06",
+                           "personReferences": [
+                               {
+                                   "personRole": {
+                                     "key": "asd",
+                                     "codeSetKey": "dasd"
+                                   },
+                                   "person": {
+                                      "homeEppn": "1234",
+                                      "hostEppn": null,
+                                      "firstNames": "Jaska",
+                                      "givenName": "J",
+                                      "surName": "Jokunen"
+                                   },
+                                   "definition": ""
+                               }
+                           ],			"sendingTime": "2019-06-06T21:00:00.000+03:00",
+                			"teachingLanguage": [
+                				"en"
+                			],
+                           "assessmentScale": 1,
+                			"name": {
+                				"values": {
+                					"fi": "OpinnÃ¤ytetyÃ¶",
+                					"en": "Final Thesis",
+                					"sv": null
+                				}
+                			},
+                			"learningMaterials": null,
+                			"groupSize": 122,
+                			"completionOptions": [
+                				{
+                					"completionOptionId": "yfIE",
+                					"description": "aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtÃ¤vien tekeminen, itsenÃ¤inen opiskelu sekÃ¤ moodle-tentti"
+                				}
+                			],
+                			"creditsMin": 15,
+                			"creditsMax": 35,
+                			"cooperationNetworks": [
+                				{
+                					"id": "CN-1",
+                					"name": {
+                						"values": {
+                							"fi": "Verkosto 1",
+                							"en": "Network 1",
+                							"sv": null
+                						}
+                					},
+                					"enrollable": true
+                				}
+                			],
+                			"organisationReferences": [
+                				{
+                					"organisationRole": 2,
+                					"target": {
+                						"organisationIdentifier": "JUY",
+                						"organisationTkCode": "JUY"
+                					}
+                				}
+                			]
+                		}
+                	]
+                }
+            """;
 
     private final String createCourseUnitWithUnknownFieldsJson =
-            "{\n" +
-            "    \"courseUnits\": [\n" +
-            "        {\n" +
-            "            \"studyElementId\": \"78780\",\n" +
-            "            \"studyElementIdentifierCode\": \"4SAVYONT\",\n" +
-            "            \"type\": \"COURSE_UNIT\",\n" +
-            "            \"abbreviation\": \"Opinetyö\",\n" +
-            "            \"validityStartDate\": \"2019-06-06\",\n" +
-            "            \"personReferences\": [\n" +
-            "               {\n" +
-            "                   \"personRole\": {\n" +
-            "                       \"key\": \"asd\",\n" +
-            "                       \"codeSetKey\": \"dasd\"\n" +
-            "                   },\n" +
-            "                   \"person\": {\n" +
-            "                       \"homeEppn\": \"1234\",\n" +
-            "                       \"hostEppn\": null,\n" +
-            "                       \"firstNames\": \"Jaska\",\n" +
-            "                       \"givenName\": \"J\",\n" +
-            "                       \"surName\": \"Jokunen\"\n" +
-            "                   },\n" +
-            "                   \"definition\": \"\"\n" +
-            "               }\n" +
-            "            ]," +
-            "            \"sendingTime\": \"2019-06-06T21:00:00.000+03:00\",\n" +
-            "            \"teachingLanguage\": [\n" +
-            "                \"en\"\n" +
-            "            ],\n" +
-            "            \"assessmentScale\": 1,\n" +
-            "            \"name\": {\n" +
-            "                \"values\": {\n" +
-            "                    \"fi\": \"Opinnäytetyö\",\n" +
-            "                    \"en\": \"Final Thesis\",\n" +
-            "                    \"sv\": null\n" +
-            "                }\n" +
-            "            },\n" +
-            "            \"studyElementStatus\": \"RANDOM_VALUE\"," +       // unknown field
-            "            \"anotherRandomField\": \"RANDOM_VALUE2\"," +      // unknown field
-            "            \"learningMaterials\": null,\n" +
-            "            \"groupSize\": 122,\n" +
-            "            \"completionOptions\": [\n" +
-            "                {\n" +
-            "                    \"completionOptionId\": \"yfIE\",\n" +
-            "                    \"description\": \"aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtävien tekeminen, itsenäinen opiskelu sekä moodle-tentti\"\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"creditsMin\": 15,\n" +
-            "            \"creditsMax\": 35,\n" +
-            "            \"cooperationNetworks\": [\n" +
-            "                {\n" +
-            "                    \"id\": \"CN-1\",\n" +
-            "                    \"name\": {\n" +
-            "                        \"values\": {\n" +
-            "                            \"fi\": \"Verkosto 1\",\n" +
-            "                            \"en\": \"Network 1\",\n" +
-            "                            \"sv\": null\n" +
-            "                        }\n" +
-            "                    },\n" +
-            "                    \"enrollable\": true\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"organisationReferences\": [\n" +
-            "                {\n" +
-            "					 \"organisationRole\": 1,\n" +
-            "                    \"target\": {\n" +
-            "                        \"organisationIdentifier\": \"JUY\",\n" +
-            "                        \"organisationTkCode\": \"JUY\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+        """
+            {
+                "courseUnits": [
+                    {
+                        "studyElementId": "78780",
+                        "studyElementIdentifierCode": "4SAVYONT",
+                        "type": "COURSE_UNIT",
+                        "abbreviation": "OpinetyÃ¶",
+                        "validityStartDate": "2019-06-06",
+                        "personReferences": [
+                            {
+                                "personRole": {
+                                    "key": "asd",
+                                    "codeSetKey": "dasd"
+                                },
+                                "person": {
+                                    "homeEppn": "1234",
+                                    "hostEppn": null,
+                                    "firstNames": "Jaska",
+                                    "givenName": "J",
+                                    "surName": "Jokunen"
+                                },
+                                "definition": ""
+                            }
+                        ],
+                        "sendingTime": "2019-06-06T21:00:00.000+03:00",
+                        "teachingLanguage": [
+                            "en"
+                        ],
+                        "assessmentScale": 1,
+                        "name": {
+                            "values": {
+                                "fi": "OpinnÃ¤ytetyÃ¶",
+                                "en": "Final Thesis",
+                                "sv": null
+                            }
+                        },
+                        "studyElementStatus": "RANDOM_VALUE",
+%s
+%s
+                        "groupSize": 122,
+                        "completionOptions": [
+                            {
+                                "completionOptionId": "yfIE",
+                                "description": "aktiivinen verkko-opintojaksolle osallistuminen, verkkotehtÃ¤vien tekeminen, itsenÃ¤inen opiskelu sekÃ¤ moodle-tentti"
+                            }
+                        ],
+                        "creditsMin": 15,
+                        "creditsMax": 35,
+                        "cooperationNetworks": [
+                            {
+                                "id": "CN-1",
+                                "name": {
+                                    "values": {
+                                        "fi": "Verkosto 1",
+                                        "en": "Network 1",
+                                        "sv": null
+                                    }
+                                },
+                                "enrollable": true
+                            }
+                        ],
+                        "organisationReferences": [
+                            {
+                                "organisationRole": 1,
+                                "target": {
+                                    "organisationIdentifier": "JUY",
+                                    "organisationTkCode": "JUY"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        """.formatted(// unknown field
+            "            \"anotherRandomField\": \"RANDOM_VALUE2\",", // unknown field
+            "            \"learningMaterials\": null,\n");
 
-}
+    }
 
-
+    

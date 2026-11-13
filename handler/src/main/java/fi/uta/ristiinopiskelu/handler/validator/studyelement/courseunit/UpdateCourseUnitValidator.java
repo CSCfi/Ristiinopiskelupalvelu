@@ -1,14 +1,15 @@
 package fi.uta.ristiinopiskelu.handler.validator.studyelement.courseunit;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
@@ -16,6 +17,7 @@ import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.handler.service.impl.AbstractStudyElementService;
 import fi.uta.ristiinopiskelu.handler.validator.JsonRequestValidator;
 import fi.uta.ristiinopiskelu.handler.validator.studyelement.AbstractStudyElementValidator;
+import jakarta.validation.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +25,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import jakarta.validation.Validator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,16 +35,16 @@ public class UpdateCourseUnitValidator extends AbstractStudyElementValidator<Cou
     private static final Logger logger = LoggerFactory.getLogger(UpdateCourseUnitValidator.class);
 
     private RealisationService realisationService;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     public UpdateCourseUnitValidator(List<AbstractStudyElementService> studyElementServices,
                                      NetworkService networkService,
                                      RealisationService realisationService,
-                                     ObjectMapper objectMapper, Validator beanValidator) {
+                                     JsonMapper jsonMapper, Validator beanValidator) {
         super(studyElementServices, networkService, beanValidator);
         this.realisationService = realisationService;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
     }
 
     @Override
@@ -62,7 +63,7 @@ public class UpdateCourseUnitValidator extends AbstractStudyElementValidator<Cou
             ((ObjectNode)courseUnitJson).put("type", StudyElementType.COURSE_UNIT.name());
         }
 
-        CourseUnitWriteDTO parsedCourseUnit = objectMapper.convertValue(courseUnitJson, CourseUnitWriteDTO.class);
+        CourseUnitWriteDTO parsedCourseUnit = jsonMapper.convertValue(courseUnitJson, CourseUnitWriteDTO.class);
         super.validateObject(parsedCourseUnit, organisationId);
 
         CourseUnitEntity originalCourseUnitEntity = getServiceForClass(parsedCourseUnit)
@@ -124,8 +125,8 @@ public class UpdateCourseUnitValidator extends AbstractStudyElementValidator<Cou
         List<String> removedAssessmentItemsReferencingRealisation = new ArrayList<>();
         for(AssessmentItemEntity removedAi : removedAssessmentItems) {
             for(RealisationEntity referencedRealisation : allExistingRealisationRefs) {
-                for(StudyElementReference reference : referencedRealisation.getStudyElementReferences()) {
-                    if (reference.getReferenceType() == StudyElementType.ASSESSMENT_ITEM
+                for(StudyElementReferenceEntity reference : referencedRealisation.getStudyElementReferences()) {
+                    if (reference.getReferenceType() == fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity.ASSESSMENT_ITEM
                             && reference.getReferenceIdentifier().equals(originalCourseUnitEntity.getStudyElementId())
                             && reference.getReferenceOrganizer().equals(originalCourseUnitEntity.getOrganizingOrganisationId())
                             && reference.getReferenceAssessmentItemId().equals(removedAi.getAssessmentItemId())) {

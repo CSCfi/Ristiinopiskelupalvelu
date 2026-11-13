@@ -9,6 +9,10 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGui
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.degree.DegreeReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.studymodule.StudyModuleReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.DegreeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -577,11 +581,25 @@ public abstract class AbstractStudyElementReadDTO {
         if(!CollectionUtils.isEmpty(this.getOrganisationReferences())) {
             for(OrganisationReference ref : this.getOrganisationReferences()) {
                 if (ref.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER) {
-                    return ref.getOrganisation().getOrganisationTkCode();
+                    return ref.getTarget().getOrganisationTkCode();
                 }
             }
         }
 
         return null;
+    }
+
+    public static AbstractStudyElementReadDTO from(StudyElementEntity source) {
+        if (source instanceof CourseUnitEntity) {
+            return CourseUnitReadDTO.from((CourseUnitEntity) source);
+        }
+        if (source instanceof StudyModuleEntity) {
+            return StudyModuleReadDTO.from((StudyModuleEntity) source);
+        }
+        if (source instanceof DegreeEntity) {
+            return DegreeReadDTO.from((DegreeEntity) source);
+        }
+
+        throw new IllegalStateException("Unknown StudyElement type: " + (source == null ? "null" : source.getClass().getSimpleName()));
     }
 }

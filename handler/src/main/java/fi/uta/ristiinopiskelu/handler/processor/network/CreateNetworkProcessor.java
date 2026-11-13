@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.processor.network;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
@@ -25,24 +25,24 @@ public class CreateNetworkProcessor extends AbstractNetworkProcessor {
     private static final Logger logger = LoggerFactory.getLogger(CreateNetworkProcessor.class);
 
     private NetworkService networkService;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private CreateNetworkValidator validator;
 
     @Autowired
     public CreateNetworkProcessor(NetworkService networkService, OrganisationService organisationService, CreateNetworkValidator validator,
-                                  ObjectMapper objectMapper, JmsMessageForwarder jmsMessageForwarder) {
+                                  JsonMapper jsonMapper, JmsMessageForwarder jmsMessageForwarder) {
         super(organisationService, jmsMessageForwarder);
         this.networkService = networkService;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.validator = validator;
     }
 
     @Override
     public void process(Exchange exchange) throws Exception {
-        CreateNetworkRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), CreateNetworkRequest.class);
+        CreateNetworkRequest request = jsonMapper.readValue(exchange.getIn().getBody(String.class), CreateNetworkRequest.class);
         validator.validateRequest(request, null);
 
-        List<? extends EntityModificationResult<?>> modificationResults = networkService.create(NetworkEntity.fromDto(request.getNetwork()));
+        List<? extends EntityModificationResult<?>> modificationResults = networkService.create(NetworkEntity.from(request.getNetwork()));
         NetworkEntity createdNetwork = (NetworkEntity) modificationResults.get(0).getCurrent();
         
         if(createdNetwork.isPublished()) {

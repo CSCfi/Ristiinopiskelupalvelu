@@ -3,9 +3,13 @@ package fi.uta.ristiinopiskelu.handler.integration.repository;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchAllQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.AggregationDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
@@ -115,7 +119,7 @@ public class CourseUnitRepositoryIntegrationTest {
 
     @Test
     public void testAGgs() {
-        CooperationNetwork coopNetwork = new CooperationNetwork();
+        CooperationNetworkEntity coopNetwork = new CooperationNetworkEntity();
         coopNetwork.setId("CN-1");
 
         // realisation 3, code TOT-3, network CN-1, organizer TUNI. Enrollable in next semester.
@@ -126,7 +130,7 @@ public class CourseUnitRepositoryIntegrationTest {
         realisation3EnrollableInNextSemester.setEnrollmentClosed(false);
         realisation3EnrollableInNextSemester.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation3EnrollableInNextSemester.setOrganizingOrganisationId("TUNI");
-        realisation3EnrollableInNextSemester.setStatus(StudyStatus.ACTIVE);
+        realisation3EnrollableInNextSemester.setStatus(StudyStatusEntity.ACTIVE);
         realisation3EnrollableInNextSemester.setTeachingLanguage(Collections.singletonList("sv"));
 
         CompletionOptionEntity completionOption = new CompletionOptionEntity();
@@ -152,7 +156,6 @@ public class CourseUnitRepositoryIntegrationTest {
                 .terms(ta -> ta
                     .field("completionOptions.assessmentItems.realisations.realisationId"))));
 
-
         SearchResponse<StudyElementEntity> response = elasticsearchTemplate.execute(client -> client.search(searchRequestBuilder.build(), StudyElementEntity.class));
 
         List<AggregationDTO> mappedAggs = AggregationUtils.mapAggregations(response.aggregations());
@@ -163,8 +166,8 @@ public class CourseUnitRepositoryIntegrationTest {
     @Test
     public void testFindByStudyElementReference_shouldReturnMoreThanDefaultMaxSize10Results_shouldSucceed() {
         for(int i = 0; i < 20; i++) {
-            CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "TEST", null, new LocalisedString("test", "test", "test"));
-            courseUnit.setParents(Collections.singletonList(new StudyElementReference("SM1", "TEST2", StudyElementType.STUDY_MODULE)));
+            CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "TEST", null, new LocalisedStringEntity("test", "test", "test"));
+            courseUnit.setParents(Collections.singletonList(new StudyElementReferenceEntity("SM1", "TEST2", StudyElementTypeEntity.STUDY_MODULE)));
             courseUnitRepository.save(courseUnit);
         }
 

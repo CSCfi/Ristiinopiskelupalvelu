@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
@@ -327,4 +328,61 @@ public abstract class CreateStudyElementRequestDTO {
     public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
         this.minEduGuidanceArea = minEduGuidanceArea;
     }
+
+    public static void copyStudyElementFields(CreateStudyElementRequestDTO source, StudyElement target) {
+        target.setMissing(source.getMissing());
+        target.setSendingTime(source.getSendingTime());
+        target.setCreatedTime(source.getCreatedTime());
+        target.setUpdateTime(source.getUpdateTime());
+        target.setValidityStartDate(source.getValidityStartDate());
+        target.setValidityEndDate(source.getValidityEndDate());
+        target.setStudyElementId(source.getStudyElementId());
+        target.setStudyElementPermanentId(source.getStudyElementPermanentId());
+        target.setStudyElementIdentifierCode(source.getStudyElementIdentifierCode());
+        target.setClassificationCodes(source.getClassificationCodes());
+        target.setAbbreviation(source.getAbbreviation());
+        target.setName(source.getName());
+        target.setDescription(source.getDescription());
+        target.setCreditsMin(source.getCreditsMin());
+        target.setCreditsMax(source.getCreditsMax());
+        target.setCreditsDescription(source.getCreditsDescription());
+        target.setOrganisationReferences(source.getOrganisationReferences());
+        target.setPersonReferences(source.getPersonReferences());
+        target.setKeywords(source.getKeywords());
+        target.setPreconditions(source.getPreconditions());
+        target.setTeachingLanguage(source.getTeachingLanguage());
+        target.setLanguagesOfCompletion(source.getLanguagesOfCompletion());
+        target.setFurtherInformation(source.getFurtherInformation());
+        target.setTargetGroups(source.getTargetGroups());
+        target.setCooperationNetworks(source.getCooperationNetworks());
+        target.setSubElements(convertSubElements(source.getSubElements()));
+        target.setObjective(source.getObjective());
+        target.setContent(source.getContent());
+        target.setType(source.getType());
+        target.setOrganisationSpecificDescriptions(source.getOrganisationSpecificDescriptions());
+        target.setParents(source.getParents());
+        target.setStatus(source.getStatus());
+        target.setMinEduGuidanceArea(source.getMinEduGuidanceArea());
+    }
+
+    private static List<StudyElement> convertSubElements(List<CreateStudyElementRequestDTO> subElements) {
+        if (subElements == null) {
+            return null;
+        }
+
+        return subElements.stream().map(sub -> {
+            if (sub instanceof CreateCourseUnitRequestDTO) {
+                return CourseUnit.from((CreateCourseUnitRequestDTO) sub);
+            }
+            if (sub instanceof CreateStudyModuleRequestDTO) {
+                return StudyModule.from((CreateStudyModuleRequestDTO) sub);
+            }
+            if (sub instanceof CreateDegreeRequestDTO) {
+                return Degree.from((CreateDegreeRequestDTO) sub);
+            }
+
+            throw new IllegalArgumentException("Unsupported subElement type: " + sub.getClass().getName());
+        }).collect(Collectors.toList());
+    }
+
 }

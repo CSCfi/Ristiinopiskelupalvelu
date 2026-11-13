@@ -4,6 +4,7 @@ import fi.csc.ristiinopiskelu.admin.dto.UserInformationDTO;
 import fi.csc.ristiinopiskelu.admin.dto.UserOrganisationDTO;
 import fi.csc.ristiinopiskelu.admin.security.ShibbolethAuthenticationDetails;
 import fi.csc.ristiinopiskelu.admin.security.ShibbolethUserDetails;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Role;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
@@ -47,7 +48,7 @@ public class UserController {
             if (organisationEntity != null) {
                 UserOrganisationDTO userOrganisation = new UserOrganisationDTO();
                 userOrganisation.setId(organisationEntity.getId());
-                userOrganisation.setName(organisationEntity.getOrganisationName());
+                userOrganisation.setName(LocalisedString.from(organisationEntity.getOrganisationName()));
                 userInformation.setUserOrganisation(userOrganisation);
             }
         }

@@ -1,11 +1,11 @@
 <template>
   <v-card>
-    <v-container fluid grid-list-md>
-      <v-layout row wrap>
-        <v-flex xs12>
+    <v-container fluid>
+      <v-row>
+        <v-col cols="12">
           <v-card>
             <div v-if="superuser === false">
-              <v-card-title primary-title>
+              <v-card-title class="py-4">
                 <h3>{{ $t('noPermissions') }}</h3>
               </v-card-title>
               <v-card-text>
@@ -14,36 +14,47 @@
             </div>
             <CodesetUpload v-if="superuser === true" @refresh="refresh" />
           </v-card>
-        </v-flex>
-        <v-flex xs3>
+        </v-col>
+        <v-col cols="12" md="3">
           <v-card>
-            <v-toolbar>
-              <v-toolbar-title>{{ $t('codesets') }}</v-toolbar-title>
-              <v-toolbar-items>
-                <v-btn flat v-if="superuser" title="Lisää" @click="showAddNewCodeSetDialog()">
-                  <v-icon>add</v-icon>
-                </v-btn>
-              </v-toolbar-items>
-            </v-toolbar>
-            <v-list>
-              <v-list-tile
-                v-for="item in codesets"
-                :key="item.title"
-                active-class="highlighted"
-                :class="['list-tile', item.title === activeMessage ? 'highlighted' : '']"
+            <v-card-title class="d-flex align-center">
+              <span>{{ $t('codesets') }}</span>
+              <v-spacer></v-spacer>
+              <v-btn
+                v-if="superuser"
+                variant="text"
+                title="Lisää"
+                icon
+                @click="showAddNewCodeSetDialog()"
               >
-                <v-list-tile-action
-                  v-if="superuser === true"
-                  title="Poista"
-                  @click="showRemoveCodeSetDialog(item.title)"
+                <v-icon icon="mdi-plus"></v-icon>
+              </v-btn>
+            </v-card-title>
+            <v-card-text>
+              <v-list>
+                <v-list-item
+                  v-for="item in codesets"
+                  :key="item.title"
+                  active-class="highlighted"
+                  :class="['list-tile', item.title === activeMessage ? 'highlighted' : '']"
+                  @click="rowClicked(item.title)"
                 >
-                  <v-icon color="red">delete</v-icon>
-                </v-list-tile-action>
-                <v-list-tile-content @click="rowClicked(item.title)">
-                  <v-list-tile-title v-text="itemHeader(item)" :id="item.title"></v-list-tile-title>
-                </v-list-tile-content>
-              </v-list-tile>
-            </v-list>
+                  <template #append>
+                    <v-btn
+                      v-if="superuser === true"
+                      variant="text"
+                      color="red"
+                      icon
+                      title="Poista"
+                      @click.stop="showRemoveCodeSetDialog(item.title)"
+                    >
+                      <v-icon icon="mdi-delete"></v-icon>
+                    </v-btn>
+                  </template>
+                  <v-list-item-title v-text="itemHeader(item)" :id="item.title" />
+                </v-list-item>
+              </v-list>
+            </v-card-text>
             <v-dialog v-model="addNewCodeSetDialogVisible" width="600px">
               <v-card>
                 <v-form id="add-new-codeset-form" ref="addNewCodeSetForm" :lazy-validation="false">
@@ -58,10 +69,10 @@
                   </v-card-text>
                   <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn color="red darken-1" flat="flat" @click="hideAddNewCodeSetDialog()">
+                    <v-btn color="red" variant="text" @click="hideAddNewCodeSetDialog()">
                       {{ $t('cancel') }}
                     </v-btn>
-                    <v-btn color="green darken-1" flat="flat" @click="addNewCodeSet()">
+                    <v-btn color="green" variant="text" @click="addNewCodeSet()">
                       {{ $t('yes') }}
                     </v-btn>
                   </v-card-actions>
@@ -78,18 +89,18 @@
                 </v-card-text>
                 <v-card-actions>
                   <v-spacer></v-spacer>
-                  <v-btn color="red darken-1" flat="flat" @click="hideRemoveCodeSetDialog()">
+                  <v-btn color="red" variant="text" @click="hideRemoveCodeSetDialog()">
                     {{ $t('cancel') }}
                   </v-btn>
-                  <v-btn color="green darken-1" flat="flat" @click="removeCodeSet()">
+                  <v-btn color="green" variant="text" @click="removeCodeSet()">
                     {{ $t('yes') }}
                   </v-btn>
                 </v-card-actions>
               </v-card>
             </v-dialog>
           </v-card>
-        </v-flex>
-        <v-flex xs3>
+        </v-col>
+        <v-col cols="12" md="3">
           <v-card>
             <CodesetItems
               :activeCodeSetId="activeCodeSetId"
@@ -103,11 +114,11 @@
               @addItem="addItem"
             />
           </v-card>
-        </v-flex>
-        <v-flex xs6>
+        </v-col>
+        <v-col cols="12" md="6">
           <v-card height="100%">
             <CodesetEditor
-              :locale="this.$i18n.locale"
+              :locale="$i18n.locale"
               v-bind:activeItem="activeCodeSetItem"
               v-bind:superuser="superuser"
               v-bind:admin="admin"
@@ -117,154 +128,165 @@
               @saved="saved"
             ></CodesetEditor>
           </v-card>
-        </v-flex>
-      </v-layout>
+        </v-col>
+      </v-row>
     </v-container>
   </v-card>
 </template>
 
-<script>
-import axios from 'axios';
-import CodesetUpload from '../components/codeset/CodesetUpload';
-import CodesetItems from '../components/codeset/CodesetItems';
-import CodesetEditor from '../components/codeset/CodesetEditor';
+<script setup>
+import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import CodesetUpload from '../components/codeset/CodesetUpload.vue';
+import CodesetItems from '../components/codeset/CodesetItems.vue';
+import CodesetEditor from '../components/codeset/CodesetEditor.vue';
+import { useCodesetStore } from '../stores/codesets';
+import { useUserStore } from '../stores/user';
+import { storeToRefs } from 'pinia';
 
-export default {
-  components: {
-    CodesetUpload,
-    CodesetItems,
-    CodesetEditor
-  },
-  data() {
-    return {
-      activeCodeSetId: null,
-      activeCodeSetItem: false,
-      selectedCodeSetItem: null,
-      codesets: [],
-      codesetItems: [],
-      addNewCodeSetDialogVisible: false,
-      addNewCodeSetName: null,
-      removeCodeSetDialogVisible: false,
-      removeCodeSetName: null,
-      superuser: false,
-      admin: false,
-      isRolesLoaded: false
-    };
-  },
-  computed: {
-    activeMessage: function() {
-      return this.activeCodeSetId;
-    }
-  },
-  mounted() {
-    this.initCodeSets();
-    axios.get('/admin-ui/api/user/roles').then(response => {
-      for (let role in response.data) {
-        if (response.data[role] === 'SUPERUSER') this.superuser = true;
-        if (response.data[role] === 'ADMIN') this.admin = true;
-      }
-      this.isRolesLoaded = true;
+const { t } = useI18n();
+
+const activeCodeSetId = ref(null);
+const activeCodeSetItem = ref(false);
+const selectedCodeSetItem = ref(null);
+const codesets = ref([]);
+const codesetItems = ref([]);
+const addNewCodeSetDialogVisible = ref(false);
+const addNewCodeSetName = ref(null);
+const removeCodeSetDialogVisible = ref(false);
+const removeCodeSetName = ref(null);
+const superuser = ref(false);
+const admin = ref(false);
+const isRolesLoaded = ref(false);
+const addNewCodeSetForm = ref(null);
+
+const activeMessage = computed(() => activeCodeSetId.value);
+
+const codesetStore = useCodesetStore();
+const userStore = useUserStore();
+const { roles } = storeToRefs(userStore);
+
+onMounted(() => {
+  initCodeSets();
+  userStore.fetchRoles().then(() => {
+    roles.value?.forEach(role => {
+      if (role === 'SUPERUSER') superuser.value = true;
+      if (role === 'ADMIN') admin.value = true;
     });
-  },
-  methods: {
-    showAddNewCodeSetDialog() {
-      this.addNewCodeSetDialogVisible = true;
-    },
-    hideAddNewCodeSetDialog() {
-      this.addNewCodeSetDialogVisible = false;
-    },
-    showRemoveCodeSetDialog(codeset) {
-      this.removeCodeSetName = codeset;
-      this.removeCodeSetDialogVisible = true;
-    },
-    hideRemoveCodeSetDialog() {
-      this.removeCodeSetDialogVisible = false;
-    },
-    itemHeader(item) {
-      return item.title + ' (' + item.count + ')';
-    },
-    rowClicked(value) {
-      if (value != '' && value != null && value != undefined) {
-        this.activeCodeSetItem = false;
-        this.activeCodeSetId = value;
-        axios.get('/admin-ui/api/codes/codesets/' + value).then(response => {
-          this.codesetItems = [];
-          response.data.forEach(item => {
-            this.codesetItems.push({ title: item.codeUri, id: item.id });
-          });
-        });
-        this.selectedCodeSetItem = null;
-      }
-    },
-    itemRowClicked(value) {
-      this.selectedCodeSetItem = null;
-      this.activeCodeSetItem = value;
-      axios.get('/admin-ui/api/codes/code/' + value).then(response => {
-        this.selectedCodeSetItem = response.data;
+    isRolesLoaded.value = true;
+  });
+});
+
+const showAddNewCodeSetDialog = () => {
+  addNewCodeSetDialogVisible.value = true;
+};
+const hideAddNewCodeSetDialog = () => {
+  addNewCodeSetDialogVisible.value = false;
+};
+const showRemoveCodeSetDialog = codeset => {
+  removeCodeSetName.value = codeset;
+  removeCodeSetDialogVisible.value = true;
+};
+const hideRemoveCodeSetDialog = () => {
+  removeCodeSetDialogVisible.value = false;
+};
+const itemHeader = item => item.title + ' (' + item.count + ')';
+
+const rowClicked = value => {
+  if (value !== '' && value != null) {
+    activeCodeSetItem.value = false;
+    activeCodeSetId.value = value;
+    codesetStore.fetchCodesetItems(value).then(responseItems => {
+      codesetItems.value = [];
+      responseItems.forEach(item => {
+        codesetItems.value.push({ title: item.codeUri, id: item.id });
       });
-    },
-    addNewCodeSet() {
-      if (this.$refs.addNewCodeSetForm.validate()) {
-        this.hideAddNewCodeSetDialog();
-        axios.put('/admin-ui/api/codes/codesets/' + this.addNewCodeSetName).then(() => {
-          this.refresh();
-        });
-        this.$refs.addNewCodeSetForm.reset();
-      }
-    },
-    removeCodeSet() {
-      this.hideRemoveCodeSetDialog();
-      axios.delete('/admin-ui/api/codes/codesets/' + this.removeCodeSetName).then(() => {
-        this.refresh();
-      });
-    },
-    itemRowDelete(value) {
-      axios.delete('/admin-ui/api/codes/code/' + value).then(() => {
-        this.activeCodeSetItem = false;
-        this.initCodeSets();
-        this.rowClicked(this.activeCodeSetId);
-      });
-    },
-    addItem() {
-      axios.put('/admin-ui/api/codes/codesets/' + this.activeCodeSetId).then(response => {
-        this.codesetItems.push({ title: response.data.codeUri, id: response.data.id });
-        this.itemRowClicked(response.data.id);
-        this.initCodeSets();
-      });
-    },
-    refresh() {
-      this.activeCodeSetId = null;
-      this.activeCodeSetItem = false;
-      this.codesetItems = [];
-      this.selectedCodeSetItem = null;
-      this.initCodeSets();
-    },
-    saved() {
-      axios.get('/admin-ui/api/codes/codesets/' + this.activeCodeSetId).then(response => {
-        this.codesetItems = [];
-        response.data.forEach(item => {
-          this.codesetItems.push({ title: item.codeUri, id: item.id });
-        });
-        var tmp = this.activeCodeSetItem;
-        this.activeCodeSetItem = false;
-        this.itemRowClicked(tmp);
-      });
-    },
-    initCodeSets() {
-      axios.get('/admin-ui/api/codes/codesets').then(response => {
-        this.codesets = [];
-        if (response.data) {
-          response.data.forEach(item => {
-            this.codesets.push({ title: item.key, count: item.count });
-          });
-        }
-      });
-    },
-    requiredRule(value) {
-      return !!value || this.$t('requiredField');
-    }
+    });
+    selectedCodeSetItem.value = null;
   }
 };
+
+const itemRowClicked = value => {
+  selectedCodeSetItem.value = null;
+  activeCodeSetItem.value = value;
+  codesetStore.fetchCode(value).then(data => {
+    selectedCodeSetItem.value = data
+      ? {
+          ...data,
+          codeValues: Array.isArray(data.codeValues) ? data.codeValues : []
+        }
+      : null;
+  });
+};
+
+const addNewCodeSet = async () => {
+  const form = addNewCodeSetForm.value;
+  if (!form) return;
+  const validationResult = await form.validate();
+  const isValid =
+    typeof validationResult === 'boolean'
+      ? validationResult
+      : validationResult?.valid ?? false;
+  if (!isValid) return;
+
+  hideAddNewCodeSetDialog();
+  await codesetStore.addCodeset(addNewCodeSetName.value);
+  refresh();
+  form.reset();
+};
+
+const removeCodeSet = () => {
+  hideRemoveCodeSetDialog();
+  codesetStore.deleteCodeset(removeCodeSetName.value).then(() => refresh());
+};
+
+const itemRowDelete = value => {
+  codesetStore.deleteCode(value).then(() => {
+    activeCodeSetItem.value = false;
+    initCodeSets();
+    rowClicked(activeCodeSetId.value);
+  });
+};
+
+const addItem = async () => {
+  const response = await codesetStore.addCodeToCodeset(activeCodeSetId.value);
+  codesetItems.value.push({ title: response.codeUri, id: response.id });
+  itemRowClicked(response.id);
+  initCodeSets();
+};
+
+const refresh = () => {
+  activeCodeSetId.value = null;
+  activeCodeSetItem.value = false;
+  codesetItems.value = [];
+  selectedCodeSetItem.value = null;
+  initCodeSets();
+};
+
+const saved = () => {
+  codesetStore.fetchCodesetItems(activeCodeSetId.value).then(responseItems => {
+    codesetItems.value = [];
+    responseItems.forEach(item => {
+      codesetItems.value.push({ title: item.codeUri, id: item.id });
+    });
+    const tmp = activeCodeSetItem.value;
+    activeCodeSetItem.value = false;
+    itemRowClicked(tmp);
+  });
+};
+
+const initCodeSets = () => {
+  codesetStore.fetchCodesets().then(data => {
+    codesets.value = [];
+    if (data) {
+      data.forEach(item => {
+        codesets.value.push({ title: item.key, count: item.count });
+      });
+    }
+  });
+};
+
+const requiredRule = value => !!value || t('requiredField');
 </script>
 
 <style lang="css" scoped>
@@ -274,13 +296,13 @@ export default {
 .v-icon.material-icons.theme--light.red--text:hover {
   font-size: 1.7em;
 }
-.v-list__tile__content {
+.v-list-item__content {
   cursor: pointer;
 }
-.v-list__tile__action {
+.v-list-item__append {
   cursor: pointer;
 }
-.v-list__tile {
+.v-list-item {
   padding: 0 0 0 16px;
 }
 .list-tile:hover {

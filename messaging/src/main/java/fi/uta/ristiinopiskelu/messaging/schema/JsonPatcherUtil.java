@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.messaging.schema;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 public interface JsonPatcherUtil {
 

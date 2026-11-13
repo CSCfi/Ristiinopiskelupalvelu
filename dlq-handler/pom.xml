@@ -5,7 +5,7 @@
 
     <groupId>fi.uta.ristiinopiskelu.dlq-handler</groupId>
     <artifactId>dlq-handler</artifactId>
-    <version>9.0.28</version>
+    <version>9.0.35</version>
     <name>dlq-handler</name>
     <description>Module that handles ActiveMQ dead letter queue</description>
     <packaging>jar</packaging>
@@ -13,8 +13,8 @@
     <parent>
         <groupId>fi.uta.ristiinopiskelu</groupId>
         <artifactId>parent</artifactId>
-        <version>9.0.28</version>
-        <relativePath>../</relativePath> <!-- lookup parent from repository -->
+        <version>9.0.35</version>
+        <relativePath>../pom.xml</relativePath> <!-- lookup parent from repository -->
     </parent>
     <dependencies>
         <dependency>
@@ -41,7 +41,7 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         
         <dependency>
@@ -62,11 +62,6 @@
         <dependency>
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-stream-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.camel.springboot</groupId>
-            <artifactId>camel-jackson-starter</artifactId>
         </dependency>
 
         <dependency>

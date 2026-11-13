@@ -12,6 +12,11 @@ spring:
 springwolf:
   enabled: false
 camel:
+  component:
+    jms:
+      # workaround until all clients have fixed their message type handling. seems like newer Artemis versions correctly
+      # send all messages as TextMessage (as was originally intended, ofc) but previously, it sent them as BytesMessages
+      jms-message-type: Bytes
   springboot:
     main-run-controller: true
     stream-caching-enabled: true

@@ -5,8 +5,6 @@ import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
 import co.elastic.clients.elasticsearch.core.search.InnerHitsResult;
 import co.elastic.clients.json.JsonData;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.TeachingLanguage;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.InternalStudiesSearchResults;
@@ -16,6 +14,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.MultiBucketAggregationDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.SingleBucketAggregationDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CompositeIdentifiedEntityTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
 import fi.uta.ristiinopiskelu.handler.service.StudiesService;
 import fi.uta.ristiinopiskelu.handler.utils.AggregationUtils;
 import org.slf4j.Logger;
@@ -76,7 +76,7 @@ public class StudiesSearchPostProcessor {
                  * ES cannot filter nested sets (not currently, at least) but it does give us the lists of matching nested set elements (inner hits).
                  * Therefore we have to do the nested set filtering manually here by comparing the inner hit lists to the actual nested set content.
                  */
-                if(entity.getType() == CompositeIdentifiedEntityType.COURSE_UNIT) {
+                if(entity.getType() == CompositeIdentifiedEntityTypeEntity.COURSE_UNIT) {
                     CourseUnitEntity courseUnitEntity = (CourseUnitEntity) entity;
 
                     if(!CollectionUtils.isEmpty(courseUnitEntity.getRealisations())) {
@@ -159,7 +159,7 @@ public class StudiesSearchPostProcessor {
 
         return courseUnitRealisationEntity -> {
             if (!CollectionUtils.isEmpty(courseUnitRealisationEntity.getCooperationNetworks())) {
-                for (CooperationNetwork cn : courseUnitRealisationEntity.getCooperationNetworks()) {
+                for (CooperationNetworkEntity cn : courseUnitRealisationEntity.getCooperationNetworks()) {
                     if (!CollectionUtils.isEmpty(networkIdentifiers) && networkIdentifiers.contains(cn.getId())) {
                         return true;
                     }

@@ -27,7 +27,7 @@ public class NetworkRepositoryExtendedImpl implements NetworkRepositoryExtended 
 
         NativeQuery builder = new NativeQueryBuilder()
             .withQuery(query.build()._toQuery())
-            .withPageable(Pageable.unpaged())
+            .withMaxResults(1)
             .build();
 
         return elasticsearchTemplate.search(builder, NetworkEntity.class).get().map(SearchHit::getContent).findFirst();
@@ -57,7 +57,7 @@ public class NetworkRepositoryExtendedImpl implements NetworkRepositoryExtended 
 
         NativeQuery builder = new NativeQueryBuilder()
             .withQuery(query.build()._toQuery())
-            .withPageable(Pageable.unpaged())
+            .withMaxResults(1)
             .build();
 
         return elasticsearchTemplate.search(builder, NetworkEntity.class).get().map(SearchHit::getContent).findFirst();
@@ -89,12 +89,10 @@ public class NetworkRepositoryExtendedImpl implements NetworkRepositoryExtended 
 
         NativeQuery builder = new NativeQueryBuilder()
                 .withQuery(query.build()._toQuery())
-                .withPageable(pageable)
+                .withPageable(pageable != null ? pageable : Pageable.unpaged())
                 .build();
 
-        return elasticsearchTemplate.search(builder, NetworkEntity.class).get()
-                .map(SearchHit::getContent)
-                .toList();
+        return ElasticsearchQueryUtils.search(elasticsearchTemplate, builder, NetworkEntity.class);
     }
 
     @Override
@@ -123,7 +121,7 @@ public class NetworkRepositoryExtendedImpl implements NetworkRepositoryExtended 
 
         NativeQuery builder = new NativeQueryBuilder()
                 .withQuery(query.build()._toQuery())
-                .withPageable(Pageable.unpaged())
+                .withMaxResults(1)
                 .build();
 
         return elasticsearchTemplate.search(builder, NetworkEntity.class).get().map(SearchHit::getContent).findFirst();
@@ -150,11 +148,9 @@ public class NetworkRepositoryExtendedImpl implements NetworkRepositoryExtended 
         NativeQuery builder = new NativeQueryBuilder()
                 .withQuery(query.build()._toQuery())
                 .withSort(s -> s.field(fs -> fs.field("abbreviation")))
-                .withPageable(pageable)
+                .withPageable(pageable != null ? pageable : Pageable.unpaged())
                 .build();
 
-        return elasticsearchTemplate.search(builder, NetworkEntity.class).get()
-                .map(SearchHit::getContent)
-                .toList();
+        return ElasticsearchQueryUtils.search(elasticsearchTemplate, builder, NetworkEntity.class);
     }
 }

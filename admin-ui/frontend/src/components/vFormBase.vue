@@ -1,8 +1,9 @@
 <template>
-  <v-layout :id="ref" class="wrap" v-resize.quiet="onResize">
-    <template v-for="(obj, index) in flatCombinedArraySorted">
-      <v-flex
+  <div :id="refId" class="wrap" v-resize.quiet="onResize">
+    <template v-for="(obj, index) in flatCombinedArraySorted" :key="index">
+      <div
         v-if="!obj.schema.hidden"
+        class="legacy-flex"
         :class="getClassName(obj)"
         v-touch="{
           left: () => onSwipe('left', obj),
@@ -10,70 +11,65 @@
           up: () => onSwipe('up', obj),
           down: () => onSwipe('down', obj)
         }"
-        :key="index"
       >
-        <!-- slot on top of item  -> <div slot="top-slot-[key]> -->
         <slot :name="getTypeTopSlot(obj)"></slot>
         <slot :name="getKeyTopSlot(obj)"></slot>
 
-        <!-- slot replaces complete item of defined type -> <div slot="item-slot-[type]>-->
         <slot :name="getTypeItemSlot(obj)">
-          <!-- slot replaces complete item of defined key -> <div slot="item-slot-[key]>-->
           <slot :name="getKeyItemSlot(obj)">
-            <!-- time -->
             <v-menu
               v-if="obj.schema.type === 'time'"
               :close-on-content-click="false"
               :nudge-right="32"
-              lazy
               transition="scale-transition"
               offset-y
               full-width
               min-width="290px"
-              ><v-text-field
-                slot="activator"
-                v-bind="obj.schema"
-                :value="setValue(obj)"
-                @focus="onFocus($event, obj)"
-                @input="onInput($event, obj)"
-              ></v-text-field>
+            >
+              <template #activator="{ props }">
+                <v-text-field
+                  v-bind="{ ...obj.schema, ...props }"
+                  :value="setValue(obj)"
+                  @focus="onFocus($event, obj)"
+                  @input="onInput($event, obj)"
+                ></v-text-field>
+              </template>
               <v-time-picker
-                :value="setValue(obj)"
+                :model-value="setValue(obj)"
                 @focus="onFocus($event, obj)"
-                @input="onInput($event, obj)"
+                @update:model-value="onInput($event, obj)"
               ></v-time-picker>
             </v-menu>
 
-            <!-- date -->
             <v-menu
               v-else-if="obj.schema.type === 'date'"
               :close-on-content-click="false"
               :nudge-right="32"
-              lazy
               transition="scale-transition"
               offset-y
               full-width
               min-width="290px"
-              ><v-text-field
-                slot="activator"
-                v-bind="obj.schema"
-                :value="setValue(obj) ? formatDate(new Date(setValue(obj))) : setValue(obj)"
-                @focus="onFocus($event, obj)"
-                @input="onInput($event, obj)"
-              ></v-text-field>
+            >
+              <template #activator="{ props }">
+                <v-text-field
+                  v-bind="{ ...obj.schema, ...props }"
+                  :value="setValue(obj) ? formatDate(new Date(setValue(obj))) : setValue(obj)"
+                  @focus="onFocus($event, obj)"
+                  @input="onInput($event, obj)"
+                ></v-text-field>
+              </template>
               <v-date-picker
                 :locale="obj.schema.locale"
-                :value="setValue(obj) ? formatDate(new Date(setValue(obj))) : setValue(obj)"
+                :model-value="setValue(obj) ? formatDate(new Date(setValue(obj))) : setValue(obj)"
                 @focus="onFocus($event, obj)"
-                @input="saveDate($event, obj)"
+                @update:model-value="saveDate($event, obj)"
               ></v-date-picker>
             </v-menu>
 
-            <!-- radio -->
             <v-radio-group
               v-else-if="obj.schema.type === 'radio'"
               v-bind="obj.schema"
-              :value="setValue(obj)"
+              :model-value="setValue(obj)"
               @change="onInput($event, obj)"
             >
               <v-radio
@@ -85,7 +81,6 @@
               ></v-radio>
             </v-radio-group>
 
-            <!-- array -->
             <template v-else-if="obj.schema.type === 'array'">
               <div
                 v-bind="obj.schema"
@@ -100,38 +95,34 @@
                     :value="item"
                     :schema="obj.schema.schema"
                   >
-                    <div slot="slot-bottom-key-validityInNetwork-redundant">
-                      <v-btn class="btn-right" color="error" flat @click="deleteOrg(item)">
+                    <template #slot-bottom-key-validityInNetwork-redundant>
+                      <v-btn class="btn-right" color="error" variant="text" @click="deleteOrg(item)">
                         {{ $t('delete') }}
                       </v-btn>
-                    </div>
+                    </template>
                   </v-form-base>
                 </slot>
               </div>
             </template>
 
-            <!-- list -->
             <template v-else-if="obj.schema.type === 'list'">
               <v-toolbar v-if="obj.schema.label" v-bind="obj.schema" dark>
                 <v-toolbar-title>{{ obj.schema.label }}</v-toolbar-title>
               </v-toolbar>
               <v-list v-bind="obj.schema">
-                <v-list-tile
+                <v-list-item
                   v-for="(item, ix) in obj.schema.items"
                   :key="ix"
                   v-bind="obj.schema"
                   :class="setValue(obj) === item ? 'active' : 'inactive'"
                   @click="onInput(item, obj)"
                 >
-                  <v-list-tile-content>
-                    <v-list-tile-title v-text="item"></v-list-tile-title>
-                  </v-list-tile-content>
-                </v-list-tile>
+                  <v-list-item-title>{{ item }}</v-list-item-title>
+                </v-list-item>
               </v-list>
             </template>
 
-            <!-- checkbox switch -->
-            <div
+            <component
               v-else-if="obj.schema.type === 'switch' || obj.schema.type === 'checkbox'"
               :is="mapTypeToComponent(obj.schema.type)"
               v-bind="obj.schema"
@@ -141,10 +132,9 @@
               @click:prepend-inner="onClick($event, obj, prependInner)"
               :input-value="setValue(obj)"
               @change="onInput($event, obj)"
-            ></div>
+            />
 
-            <!-- all other -->
-            <div
+            <component
               v-else
               :is="mapTypeToComponent(obj.schema.type)"
               v-bind="obj.schema"
@@ -156,32 +146,27 @@
               @click:prepend="onClick($event, obj, prepend)"
               @click:prepend-inner="onClick($event, obj, prependInner)"
               @input="onInput($event, obj)"
-            ></div>
+            />
           </slot>
         </slot>
 
-        <!-- slot at bottom of item  -> <div slot="slot-bottom-key-[deep-nested-key]> -->
         <slot :name="getTypeBottomSlot(obj)"></slot>
         <slot :name="getKeyBottomSlot(obj)"></slot>
-      </v-flex>
+      </div>
 
-      <!-- push next item to the right and fill space between items -->
       <v-spacer v-if="obj.schema.spacer" :key="`s-${index}`"></v-spacer>
     </template>
-  </v-layout>
+  </div>
 </template>
 
-<script>
-// import & declarations
+<script setup>
+import { computed, onMounted, ref } from 'vue';
 import { get, isPlainObject, isFunction, orderBy } from 'lodash';
 
 const typeToComponent = {
-  // implemented in Vuetify
   text: 'v-text-field',
   password: 'v-text-field',
   email: 'v-text-field',
-
-  // native Input Types - https://www.wufoo.com/html5/
   tel: 'v-text-field',
   url: 'v-text-field',
   color: 'v-text-field',
@@ -189,7 +174,6 @@ const typeToComponent = {
   number: 'v-text-field',
   file: 'v-text-field',
   list: 'v-list',
-
   range: 'v-slider'
 };
 
@@ -212,365 +196,309 @@ const append = 'append';
 const appendOuter = 'append-outer';
 const prepend = 'prepend';
 const prependInner = 'prepend-inner';
-//
 
-export default {
-  name: 'v-form-base',
-
-  props: {
-    id: {
-      type: String,
-      default: defaultID
-    },
-    value: {
-      type: [Object, Array, String],
-      required: true
-    },
-    schema: {
-      type: [Object, Array],
-      required: true
-    }
+const props = defineProps({
+  id: {
+    type: String,
+    default: defaultID
   },
-
-  data() {
-    return {
-      flatCombinedArray: [],
-      clear,
-      append,
-      appendOuter,
-      prepend,
-      prependInner
-    };
+  value: {
+    type: [Object, Array, String],
+    required: true
   },
+  schema: {
+    type: [Object, Array],
+    required: true
+  }
+});
 
-  computed: {
-    ref() {
-      return this.id;
-    },
-    flatCombinedArraySorted() {
-      return orderBy(this.flatCombinedArray, ['schema.sort'], [orderDirection]);
-    },
-    storeStateData() {
-      this.updateArrayFromState(this.value, this.schema);
-      return this.value;
-    },
-    storeStateSchema() {
-      this.updateArrayFromState(this.value, this.schema);
-      return this.schema;
-    }
-  },
+const emit = defineEmits(['deleteOrg', 'input', 'update']);
 
-  methods: {
-    deleteOrg(item) {
-      console.log(item);
-      this.$emit('deleteOrg', item);
-    },
-    // Change date format to dd-MM-yyyy
-    formatDate(date) {
-      return (
-        date.getFullYear() +
-        '-' +
-        ('0' + (date.getMonth() + 1)).slice(-2) +
-        '-' +
-        ('0' + date.getDate()).slice(-2)
-      );
-    },
-    // Change date format to yyyy-MM-ddTHH:mm:ssZ
-    formatDateSave(date) {
-      return new Date(date).toISOString();
-    },
-    saveDate(date, obj) {
-      this.onInput(this.formatDateSave(date), obj);
-    },
-    mapTypeToComponent(type) {
-      // map ie. schema:{ type:'password', ... } to vuetify control v-text-field'
-      return typeToComponent[type] ? typeToComponent[type] : `v-${type}`;
-    },
+const flatCombinedArray = ref([]);
 
-    // KEY SLOTS
-    getKeyArraySlot(obj) {
-      // get Key specific name by replacing '.' with '-' and prepending 'slot-item'  -> 'slot-ARRAY-key-adress-city'
-      return this.getKeyClassNameWithAppendix(obj, arraySlotAppendix + '-key');
-    },
-    getKeyItemSlot(obj) {
-      // get Key specific name by replacing '.' with '-' and prepending 'slot-item'  -> 'slot-item-key-adress-city'
-      return this.getKeyClassNameWithAppendix(obj, itemSlotAppendix + '-key');
-    },
-    getKeyTopSlot(obj) {
-      // get Key specific name by replacing '.' with '-' and prepending 'slot-top'  -> 'slot-top-key-adress-city'
-      return this.getKeyClassNameWithAppendix(obj, topSlotAppendix + '-key');
-    },
-    getKeyBottomSlot(obj) {
-      // get Key specific name by replacing '.' with '-' and prepending 'slot-bottom'  -> 'slot-bottom-key-adress-city'
-      return this.getKeyClassNameWithAppendix(obj, bottomSlotAppendix + '-key');
-    },
-    //
-    // TYPE SLOTS
-    getTypeItemSlot(obj) {
-      // get Type specific slot name  -> 'slot-item-type-radio'
-      return this.getTypeClassNameWithAppendix(obj, itemSlotAppendix + '-type');
-    },
-    getTypeTopSlot(obj) {
-      // get Type specific slot name  -> 'slot-top-type-radio'
-      return this.getTypeClassNameWithAppendix(obj, topSlotAppendix + '-type');
-    },
-    getTypeBottomSlot(obj) {
-      // get Type specific slot name  -> 'slot-bottom-type-radio'
-      return this.getTypeClassNameWithAppendix(obj, bottomSlotAppendix + '-type');
-    },
-    //
-    // CLASS Names
-    getKeyClassNameWithAppendix(obj, appendix) {
-      // get KEY specific name by app-/prepending 'appendix-' and replacing '.' with '-' in nested key path  -> 'top-slot-adress-city'
-      return `${appendix ? appendix + classKeyDelimiter : ''}${obj.key.replace(/\./g, '-')}`;
-    },
-    getKeyClassName(obj) {
-      return this.getKeyClassNameWithAppendix(obj, keyClassAppendix);
-    },
-    getTypeClassNameWithAppendix(obj, appendix) {
-      // get TYPE specific class name by prepending '-type' -> 'type-checkbox'
-      return `${appendix + classKeyDelimiter}${obj.schema.type}`;
-    },
-    getTypeClassName(obj) {
-      return this.getTypeClassNameWithAppendix(obj, typeClassAppendix);
-    },
-    getFlexGridClassName(obj) {
-      // get FLEX class from schema.flex ->  schema:{ flex:{ xs:12, md:4  } || flex: 4 } // flex: 4 -> is shorthand for -> flex:{ xs:4 }
-      const keysToGridClassName = key =>
-        Object.keys(key)
-          .map(k => k + key[k])
-          .join(' '); //  { xs:12, md:6, lg:4  } => 'xs12 md6 lg4'
-      return obj.schema.flex
-        ? isPlainObject(obj.schema.flex)
-          ? keysToGridClassName(obj.schema.flex)
-          : `xs${obj.schema.flex}`
-        : '';
-    },
-    getOffsetGridClassName(obj) {
-      // get OFFSET-FLEX class from schema.offset ->  schema:{ offset:{ xs:12, md:4  } || offset: 4 } // offset: 4 -> is shorthand for -> offset:{ xs:4 }
-      const keysToOffsetClassName = key =>
-        Object.keys(key)
-          .map(k => `offset-${k}${key[k]}`)
-          .join(' '); //  { xs:12, md:6, lg:4  } => 'xs12 md6 lg4'
-      return obj.schema.offset
-        ? isPlainObject(obj.schema.offset)
-          ? keysToOffsetClassName(obj.schema.offset)
-          : `offset-xs${obj.schema.offset}`
-        : '';
-    },
-    getOrderGridClassName(obj) {
-      // get ORDER-FLEX class from schema.order ->  schema:{ order:{ xs:12, md:4  } || order: 4 } // order: 4 -> is shorthand for -> order:{ xs:4 }
-      const keysToOrderClassName = key =>
-        Object.keys(key)
-          .map(k => `order-${k}${key[k]}`)
-          .join(' '); //  { xs:12, md:6, lg:4  } => 'xs12 md6 lg4'
-      return obj.schema.order
-        ? isPlainObject(obj.schema.order)
-          ? keysToOrderClassName(obj.schema.order)
-          : `order-xs${obj.schema.order}`
-        : '';
-    },
-    getGridClassName(obj) {
-      // combine Flex, Offset, Order into a classname
-      return `${this.getFlexGridClassName(obj)} ${this.getOffsetGridClassName(
-        obj
-      )} ${this.getOrderGridClassName(obj)}`;
-    },
+const refId = computed(() => props.id);
+const flatCombinedArraySorted = computed(() =>
+  orderBy(flatCombinedArray.value, ['schema.sort'], [orderDirection])
+);
 
-    getClassName(obj) {
-      // combines all into a single classname
-      // class => ie. 'item type-checkbox key-adress-zip xs12 md6 offset-xs0'
-      return `${itemClassAppendix} ${this.getTypeClassName(obj)} ${this.getKeyClassName(
-        obj
-      )} ${this.getGridClassName(obj)}`;
-    },
-    //
-    // Map Values coming FROM Control or going TO Control
-    toCtrl(params) {
-      // manipulate value going to control, toCtrl-function must return a (modified) value
-      // schema:{ name: { type:'text', toCtrl: ( {value} ) value && value.toUpperCase, ... }, ... }
-      return isFunction(params.obj.schema.toCtrl) ? params.obj.schema.toCtrl(params) : params.value;
-    },
-    fromCtrl(params) {
-      // manipulate updated value from control, fromCtrl-function must return a (modified) value
-      // schema:{ name: { type:'text', fromCtrl: ( {value} ) value && value.toUpperCase, ... }, ... }
-      return isFunction(params.obj.schema.fromCtrl)
-        ? params.obj.schema.fromCtrl(params)
-        : params.value;
-    },
-    //
-    // Set Value
-    setValue(obj) {
-      // Control gets a Value
-      return this.toCtrl({
-        value: obj.value,
-        obj,
-        data: this.storeStateData,
-        schema: this.storeStateSchema
-      });
-    },
-    // Get Value from Input & Events
-    onInput(value, obj) {
-      // Value after change in Control
-      value = this.fromCtrl({
-        value,
-        obj,
-        data: this.storeStateData,
-        schema: this.storeStateSchema
-      });
+const storeStateData = computed(() => {
+  updateArrayFromState(props.value, props.schema);
+  return props.value;
+});
 
-      // harmonize all empty strings to null, because clearable resets to null and not to empty string !!!
-      value = value === '' ? null : value;
+const storeStateSchema = computed(() => {
+  updateArrayFromState(props.value, props.schema);
+  return props.schema;
+});
 
-      // update deep nested prop(key) with value
-      this.setObjectByPath(this.storeStateData, obj.key, value);
+const deleteOrg = item => {
+  emit('deleteOrg', item);
+};
 
-      this.emitValue('input', {
-        on: 'input',
-        id: this.ref,
-        parentId: this.$parent.id,
-        key: obj.key,
-        value,
-        obj,
-        data: this.storeStateData,
-        schema: this.storeStateSchema
-      });
-    },
-    onClick(event, obj, pos) {
-      this.emitValue('click', {
-        on: 'click',
-        id: this.ref,
-        parentId: this.$parent.id,
-        params: { text: event.srcElement && event.srcElement.innerText, pos },
-        key: obj.key,
-        value: obj.value,
-        obj,
-        event,
-        data: this.storeStateData,
-        schema: this.storeStateSchema
-      });
-    },
-    onFocus(event, obj) {
-      this.emitValue('focus', {
-        on: 'focus',
-        id: this.ref,
-        parentId: this.$parent.id,
-        key: obj.key,
-        value: obj.value,
-        obj,
-        event,
-        data: this.storeStateData,
-        schema: this.storeStateSchema
-      });
-    },
-    onSwipe(pos, obj) {
-      this.emitValue('swipe', {
-        on: 'swipe',
-        id: this.ref,
-        parentId: this.$parent.id,
-        key: obj.key,
-        value: obj.value,
-        obj,
-        params: { pos },
-        data: this.storeStateData,
-        schema: this.storeStateSchema
-      });
-    },
-    onResize() {
-      this.emitValue('resize', {
-        on: 'resize',
-        id: this.ref,
-        params: { x: window.innerWidth, y: window.innerHeight },
-        data: this.storeStateData,
-        schema: this.storeStateSchema
-      });
-    },
-    // Event Base
-    emitValue(emit, val) {
-      if (this.$parent.id) {
-        this.$parent.$emit(this.getEventParentName(emit), val);
-        this.$parent.$emit(this.getEventParentName('update'), val);
-      } else {
-        this.$emit(this.getEventName(emit), val);
-        this.$emit(this.getEventName('update'), val);
+const formatDate = date => {
+  return (
+    date.getFullYear() +
+    '-' +
+    ('0' + (date.getMonth() + 1)).slice(-2) +
+    '-' +
+    ('0' + date.getDate()).slice(-2)
+  );
+};
+
+const formatDateSave = date => {
+  return new Date(date).toISOString();
+};
+
+const saveDate = (date, obj) => {
+  onInput(formatDateSave(date), obj);
+};
+
+const mapTypeToComponent = type => {
+  return typeToComponent[type] ? typeToComponent[type] : `v-${type}`;
+};
+
+const getKeyArraySlot = obj => {
+  return getKeyClassNameWithAppendix(obj, arraySlotAppendix + '-key');
+};
+const getKeyItemSlot = obj => {
+  return getKeyClassNameWithAppendix(obj, itemSlotAppendix + '-key');
+};
+const getKeyTopSlot = obj => {
+  return getKeyClassNameWithAppendix(obj, topSlotAppendix + '-key');
+};
+const getKeyBottomSlot = obj => {
+  return getKeyClassNameWithAppendix(obj, bottomSlotAppendix + '-key');
+};
+
+const getTypeItemSlot = obj => {
+  return getTypeClassNameWithAppendix(obj, itemSlotAppendix + '-type');
+};
+const getTypeTopSlot = obj => {
+  return getTypeClassNameWithAppendix(obj, topSlotAppendix + '-type');
+};
+const getTypeBottomSlot = obj => {
+  return getTypeClassNameWithAppendix(obj, bottomSlotAppendix + '-type');
+};
+
+const getKeyClassNameWithAppendix = (obj, appendix) => {
+  return `${appendix ? appendix + classKeyDelimiter : ''}${obj.key.replace(/\./g, '-')}`;
+};
+const getKeyClassName = obj => getKeyClassNameWithAppendix(obj, keyClassAppendix);
+const getTypeClassNameWithAppendix = (obj, appendix) => {
+  return `${appendix + classKeyDelimiter}${obj.schema.type}`;
+};
+const getTypeClassName = obj => getTypeClassNameWithAppendix(obj, typeClassAppendix);
+
+const getFlexGridClassName = obj => {
+  const keysToGridClassName = key =>
+    Object.keys(key)
+      .map(k => k + key[k])
+      .join(' ');
+  return obj.schema.flex
+    ? isPlainObject(obj.schema.flex)
+      ? keysToGridClassName(obj.schema.flex)
+      : `xs${obj.schema.flex}`
+    : '';
+};
+const getOffsetGridClassName = obj => {
+  const keysToOffsetClassName = key =>
+    Object.keys(key)
+      .map(k => `offset-${k}${key[k]}`)
+      .join(' ');
+  return obj.schema.offset
+    ? isPlainObject(obj.schema.offset)
+      ? keysToOffsetClassName(obj.schema.offset)
+      : `offset-xs${obj.schema.offset}`
+    : '';
+};
+const getOrderGridClassName = obj => {
+  const keysToOrderClassName = key =>
+    Object.keys(key)
+      .map(k => `order-${k}${key[k]}`)
+      .join(' ');
+  return obj.schema.order
+    ? isPlainObject(obj.schema.order)
+      ? keysToOrderClassName(obj.schema.order)
+      : `order-xs${obj.schema.order}`
+    : '';
+};
+
+const getGridClassName = obj => {
+  return `${getFlexGridClassName(obj)} ${getOffsetGridClassName(obj)} ${getOrderGridClassName(obj)}`;
+};
+
+const getClassName = obj => {
+  return `${itemClassAppendix} ${getTypeClassName(obj)} ${getKeyClassName(obj)} ${getGridClassName(
+    obj
+  )}`;
+};
+
+const toCtrl = params => {
+  return isFunction(params.obj.schema.toCtrl) ? params.obj.schema.toCtrl(params) : params.value;
+};
+const fromCtrl = params => {
+  return isFunction(params.obj.schema.fromCtrl) ? params.obj.schema.fromCtrl(params) : params.value;
+};
+
+const setValue = obj => {
+  return toCtrl({
+    value: obj.value,
+    obj,
+    data: storeStateData.value,
+    schema: storeStateSchema.value
+  });
+};
+
+const onInput = (value, obj) => {
+  value = fromCtrl({
+    value,
+    obj,
+    data: storeStateData.value,
+    schema: storeStateSchema.value
+  });
+
+  value = value === '' ? null : value;
+
+  setObjectByPath(storeStateData.value, obj.key, value);
+
+  emitValue('input', {
+    on: 'input',
+    id: refId.value,
+    parentId: null,
+    key: obj.key,
+    value,
+    obj,
+    data: storeStateData.value,
+    schema: storeStateSchema.value
+  });
+};
+
+const onClick = (event, obj, pos) => {
+  emitValue('click', {
+    on: 'click',
+    id: refId.value,
+    parentId: null,
+    params: { text: event?.srcElement && event.srcElement.innerText, pos },
+    key: obj.key,
+    value: obj.value,
+    obj,
+    event,
+    data: storeStateData.value,
+    schema: storeStateSchema.value
+  });
+};
+
+const onFocus = (event, obj) => {
+  emitValue('focus', {
+    on: 'focus',
+    id: refId.value,
+    parentId: null,
+    key: obj.key,
+    value: obj.value,
+    obj,
+    event,
+    data: storeStateData.value,
+    schema: storeStateSchema.value
+  });
+};
+
+const onSwipe = (pos, obj) => {
+  emitValue('swipe', {
+    on: 'swipe',
+    id: refId.value,
+    parentId: null,
+    key: obj.key,
+    value: obj.value,
+    obj,
+    params: { pos },
+    data: storeStateData.value,
+    schema: storeStateSchema.value
+  });
+};
+
+const onResize = () => {
+  emitValue('resize', {
+    on: 'resize',
+    id: refId.value,
+    params: { x: window.innerWidth, y: window.innerHeight },
+    data: storeStateData.value,
+    schema: storeStateSchema.value
+  });
+};
+
+const emitValue = (emitName, val) => {
+  emit(getEventName(emitName), val);
+  emit(getEventName('update'), val);
+};
+
+const getEventName = eventName => {
+  return refId.value !== defaultID ? `${eventName}:${refId.value}` : eventName;
+};
+
+const setObjectByPath = (object, path, value) => {
+  let pathArray = path.split(pathDelimiter);
+  let target = object;
+  pathArray.forEach((p, ix) => {
+    if (ix === pathArray.length - 1) {
+      target[p] = value;
+    } else {
+      if (!target[p]) {
+        target[p] = {};
       }
-    },
-    getEventName(eventName) {
-      return this.ref !== defaultID ? `${eventName}:${this.ref}` : eventName;
-    },
-    getEventParentName(eventName) {
-      return this.$parent.id !== defaultID ? `${eventName}:${this.$parent.id}` : eventName;
-    },
+      target = target[p];
+    }
+  });
+};
 
-    // PREPARE ARRAYS DATA & SCHEMA
-    setObjectByPath(object, path, value) {
-      // resolves chained keys (like 'user.adress.street') on an object and set the value
-      let pathArray = path.split(pathDelimiter);
-      pathArray.forEach((p, ix) => {
-        if (ix === pathArray.length - 1) this.$set(object, p, value);
-        object = object[p];
-      });
-    },
-    updateArrayFromState(data, schema) {
-      this.flatCombinedArray.forEach(obj => {
-        obj.value = get(data, obj.key, null); // get - lodash
-        obj.schema = get(schema, obj.key, null); // get - lodash
-      });
-    },
-    flattenObjects(dat, sch) {
-      let data = {};
-      let schema = {};
+const updateArrayFromState = (data, schema) => {
+  flatCombinedArray.value.forEach(obj => {
+    obj.value = get(data, obj.key, null);
+    obj.schema = get(schema, obj.key, null);
+  });
+};
 
-      Object.keys(dat).forEach(i => {
-        if (
-          (!Array.isArray(dat[i]) && dat[i] && typeof dat[i] === 'object') ||
-          (Array.isArray(dat[i]) && Array.isArray(sch[i]))
-        ) {
-          let { data: flatData, schema: flatSchema } = this.flattenObjects(dat[i], sch[i]);
-          Object.keys(flatData).forEach(ii => {
-            data[i + pathDelimiter + ii] = flatData[ii];
-            schema[i + pathDelimiter + ii] = flatSchema[ii];
-          });
-        } else {
-          data[i] = dat[i];
-          schema[i] = sch[i];
-        }
+const flattenObjects = (dat, sch) => {
+  let data = {};
+  let schema = {};
+
+  Object.keys(dat).forEach(i => {
+    if (
+      (!Array.isArray(dat[i]) && dat[i] && typeof dat[i] === 'object') ||
+      (Array.isArray(dat[i]) && Array.isArray(sch[i]))
+    ) {
+      let { data: flatData, schema: flatSchema } = flattenObjects(dat[i], sch[i]);
+      Object.keys(flatData).forEach(ii => {
+        data[i + pathDelimiter + ii] = flatData[ii];
+        schema[i + pathDelimiter + ii] = flatSchema[ii];
       });
-      return { data, schema };
-    },
-    combineObjectsToArray({ data, schema }) {
-      let arr = [];
-      Object.keys(data).forEach(key => {
+    } else {
+      data[i] = dat[i];
+      schema[i] = sch[i];
+    }
+  });
+  return { data, schema };
+};
+
+const combineObjectsToArray = ({ data, schema }) => {
+  let arr = [];
+  Object.keys(data).forEach(key => {
         if (!schema[key]) {
-          console.warn(
-            `Property '${key}' in Data has no correspondingly Schema Property is not editable and keeps untouched!`
-          );
           return;
         }
         if (!isPlainObject(schema[key])) {
-          console.warn(
-            `Prop '${key}' must have a correspondingly Property in Schema with at least ${key}:{ type:'text'} as value.  Prop '${key}' is not editable and keeps untouched!`
-          );
           return;
         }
-        arr.push({ key, value: data[key], schema: schema[key] });
-      });
-      return arr;
-    },
-    flattenAndCombineToArray(data, schema) {
-      // flatten nested structure of both objects 'data' & 'schema' ...
-      let flattenedObjects = this.flattenObjects(data, schema);
-
-      // ... and combine them to an array
-      return this.combineObjectsToArray(flattenedObjects);
-    }
-  },
-
-  created() {
-    this.flatCombinedArray = this.flattenAndCombineToArray(
-      this.storeStateData,
-      this.storeStateSchema
-    );
-  }
+    arr.push({ key, value: data[key], schema: schema[key] });
+  });
+  return arr;
 };
+
+const flattenAndCombineToArray = (data, schema) => {
+  let flattenedObjects = flattenObjects(data, schema);
+  return combineObjectsToArray(flattenedObjects);
+};
+
+onMounted(() => {
+  flatCombinedArray.value = flattenAndCombineToArray(storeStateData.value, storeStateSchema.value);
+});
 </script>

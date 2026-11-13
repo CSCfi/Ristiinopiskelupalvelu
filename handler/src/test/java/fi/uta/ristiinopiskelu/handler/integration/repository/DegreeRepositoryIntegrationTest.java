@@ -1,7 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.integration.repository;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.entity.DegreeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.persistence.repository.DegreeRepository;
@@ -30,7 +30,7 @@ public class DegreeRepositoryIntegrationTest {
 
         DegreeEntity degree = new DegreeEntity();
         degree.setId("HY-TIETS2");
-        degree.setName(new LocalisedString("Tietojärjestelmät", "Tietojärjestelmät", "Tietojärjestelmät"));
+        degree.setName(new LocalisedStringEntity("Tietojärjestelmät", "Tietojärjestelmät", "Tietojärjestelmät"));
         degree.setCreditsMin(new BigDecimal(5.0));
         degree.setCreditsMax(new BigDecimal(10.0));
         degree.setStudyElementIdentifierCode("TIETS2");
@@ -47,7 +47,7 @@ public class DegreeRepositoryIntegrationTest {
 
         DegreeEntity degree = new DegreeEntity();
         degree.setId("HY-UPDATE");
-        degree.setName(new LocalisedString("Tietojärjestelmät", "Tietojärjestelmät", "Tietojärjestelmät"));
+        degree.setName(new LocalisedStringEntity("Tietojärjestelmät", "Tietojärjestelmät", "Tietojärjestelmät"));
         degree.setCreditsMin(new BigDecimal(5.0));
         degree.setCreditsMax(new BigDecimal(10.0));
         degree.setStudyElementIdentifierCode("TIETS2");
@@ -55,7 +55,7 @@ public class DegreeRepositoryIntegrationTest {
         degreeRepository.create(degree);
 
         DegreeEntity degree2 = degreeRepository.findById("HY-UPDATE").get();
-        degree2.setName(new LocalisedString("Tietojärjestelmät muokattu", "Tietojärjestelmät muokattu", "Tietojärjestelmät muokattu"));
+        degree2.setName(new LocalisedStringEntity("Tietojärjestelmät muokattu", "Tietojärjestelmät muokattu", "Tietojärjestelmät muokattu"));
         degreeRepository.update(degree2);
         degreeRepository.findAll().forEach(
                 item -> logger.info("tulos: "+item.getName())
@@ -67,7 +67,7 @@ public class DegreeRepositoryIntegrationTest {
     public void testDeleteDegree() {
         DegreeEntity degree = new DegreeEntity();
         degree.setId("HY-DELETE");
-        degree.setName(new LocalisedString("Tietojärjestelmät", "Tietojärjestelmät", "Tietojärjestelmät"));
+        degree.setName(new LocalisedStringEntity("Tietojärjestelmät", "Tietojärjestelmät", "Tietojärjestelmät"));
         degree.setCreditsMin(new BigDecimal(5.0));
         degree.setCreditsMax(new BigDecimal(10.0));
         degree.setStudyElementIdentifierCode("TIETS2");

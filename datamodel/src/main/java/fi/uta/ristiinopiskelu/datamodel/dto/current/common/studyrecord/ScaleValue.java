@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.ScaleValueEntity;
 
 /**
  * VIRTA-codes, "Arvosteluasteikko"
@@ -39,5 +40,9 @@ public enum ScaleValue {
     @Override
     public String toString() {
         return String.valueOf(this.code);
+    }
+
+    public static ScaleValue from(ScaleValueEntity source) {
+        return source == null ? null : fromValue(source.getCode());
     }
 }

@@ -1,8 +1,12 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * 
@@ -21,6 +25,13 @@ public class LocalisedString {
 
     public LocalisedString() {
         values = new HashMap<>();
+    }
+
+    public LocalisedString(String fi) {
+        this();
+        if (fi != null) {
+            values.put(Language.FI, fi);
+        }
     }
 
     public LocalisedString(String fi, String en, String sv) {
@@ -63,8 +74,56 @@ public class LocalisedString {
         this.values = values;
     }
 
+    public static String getPreferredValue(LocalisedString localisedString, List<Language> preferredLanguageOrder) {
+        Assert.notNull(localisedString, "localisedString cannot be null");
+        Assert.notEmpty(preferredLanguageOrder, "preferredLanguageOrder cannot be empty");
+
+        for(Language language : preferredLanguageOrder) {
+            String value = localisedString.getValue(language);
+
+            if(StringUtils.hasText(value)) {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
     @Override
     public String toString() {
         return "LocalisedString[fi='" + values.get(Language.FI) + "', en='" + values.get(Language.EN) + "', sv='" + values.get(Language.SV) + "']";
+    }
+
+    public static LocalisedString from(fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString source) {
+
+        if (source == null) {
+            return null;
+        }
+
+        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString target =
+            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString();
+        if (source.getValues() == null) {
+            return target;
+        }
+
+        source.getValues().forEach((language, value) ->
+            target.addValue(fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language.valueOf(language.name()), value));
+        return target;
+    }
+
+    public static LocalisedString from(LocalisedStringEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString target =
+            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString();
+        if (source.getValues() == null) {
+            return target;
+        }
+
+        source.getValues().forEach((language, value) ->
+            target.addValue(fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language.valueOf(language.name()), value));
+        return target;
     }
 }

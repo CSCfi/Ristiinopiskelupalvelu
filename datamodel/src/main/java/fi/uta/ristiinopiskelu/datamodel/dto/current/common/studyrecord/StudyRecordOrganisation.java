@@ -1,6 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord;
 
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Address;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Phone;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.StudyRecordOrganisationEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(name = "StudyRecordOrganisationV9", title = "StudyRecordOrganisationV9")
@@ -83,5 +86,29 @@ public class StudyRecordOrganisation extends Organisation {
 
   public void setErasmusOrganisationName(String erasmusOrganisationName) {
     this.erasmusOrganisationName = erasmusOrganisationName;
+  }
+
+  public static StudyRecordOrganisation from(StudyRecordOrganisationEntity source) {
+    if (source == null) {
+      return null;
+    }
+    StudyRecordOrganisation target = new StudyRecordOrganisation();
+    target.setOrganisationIdentifier(source.getOrganisationIdentifier());
+    target.setOrganisationTkCode(source.getOrganisationTkCode());
+    target.setOrganisationName(fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString.from(source.getOrganisationName()));
+    target.setUnitName(fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString.from(source.getUnitName()));
+    target.setNameDescription(fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString.from(source.getNameDescription()));
+    target.setPostalAddress(Address.from(source.getPostalAddress()));
+    target.setStreetAddress(Address.from(source.getStreetAddress()));
+    target.setMunicipalityCode(source.getMunicipalityCode());
+    target.setPhone(Phone.from(source.getPhone()));
+    target.setUrl(source.getUrl());
+    target.setPIC(source.getPIC());
+    target.setErasmusCode(source.getErasmusCode());
+    target.setHEI(source.getHEI());
+    target.setErasmusCharterCode(source.getErasmusCharterCode());
+    target.setErasmusOrganisationStatisticsCode(source.getErasmusOrganisationStatisticsCode());
+    target.setErasmusOrganisationName(source.getErasmusOrganisationName());
+    return target;
   }
 }

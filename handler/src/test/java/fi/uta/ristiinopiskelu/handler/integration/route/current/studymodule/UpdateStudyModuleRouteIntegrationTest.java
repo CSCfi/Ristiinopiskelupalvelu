@@ -8,6 +8,10 @@ import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -33,7 +37,6 @@ import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,9 +93,6 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
     @Autowired
     private ElasticsearchTemplate elasticsearchTemplate;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
     @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
@@ -105,23 +105,23 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         for(String organisationId : organisationIds) {
             if(!organisationService.findById(organisationId).isPresent()) {
                 OrganisationEntity organisation = EntityInitializer.getOrganisationEntity(organisationId, organisationId,
-                    new LocalisedString(organisationId, null, null), this.messageSchemaVersion);
-                organisationService.create(modelMapper.map(organisation, OrganisationEntity.class));
+                    new LocalisedStringEntity(organisationId, null, null), this.messageSchemaVersion);
+                organisationService.create(organisation);
             }
         }
     }
 
     @Test
     public void testSendingUpdateStudyModuleMessage_shouldSuccess() throws JMSException, IOException {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-            "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-            new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+            "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+            new LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -134,27 +134,29 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(studyModuleEntity.getName().getValue("fi"), entity.getName().getValue("fi"));
 
         String updateJson =
-            "{\n" +
-                "\t\"studyModule\": {\n" +
-                "\t\t\"studyElementId\": \"ID1\",\n" +
-                "\t\t\"status\": \"ARCHIVED\",\n" +
-                "\t\t\"name\": {\n" +
-                "\t\t\t\"values\": {\n" +
-                "\t\t\t\t\"fi\": \"Kokonaisuuden nimi 2\",\n" +
-                "\t\t\t\t\"en\": \"Kokonaisuuden nimi 2 Englanniksi\",\n" +
-                "\t\t\t\t\"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\"\n" +
-                "\t\t\t}\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+            """
+                {
+                	"studyModule": {
+                		"studyElementId": "ID1",
+                		"status": "ARCHIVED",
+                		"name": {
+                			"values": {
+                				"fi": "Kokonaisuuden nimi 2",
+                				"en": "Kokonaisuuden nimi 2 Englanniksi",
+                				"sv": "Kokonaisuuden nimi 2 Ruotsiksi"
+                			}
+                		}
+                	}
+                }
+            """;
 
-        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getCreatedTime());
@@ -163,23 +165,23 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(StudyStatus.ARCHIVED, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ARCHIVED.name(), updatedEntity.getStatus().name());
     }
 
     @Test
     public void testSendingUpdateStudyModuleMessage_noCooperationNetworkNameOrStatusGiven_shouldFillCooperationNetworkFields() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
-        NetworkEntity networkEntity = persistNetworkEntity("CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(networkEntity.getId(), new LocalisedString("HEIHEI", null, null),
+        NetworkEntity networkEntity = persistNetworkEntity("CN-1", new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(networkEntity.getId(), new LocalisedStringEntity("HEIHEI", null, null),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-            "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-            new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
-        studyModuleEntity.setStatus(StudyStatus.ACTIVE);
+            "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+            new LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+        studyModuleEntity.setStatus(StudyStatusEntity.ACTIVE);
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -196,31 +198,33 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
                 && network.getName().getValue("sv").equals(createdCn.getName().getValue("sv"))));
 
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"cooperationNetworks\": [\n" +
-                "            {\n" +
-                "                \"id\": \"" + networkEntity.getId() +"\",\n" +
-                "                \"enrollable\": true\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "cooperationNetworks": [
+                            {
+                                "id": "%s",
+                                "enrollable": true
+                            }
+                        ]
+                    }
+                }
+            """.formatted(networkEntity.getId());
 
-        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getCreatedTime());
         assertEquals(updatedEntity.getCreatedTime(), entity.getCreatedTime());
         assertNotNull(updatedEntity.getUpdateTime());
-        assertEquals(StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
         assertTrue(updatedEntity.getCooperationNetworks().stream()
             .allMatch(updatedCn -> networkEntity.getId().equals(updatedCn.getId())
                 && networkEntity.getName().getValue("fi").equals(updatedCn.getName().getValue("fi"))
@@ -231,15 +235,15 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
     @Test
     public void testStudyModuleIdMapsCorrectlyToSource_shouldSuccess() throws JMSException, IOException {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-            "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-            new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+            "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+            new LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleEntity = studyModuleRepository.create(studyModuleEntity);
 
@@ -255,15 +259,15 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
     @Test
     public void testSendingUpdateStudyModuleMessageWithEmptyCooperationNetworks_shouldSuccess() throws JMSException, IOException {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-            "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-            new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+            "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+            new LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -276,30 +280,30 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(studyModuleEntity.getName().getValue("fi"), entity.getName().getValue("fi"));
 
         String updateJson =
-            "{\n" +
-                "\t\"studyModule\": {\n" +
-                "\t\t\"studyElementId\": \"ID1\",\n" +
-                "\t\t\"status\": \"ARCHIVED\",\n" +
-                "\t\t\"name\": {\n" +
-                "\t\t\t\"values\": {\n" +
-                "\t\t\t\t\"fi\": \"Kokonaisuuden nimi 2\",\n" +
-                "\t\t\t\t\"en\": \"Kokonaisuuden nimi 2 Englanniksi\",\n" +
-                "\t\t\t\t\"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\"\n" +
-                "\t\t\t\t}\n" +
-                "\t\t\t},\n" +
-                "\t\t\"cooperationNetworks\": [\n" +
-                "\t\t\t]\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "status": "ARCHIVED",
+                        "name": {
+                            "values": {
+                                "fi": "Kokonaisuuden nimi 2",
+                                "en": "Kokonaisuuden nimi 2 Englanniksi",
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi"
+                            }
+                        },
+                        "cooperationNetworks": []
+                    }
+                }
+            """;
 
-        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getCreatedTime());
@@ -308,20 +312,20 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(StudyStatus.ARCHIVED, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ARCHIVED.name(), updatedEntity.getStatus().name());
     }
     
     @Test
     public void testSendingUpdateStudyModuleMessage_shouldNotFailBecauseOfExtraField() throws JMSException, IOException {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-            "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-            new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+            "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+            new LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -334,15 +338,16 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(studyModuleEntity.getName().getValue("fi"), entity.getName().getValue("fi"));
 
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"thisdoesnotexist\": \"randomcontent\"\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "thisdoesnotexist": "randomcontent"
+                    }
+                }
+            """;
 
-        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         assertNotNull(responseMessage);
 
         Object updResponse = jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -353,15 +358,15 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
     @Test
     public void testSendingUpdateStudyModuleMessage_shouldSuccessAndCreateHistory() throws JMSException, IOException {
-        CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity network = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto", null, null), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation("TUNI", "TUNI");
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(
-            "ID1", "RAIRAI", organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network),
-            new LocalisedString("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
+            "ID1", "RAIRAI", organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(network),
+            new LocalisedStringEntity("Kokonaisuuden nimi 1", "Kokonaisuuden nimi 1 Englanniksi", null));
 
         studyModuleRepository.create(studyModuleEntity);
 
@@ -374,27 +379,29 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(studyModuleEntity.getName().getValue("fi"), entity.getName().getValue("fi"));
 
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"name\": {\n" +
-                "            \"values\": {\n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\",\n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\",\n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\"\n" +
-                "            }\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "name": {
+                            "values": {
+                                "fi": "Kokonaisuuden nimi 2",
+                                "en": "Kokonaisuuden nimi 2 Englanniksi",
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi"
+                            }
+                        }
+                    }
+                }
+            """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getCreatedTime());
@@ -421,28 +428,30 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(studyModuleEntity.getName().getValue("en"), historyEntity.getName().getValue("en"));
 
         String updateJson2 =
-            "{\n" +
-                "    \"studyModule\": {\n" +
-                "        \"studyElementId\": \"ID1\",\n" +
-                "        \"studyElementIdentifierCode\": \"RAIRAI\",\n" +
-                "        \"name\": {\n" +
-                "            \"values\": {\n" +
-                "                \"fi\": \"Kokonaisuuden nimi 3\",\n" +
-                "                \"en\": \"Kokonaisuuden nimi 3 Englanniksi\",\n" +
-                "                \"sv\": \"Kokonaisuuden nimi 3 Ruotsiksi\"\n" +
-                "            }\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": {
+                        "studyElementId": "ID1",
+                        "studyElementIdentifierCode": "RAIRAI",
+                        "name": {
+                            "values": {
+                                "fi": "Kokonaisuuden nimi 3",
+                                "en": "Kokonaisuuden nimi 3 Englanniksi",
+                                "sv": "Kokonaisuuden nimi 3 Ruotsiksi"
+                            }
+                        }
+                    }
+                }
+            """;
 
         responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson2, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
         assertTrue(resp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity2 = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModuleEntity.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModuleEntity.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity2);
         assertNotNull(updatedEntity2.getCreatedTime());
@@ -478,10 +487,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
@@ -502,63 +511,66 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Create new course unit to be added to study module
         CourseUnitEntity courseUnitEntityToAddRefs = EntityInitializer.getCourseUnitEntity("CU-2", "CU-CODE2",
-            organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network), new LocalisedString("OJ 2", null, null));
+            organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(toEntityCooperationNetwork(network)),
+            new LocalisedStringEntity("OJ 2", null, null));
 
         courseUnitRepository.create(courseUnitEntityToAddRefs);
 
         // SEND UPDATE STUDY MODULE MESSAGE
 
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnitEntityToAddRefs.getStudyElementId() + "\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": { 
+                        "studyElementId": "ID1", 
+                        "name": { 
+                            "values": { 
+                                "fi": "Kokonaisuuden nimi 2", 
+                                "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                            } 
+                        }, 
+                        "subElements": [
+                            {
+                                "studyElementId": "%s", 
+                                "type": "COURSE_UNIT",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            """.formatted(courseUnitEntityToAddRefs.getStudyElementId());
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify parent study module updated
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -566,11 +578,11 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         // Verify one course unit is found with parent reference to parent study module
         List<CourseUnitEntity> courseUnitEntities = courseUnitRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-            organisationReference.getOrganisation().getOrganisationTkCode(), CourseUnitEntity.class);
+            organisationReference.getTarget().getOrganisationTkCode(), CourseUnitEntity.class);
 
         assertNotNull(courseUnitEntities);
         assertTrue(courseUnitEntities.size() == 1);
@@ -580,10 +592,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
         // Verify existing reference to course unit is removed
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(0, courseUnitEntityCreatedWithModule.getParents().size());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
     }
 
     @Test
@@ -591,10 +603,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
@@ -624,109 +636,112 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         // Verify course unit created and has parent reference
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            subCourseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subCourseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(1, courseUnitEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Verify course unit created and has parent reference
         StudyModuleEntity studyModuleEntityCreatedWithModule = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(studyModuleEntityCreatedWithModule);
         assertEquals(1, studyModuleEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, studyModuleEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), studyModuleEntityCreatedWithModule.getStatus().name());
 
         // Verify course unit created and has parent reference
         StudyModuleEntity studyModuleRefToBeRemoved = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            subStudyModuleRefToBeRemoved.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subStudyModuleRefToBeRemoved.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(studyModuleRefToBeRemoved);
         assertEquals(1, studyModuleRefToBeRemoved.getParents().size());
         assertEquals(studyModule.getStudyElementId(), studyModuleRefToBeRemoved.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), studyModuleRefToBeRemoved.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, studyModuleRefToBeRemoved.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, studyModuleRefToBeRemoved.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), studyModuleRefToBeRemoved.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), studyModuleRefToBeRemoved.getStatus().name());
 
         // Create new study module to be added to study module
         StudyModuleEntity studyModuleEntityToAddRefs = EntityInitializer.getStudyModuleEntity("OK-2", "OK-CODE2",
-            organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network), new LocalisedString("OK 2", null, null));
+            organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(toEntityCooperationNetwork(network)),
+            new LocalisedStringEntity("OK 2", null, null));
 
         studyModuleRepository.create(studyModuleEntityToAddRefs);
 
         // Send update study module message with same sub study elements and one new
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ studyModuleEntityCreatedWithModule.getStudyElementId() + "\", \n" +
-                "                \"type\": \"STUDY_MODULE\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnitEntityCreatedWithModule.getStudyElementId() + "\", \n" +
-                "                \"studyElementIdentifierCode\": \""+ courseUnitEntityCreatedWithModule.getStudyElementIdentifierCode() + "\",\n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ studyModuleEntityToAddRefs.getStudyElementId() + "\", \n" +
-                "                \"studyElementIdentifierCode\": \""+ studyModuleEntityToAddRefs.getStudyElementIdentifierCode() + "\",\n" +
-                "                \"type\": \"STUDY_MODULE\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": { 
+                        "studyElementId": "ID1", 
+                        "name": { 
+                            "values": { 
+                                "fi": "Kokonaisuuden nimi 2", 
+                                "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                            } 
+                        }, 
+                        "subElements": [
+                            {
+                                "studyElementId": "%s", 
+                                "type": "STUDY_MODULE",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ]
+                            },
+                            {
+                                "studyElementId": "%s", 
+                                "studyElementIdentifierCode": "%s",
+                                "type": "COURSE_UNIT",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ]
+                            },
+                            {
+                                "studyElementId": "%s", 
+                                "studyElementIdentifierCode": "%s",
+                                "type": "STUDY_MODULE",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            """.formatted(studyModuleEntityCreatedWithModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getStudyElementIdentifierCode(), studyModuleEntityToAddRefs.getStudyElementId(), studyModuleEntityToAddRefs.getStudyElementIdentifierCode());
 
-        Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getOrganisation().getOrganisationTkCode());
+        Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(), organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify parent study module updated
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -734,44 +749,44 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         // Verify parent reference is not duplicated
         studyModuleEntityCreatedWithModule = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(studyModuleEntityCreatedWithModule);
         assertEquals(1, studyModuleEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, studyModuleEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), studyModuleEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), studyModuleEntityCreatedWithModule.getStatus().name());
 
         // Verify parent reference is not duplicated
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            subCourseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subCourseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(1, courseUnitEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Verify parent reference is added
         StudyModuleEntity studyModuleRefsAdded = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-                studyModuleEntityToAddRefs.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode())
+                studyModuleEntityToAddRefs.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode())
             .orElse(null);
         assertNotNull(studyModuleRefsAdded);
         assertEquals(1, studyModuleRefsAdded.getParents().size());
         assertEquals(studyModule.getStudyElementId(), studyModuleRefsAdded.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), studyModuleRefsAdded.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, studyModuleRefsAdded.getParents().get(0).getReferenceType());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), studyModuleRefsAdded.getParents().get(0).getReferenceType().name());
 
         // Verify study module parent reference was removed
         studyModuleRefToBeRemoved = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            subStudyModuleRefToBeRemoved.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subStudyModuleRefToBeRemoved.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(studyModuleRefToBeRemoved);
         assertEquals(0, studyModuleRefToBeRemoved.getParents().size());
-        assertEquals(StudyStatus.ACTIVE, studyModuleRefToBeRemoved.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), studyModuleRefToBeRemoved.getStatus().name());
     }
 
     @Test
@@ -779,10 +794,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
@@ -803,75 +818,78 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Create new study module to be added to study module
         StudyModuleEntity studyModuleEntityToAddRefs = EntityInitializer.getStudyModuleEntity("OK-2", "OK-CODE2",
-            organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network), new LocalisedString("OK 2", null, null));
+            organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(toEntityCooperationNetwork(network)),
+            new LocalisedStringEntity("OK 2", null, null));
 
         studyModuleRepository.save(studyModuleEntityToAddRefs);
 
         // SEND UPDATE STUDY MODULE MESSAGE
 
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnitEntityCreatedWithModule.getStudyElementId() + "\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ studyModuleEntityToAddRefs.getStudyElementId() + "\", \n" +
-                "                \"type\": \"STUDY_MODULE\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": { 
+                        "studyElementId": "ID1", 
+                        "name": { 
+                            "values": { 
+                                "fi": "Kokonaisuuden nimi 2", 
+                                "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                            } 
+                        }, 
+                        "subElements": [
+                            {
+                                "studyElementId": "%s", 
+                                "type": "COURSE_UNIT",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ]
+                            },
+                            {
+                                "studyElementId": "%s", 
+                                "type": "STUDY_MODULE",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            """.formatted(courseUnitEntityCreatedWithModule.getStudyElementId(), studyModuleEntityToAddRefs.getStudyElementId());
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -879,10 +897,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         List<StudyModuleEntity> studyModuleEntities = studyModuleRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-            organisationReference.getOrganisation().getOrganisationTkCode(), StudyModuleEntity.class);
+            organisationReference.getTarget().getOrganisationTkCode(), StudyModuleEntity.class);
         assertNotNull(studyModuleEntities);
         assertTrue(studyModuleEntities.size() == 1);
         assertEquals(studyModuleEntityToAddRefs.getStudyElementId(), studyModuleEntities.get(0).getStudyElementId());
@@ -890,12 +908,12 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(studyModuleEntityToAddRefs.getOrganizingOrganisationId(), studyModuleEntities.get(0).getOrganizingOrganisationId());
 
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
     }
 
     @Test
@@ -903,10 +921,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
@@ -927,63 +945,66 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Create new course unit to be added to study module
         CourseUnitEntity courseUnitEntityToAddRefs = EntityInitializer.getCourseUnitEntity("CU/2", "CU/CODE2",
-            organisationReference.getOrganisation().getOrganisationTkCode(), Collections.singletonList(network), new LocalisedString("OJ 2", null, null));
+            organisationReference.getTarget().getOrganisationTkCode(), Collections.singletonList(toEntityCooperationNetwork(network)),
+            new LocalisedStringEntity("OJ 2", null, null));
 
         courseUnitRepository.create(courseUnitEntityToAddRefs);
 
         // SEND UPDATE STUDY MODULE MESSAGE
 
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"" + studyModule.getStudyElementId() + "\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnitEntityToAddRefs.getStudyElementId() + "\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": { 
+                        "studyElementId": "%s", 
+                        "name": { 
+                            "values": { 
+                                "fi": "Kokonaisuuden nimi 2", 
+                                "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                            } 
+                        }, 
+                        "subElements": [
+                            {
+                                "studyElementId": "%s", 
+                                "type": "COURSE_UNIT",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            """.formatted(studyModule.getStudyElementId(), courseUnitEntityToAddRefs.getStudyElementId());
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify parent study module updated
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -991,11 +1012,11 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         // Verify one course unit is found with parent reference to parent study module
         List<CourseUnitEntity> courseUnitEntities = courseUnitRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-            organisationReference.getOrganisation().getOrganisationTkCode(), CourseUnitEntity.class);
+            organisationReference.getTarget().getOrganisationTkCode(), CourseUnitEntity.class);
 
         assertNotNull(courseUnitEntities);
         assertTrue(courseUnitEntities.size() == 1);
@@ -1005,10 +1026,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
         // Verify existing reference to course unit is removed
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(0, courseUnitEntityCreatedWithModule.getParents().size());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
     }
 
     @Test
@@ -1016,10 +1037,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
@@ -1036,42 +1057,44 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         // SEND UPDATE STUDY MODULE MESSAGE
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \"NOTFOUND_ID\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"NOT_FOUND\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ]\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": { 
+                        "studyElementId": "ID1", 
+                        "name": { 
+                            "values": { 
+                                "fi": "Kokonaisuuden nimi 2", 
+                                "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                            } 
+                        }, 
+                        "subElements": [
+                            {
+                                "studyElementId": "NOTFOUND_ID", 
+                                "type": "COURSE_UNIT",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "NOT_FOUND"
+                                       }
+                                   }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            """;
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.FAILED);
     }
@@ -1081,10 +1104,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
@@ -1109,53 +1132,55 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         StudyModuleEntity createdSubStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModuleEntity);
         assertNotNull(createdSubStudyModuleEntity.getCreatedTime());
         assertEquals(1, createdSubStudyModuleEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyStatus.ACTIVE, createdSubStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdSubStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(1, courseUnitEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Send update study module to remove all sub elements
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": []\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": { 
+                        "studyElementId": "ID1", 
+                        "name": { 
+                            "values": { 
+                                "fi": "Kokonaisuuden nimi 2", 
+                                "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                            } 
+                        }, 
+                        "subElements": []
+                    }
+                }
+            """;
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -1163,27 +1188,27 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         List<StudyModuleEntity> studyModuleEntitiesWithRef = studyModuleRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-            organisationReference.getOrganisation().getOrganisationTkCode(), StudyModuleEntity.class);
+            organisationReference.getTarget().getOrganisationTkCode(), StudyModuleEntity.class);
         assertNotNull(studyModuleEntitiesWithRef);
         assertTrue(studyModuleEntitiesWithRef.size() == 0);
 
         List<CourseUnitEntity> courseUnitEntitiesWithRef = courseUnitRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-            organisationReference.getOrganisation().getOrganisationTkCode(), CourseUnitEntity.class);;
+            organisationReference.getTarget().getOrganisationTkCode(), CourseUnitEntity.class);;
         assertNotNull(courseUnitEntitiesWithRef);
         assertTrue(courseUnitEntitiesWithRef.size() == 0);
 
         // Double check references have been removed
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertNotNull(courseUnitEntityCreatedWithModule.getUpdateTime());
         assertEquals(0, courseUnitEntityCreatedWithModule.getParents().size());
 
         createdSubStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModuleEntity);
         assertNotNull(createdSubStudyModuleEntity.getCreatedTime());
         assertEquals(0, createdSubStudyModuleEntity.getParents().size());
@@ -1194,10 +1219,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
@@ -1222,53 +1247,55 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         StudyModuleEntity createdSubStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModuleEntity);
         assertNotNull(createdSubStudyModuleEntity.getCreatedTime());
         assertEquals(1, createdSubStudyModuleEntity.getParents().size());
         assertEquals(studyModule.getStudyElementId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), createdSubStudyModuleEntity.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyStatus.ACTIVE, createdSubStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdSubStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(1, courseUnitEntityCreatedWithModule.getParents().size());
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Send update study module to remove all sub elements
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": null\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": { 
+                        "studyElementId": "ID1", 
+                        "name": { 
+                            "values": { 
+                                "fi": "Kokonaisuuden nimi 2", 
+                                "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                            } 
+                        }, 
+                        "subElements": null
+                    }
+                }
+            """;
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -1276,27 +1303,27 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         List<StudyModuleEntity> studyModuleEntitiesWithRef = studyModuleRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-            organisationReference.getOrganisation().getOrganisationTkCode(), StudyModuleEntity.class);
+            organisationReference.getTarget().getOrganisationTkCode(), StudyModuleEntity.class);
         assertNotNull(studyModuleEntitiesWithRef);
         assertTrue(studyModuleEntitiesWithRef.size() == 0);
 
         List<CourseUnitEntity> courseUnitEntitiesWithRef = courseUnitRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-            organisationReference.getOrganisation().getOrganisationTkCode(), CourseUnitEntity.class);;
+            organisationReference.getTarget().getOrganisationTkCode(), CourseUnitEntity.class);;
         assertNotNull(courseUnitEntitiesWithRef);
         assertTrue(courseUnitEntitiesWithRef.size() == 0);
 
         // Double check references have been removed
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertNotNull(courseUnitEntityCreatedWithModule.getUpdateTime());
         assertEquals(0, courseUnitEntityCreatedWithModule.getParents().size());
 
         createdSubStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            subStudyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            subStudyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdSubStudyModuleEntity);
         assertNotNull(createdSubStudyModuleEntity.getCreatedTime());
         assertEquals(0, createdSubStudyModuleEntity.getParents().size());
@@ -1307,10 +1334,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
@@ -1331,90 +1358,92 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         StudyModuleEntity createdStudyModuleEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(createdStudyModuleEntity);
         assertNotNull(createdStudyModuleEntity.getCreatedTime());
-        assertEquals(StudyStatus.ACTIVE, createdStudyModuleEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), createdStudyModuleEntity.getStatus().name());
 
         CourseUnitEntity courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
 
         // Create new study module to be added to study module
         StudyModuleEntity studyModuleEntityToAddRefs = EntityInitializer.getStudyModuleEntity(
-            "OK-2", "OK-CODE2", organisationReference.getOrganisation().getOrganisationTkCode(),
-            Collections.singletonList(network), new LocalisedString("OK 2", "OK 2 en", null));
+            "OK-2", "OK-CODE2", organisationReference.getTarget().getOrganisationTkCode(),
+            Collections.singletonList(toEntityCooperationNetwork(network)), new LocalisedStringEntity("OK 2", "OK 2 en", null));
 
         studyModuleRepository.save(studyModuleEntityToAddRefs);
 
         // SEND UPDATE STUDY MODULE MESSAGE
 
         String updateJson =
-            "{\n" +
-                "    \"studyModule\": { \n" +
-                "        \"studyElementId\": \"ID1\", \n" +
-                "        \"name\": { \n" +
-                "            \"values\": { \n" +
-                "                \"fi\": \"Kokonaisuuden nimi 2\", \n" +
-                "                \"en\": \"Kokonaisuuden nimi 2 Englanniksi\", \n" +
-                "                \"sv\": \"Kokonaisuuden nimi 2 Ruotsiksi\" \n" +
-                "            } \n" +
-                "        }, \n" +
-                "        \"subElements\": [\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ courseUnitEntityCreatedWithModule.getStudyElementId() + "\", \n" +
-                "                \"type\": \"COURSE_UNIT\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ],\n" +
-                "                \"name\": { \n" +
-                "                    \"values\": { \n" +
-                "                        \"fi\": \"Opintojakson nimi 2\", \n" +
-                "                        \"en\": \"Opintojakson nimi 2 Englanniksi\", \n" +
-                "                        \"sv\": \"Opintojakson nimi 2 Ruotsiksi\" \n" +
-                "                    } \n" +
-                "               }\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"studyElementId\": \""+ studyModuleEntityToAddRefs.getStudyElementId() + "\", \n" +
-                "                \"type\": \"STUDY_MODULE\",\n" +
-                "                \"organisationReferences\": [\n" +
-                "                   {\n" +
-                "                       \"organisationRole\": 1,\n" +
-                "                       \"target\": {\n" +
-                "                           \"organisationTkCode\": \"TUNI\"\n" +
-                "                       }\n" +
-                "                   }\n" +
-                "                ],\n" +
-                "                \"name\": { \n" +
-                "                    \"values\": { \n" +
-                "                        \"fi\": \"OK 3\", \n" +
-                "                        \"en\": \"OK 3 en\", \n" +
-                "                        \"sv\": \"OK 3 sv\" \n" +
-                "                    } \n" +
-                "               }\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }\n" +
-                "}";
+            """
+                {
+                    "studyModule": { 
+                        "studyElementId": "ID1", 
+                        "name": { 
+                            "values": { 
+                                "fi": "Kokonaisuuden nimi 2", 
+                                "en": "Kokonaisuuden nimi 2 Englanniksi", 
+                                "sv": "Kokonaisuuden nimi 2 Ruotsiksi" 
+                            } 
+                        }, 
+                        "subElements": [
+                            {
+                                "studyElementId": "%s", 
+                                "type": "COURSE_UNIT",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ],
+                                "name": { 
+                                    "values": { 
+                                        "fi": "Opintojakson nimi 2", 
+                                        "en": "Opintojakson nimi 2 Englanniksi", 
+                                        "sv": "Opintojakson nimi 2 Ruotsiksi" 
+                                    } 
+                               }
+                            },
+                            {
+                                "studyElementId": "%s", 
+                                "type": "STUDY_MODULE",
+                                "organisationReferences": [
+                                   {
+                                       "organisationRole": 1,
+                                       "target": {
+                                           "organisationTkCode": "TUNI"
+                                       }
+                                   }
+                                ],
+                                "name": { 
+                                    "values": { 
+                                        "fi": "OK 3", 
+                                        "en": "OK 3 en", 
+                                        "sv": "OK 3 sv" 
+                                    } 
+                               }
+                            }
+                        ]
+                    }
+                }
+            """.formatted(courseUnitEntityCreatedWithModule.getStudyElementId(), studyModuleEntityToAddRefs.getStudyElementId());
 
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_STUDYMODULE_REQUEST.name(),
-            organisationReference.getOrganisation().getOrganisationTkCode());
+            organisationReference.getTarget().getOrganisationTkCode());
         DefaultResponse updResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
         assertTrue(updResp.getStatus() == Status.OK);
 
         // Verify created study module exists
         StudyModuleEntity updatedEntity = studyModuleService.findByStudyElementIdAndOrganizingOrganisationId(
-            studyModule.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            studyModule.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
 
         assertNotNull(updatedEntity);
         assertEquals(updatedEntity.getCreatedTime(), createdStudyModuleEntity.getCreatedTime());
@@ -1422,10 +1451,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals("Kokonaisuuden nimi 2", updatedEntity.getName().getValue("fi"));
         assertEquals("Kokonaisuuden nimi 2 Englanniksi", updatedEntity.getName().getValue("en"));
         assertEquals("Kokonaisuuden nimi 2 Ruotsiksi", updatedEntity.getName().getValue("sv"));
-        assertEquals(StudyStatus.ACTIVE, updatedEntity.getStatus());
+        assertEquals(StudyStatus.ACTIVE.name(), updatedEntity.getStatus().name());
 
         List<StudyModuleEntity> studyModuleEntities = studyModuleRepository.findByStudyElementReference(studyModule.getStudyElementId(),
-            organisationReference.getOrganisation().getOrganisationTkCode(), StudyModuleEntity.class);
+            organisationReference.getTarget().getOrganisationTkCode(), StudyModuleEntity.class);
         assertNotNull(studyModuleEntities);
         assertTrue(studyModuleEntities.size() == 1);
         assertEquals(studyModuleEntityToAddRefs.getStudyElementId(), studyModuleEntities.get(0).getStudyElementId());
@@ -1436,12 +1465,12 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(studyModuleEntityToAddRefs.getName().getValue("sv"), studyModuleEntities.get(0).getName().getValue("sv"));
 
         courseUnitEntityCreatedWithModule = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
-            courseUnit.getStudyElementId(), organisationReference.getOrganisation().getOrganisationTkCode()).orElse(null);
+            courseUnit.getStudyElementId(), organisationReference.getTarget().getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntityCreatedWithModule);
         assertEquals(studyModule.getStudyElementId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceIdentifier());
         assertEquals(createdStudyModuleEntity.getOrganizingOrganisationId(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType());
-        assertEquals(StudyStatus.ACTIVE, courseUnitEntityCreatedWithModule.getStatus());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), courseUnitEntityCreatedWithModule.getParents().get(0).getReferenceType().name());
+        assertEquals(StudyStatus.ACTIVE.name(), courseUnitEntityCreatedWithModule.getStatus().name());
         assertEquals(courseUnit.getName().getValue("fi"), courseUnitEntityCreatedWithModule.getName().getValue("fi"));
         assertEquals(courseUnit.getName().getValue("en"), courseUnitEntityCreatedWithModule.getName().getValue("en"));
         assertEquals(courseUnit.getName().getValue("sv"), courseUnitEntityCreatedWithModule.getName().getValue("sv"));
@@ -1453,10 +1482,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String courseUnitOrganisingOrganisationId = "LAUREA";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(studyModuleOrganisingOrganisationId, courseUnitOrganisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(studyModuleOrganisingOrganisationId, courseUnitOrganisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation studyModuleOrganisation = DtoInitializer.getOrganisation(studyModuleOrganisingOrganisationId, studyModuleOrganisingOrganisationId);
         Organisation courseUnitOrganisation = DtoInitializer.getOrganisation(courseUnitOrganisingOrganisationId, courseUnitOrganisingOrganisationId);
@@ -1491,7 +1520,7 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         studyModule.setSubElements(Collections.singletonList(courseUnit));
 
         UpdateStudyModuleRequest updateStudyModuleRequest = new UpdateStudyModuleRequest();
-        updateStudyModuleRequest.setStudyModule(this.modelMapper.map(studyModule, StudyModuleWriteDTO.class));
+        updateStudyModuleRequest.setStudyModule(studyModule);
 
         Message studyModuleUpdateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateStudyModuleRequest, studyModuleOrganisation.getOrganisationTkCode());
         DefaultResponse studyModuleUpdateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(studyModuleUpdateResponseMessage);
@@ -1504,11 +1533,11 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertNotNull(courseUnitEntity.getParents());
         assertEquals(1, courseUnitEntity.getParents().size());
 
-        StudyElementReference studyModuleReference = courseUnitEntity.getParents().get(0);
+        StudyElementReferenceEntity studyModuleReference = courseUnitEntity.getParents().get(0);
 
         assertEquals(studyModule.getStudyElementId(), studyModuleReference.getReferenceIdentifier());
         assertEquals(studyModuleOrganisation.getOrganisationTkCode(), studyModuleReference.getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, studyModuleReference.getReferenceType());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), studyModuleReference.getReferenceType().name());
     }
 
     @Test
@@ -1517,10 +1546,10 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String courseUnitOrganisingOrganisationId = "LAUREA";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(studyModuleOrganisingOrganisationId, courseUnitOrganisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(studyModuleOrganisingOrganisationId, courseUnitOrganisingOrganisationId));
 
         CooperationNetwork network = DtoInitializer.getCooperationNetwork(
-            networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            networkEntity.getId(), toDtoLocalisedString(networkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation studyModuleOrganisation = DtoInitializer.getOrganisation(studyModuleOrganisingOrganisationId, studyModuleOrganisingOrganisationId);
         Organisation courseUnitOrganisation = DtoInitializer.getOrganisation(courseUnitOrganisingOrganisationId, courseUnitOrganisingOrganisationId);
@@ -1555,7 +1584,7 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         studyModule.setSubElements(Collections.singletonList(courseUnit));
 
         UpdateStudyModuleRequest updateStudyModuleRequest = new UpdateStudyModuleRequest();
-        updateStudyModuleRequest.setStudyModule(this.modelMapper.map(studyModule, StudyModuleWriteDTO.class));
+        updateStudyModuleRequest.setStudyModule(studyModule);
 
         Message studyModuleUpdateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateStudyModuleRequest, studyModuleOrganisation.getOrganisationTkCode());
         DefaultResponse studyModuleUpdateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(studyModuleUpdateResponseMessage);
@@ -1567,7 +1596,7 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
 
         studyModule.setSubElements(Collections.singletonList(courseUnit));
         updateStudyModuleRequest = new UpdateStudyModuleRequest();
-        updateStudyModuleRequest.setStudyModule(this.modelMapper.map(studyModule, StudyModuleWriteDTO.class));
+        updateStudyModuleRequest.setStudyModule(studyModule);
 
         studyModuleUpdateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateStudyModuleRequest, studyModuleOrganisation.getOrganisationTkCode());
         studyModuleUpdateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(studyModuleUpdateResponseMessage);
@@ -1580,11 +1609,11 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         assertNotNull(courseUnitEntity.getParents());
         assertEquals(1, courseUnitEntity.getParents().size());
 
-        StudyElementReference studyModuleReference = courseUnitEntity.getParents().get(0);
+        StudyElementReferenceEntity studyModuleReference = courseUnitEntity.getParents().get(0);
 
         assertEquals(studyModule.getStudyElementId(), studyModuleReference.getReferenceIdentifier());
         assertEquals(studyModuleOrganisation.getOrganisationTkCode(), studyModuleReference.getReferenceOrganizer());
-        assertEquals(StudyElementType.STUDY_MODULE, studyModuleReference.getReferenceType());
+        assertEquals(StudyElementType.STUDY_MODULE.name(), studyModuleReference.getReferenceType().name());
     }
 
     @Test
@@ -1593,14 +1622,14 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         String courseUnitOrganisingOrganisationId = "LAUREA";
 
         NetworkEntity studyModuleNetworkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(studyModuleOrganisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(studyModuleOrganisingOrganisationId));
         CooperationNetwork studyModuleNetwork = DtoInitializer.getCooperationNetwork(
-            studyModuleNetworkEntity.getId(), studyModuleNetworkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            studyModuleNetworkEntity.getId(), toDtoLocalisedString(studyModuleNetworkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         NetworkEntity courseUnitNetworkEntity = persistNetworkEntity("CN-2",
-            new LocalisedString("Verkosto 2", "Verkosto en", "Verkosto sv"), Arrays.asList(courseUnitOrganisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 2", "Verkosto en", "Verkosto sv"), Arrays.asList(courseUnitOrganisingOrganisationId));
         CooperationNetwork courseUnitNetwork = DtoInitializer.getCooperationNetwork(
-            courseUnitNetworkEntity.getId(), courseUnitNetworkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+            courseUnitNetworkEntity.getId(), toDtoLocalisedString(courseUnitNetworkEntity.getName()), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation studyModuleOrganisation = DtoInitializer.getOrganisation(studyModuleOrganisingOrganisationId, studyModuleOrganisingOrganisationId);
         Organisation courseUnitOrganisation = DtoInitializer.getOrganisation(courseUnitOrganisingOrganisationId, courseUnitOrganisingOrganisationId);
@@ -1635,7 +1664,7 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
         studyModule.setSubElements(Collections.singletonList(courseUnit));
 
         UpdateStudyModuleRequest updateStudyModuleRequest = new UpdateStudyModuleRequest();
-        updateStudyModuleRequest.setStudyModule(this.modelMapper.map(studyModule, StudyModuleWriteDTO.class));
+        updateStudyModuleRequest.setStudyModule(studyModule);
 
         Message studyModuleUpdateResponseMessage = JmsHelper.sendAndReceiveObject(jmsTemplate, updateStudyModuleRequest, studyModuleOrganisation.getOrganisationTkCode());
         DefaultResponse studyModuleUpdateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(studyModuleUpdateResponseMessage);
@@ -1646,5 +1675,14 @@ public class UpdateStudyModuleRouteIntegrationTest extends AbstractRouteIntegrat
             courseUnit.getStudyElementId(), courseUnitOrganisation.getOrganisationTkCode()).orElse(null);
         assertNotNull(courseUnitEntity);
         assertTrue(CollectionUtils.isEmpty(courseUnitEntity.getParents()));
+    }
+
+    private static LocalisedString toDtoLocalisedString(LocalisedStringEntity source) {
+        return new LocalisedString(source.getValue("fi"), source.getValue("en"), source.getValue("sv"));
+    }
+
+    private static CooperationNetworkEntity toEntityCooperationNetwork(CooperationNetwork source) {
+        return EntityInitializer.getCooperationNetwork(source.getId(), LocalisedStringEntity.from(source.getName()),
+            source.getEnrollable(), source.getValidityStartDate(), source.getValidityEndDate());
     }
 }

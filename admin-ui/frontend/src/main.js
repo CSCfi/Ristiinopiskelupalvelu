@@ -1,20 +1,25 @@
-import Vue from 'vue';
-import Vuetify from 'vuetify';
+import { createApp } from 'vue';
 import VueCookies from 'vue-cookies';
-import 'vuetify/dist/vuetify.min.css'; // Ensure you are using css-loader
+import '@mdi/font/css/materialdesignicons.css';
 import App from './App.vue';
 import router from './router';
-import store from './store';
-import { i18n } from './plugins/i18n.js';
+import pinia from './store';
+import { i18n } from './plugins/i18n';
+import vuetify from './plugins/vuetify';
+import { registerLegacyComponents } from './plugins/legacySupport';
+import './assets/legacy.css';
+import axios from 'axios';
 
-Vue.use(Vuetify);
-Vue.use(VueCookies);
+axios.defaults.withCredentials = true;
+axios.defaults.baseURL = '/';
 
-Vue.config.productionTip = false;
+const app = createApp(App);
 
-new Vue({
-  router,
-  store,
-  i18n,
-  render: h => h(App)
-}).$mount('#app');
+app.use(router);
+app.use(pinia);
+app.use(i18n);
+app.use(vuetify);
+app.use(VueCookies);
+registerLegacyComponents(app);
+
+app.mount('#app');

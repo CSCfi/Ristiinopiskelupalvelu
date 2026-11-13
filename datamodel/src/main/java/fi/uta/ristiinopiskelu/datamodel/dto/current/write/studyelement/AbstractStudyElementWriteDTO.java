@@ -9,6 +9,11 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGui
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.DegreeWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.studymodule.StudyModuleWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.code.CodeReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.code.ExternalCodeReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.MinEduGuidanceAreaEntity;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -347,11 +352,47 @@ public abstract class AbstractStudyElementWriteDTO {
         if(!CollectionUtils.isEmpty(this.getOrganisationReferences())) {
             for(OrganisationReference ref : this.getOrganisationReferences()) {
                 if (ref.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER) {
-                    return ref.getOrganisation().getOrganisationTkCode();
+                    return ref.getTarget().getOrganisationTkCode();
                 }
             }
         }
 
         return null;
+    }
+
+    public static void copyStudyElementWriteDtoToEntity(AbstractStudyElementWriteDTO source, StudyElementEntity target) {
+        target.setMissing(source.getMissing());
+        target.setSendingTime(source.getSendingTime());
+        target.setCreatedTime(source.getCreatedTime());
+        target.setUpdateTime(source.getUpdateTime());
+        target.setValidityStartDate(source.getValidityStartDate());
+        target.setValidityEndDate(source.getValidityEndDate());
+        target.setStudyElementId(source.getStudyElementId());
+        target.setStudyElementPermanentId(source.getStudyElementPermanentId());
+        target.setStudyElementIdentifierCode(source.getStudyElementIdentifierCode());
+        target.setClassificationCodes(ExternalCodeReferenceEntity.from(source.getClassificationCodes()));
+        target.setAbbreviation(source.getAbbreviation());
+        target.setName(LocalisedStringEntity.from(source.getName()));
+        target.setDescription(LocalisedStringEntity.from(source.getDescription()));
+        target.setCreditsMin(source.getCreditsMin());
+        target.setCreditsMax(source.getCreditsMax());
+        target.setCreditsDescription(LocalisedStringEntity.from(source.getCreditsDescription()));
+        target.setOrganisationReferences(OrganisationReferenceEntity.from(source.getOrganisationReferences()));
+        target.setPersonReferences(PersonReferenceEntity.from(source.getPersonReferences()));
+        target.setKeywords(KeywordEntity.from(source.getKeywords()));
+        target.setPreconditions(LocalisedStringEntity.from(source.getPreconditions()));
+        target.setTeachingLanguage(source.getTeachingLanguage());
+        target.setLanguagesOfCompletion(source.getLanguagesOfCompletion());
+        target.setFurtherInformation(LocalisedStringEntity.from(source.getFurtherInformation()));
+        target.setTargetGroups(CodeReferenceEntity.from(source.getTargetGroups()));
+        target.setCooperationNetworks(CooperationNetworkEntity.from(source.getCooperationNetworks()));
+        target.setObjective(LocalisedStringEntity.from(source.getObjective()));
+        target.setContent(LocalisedStringEntity.from(source.getContent()));
+        target.setOrganisationSpecificDescriptions(DescriptionEntity.from(source.getOrganisationSpecificDescriptions()));
+        target.setParents(StudyElementReferenceEntity.from(source.getParents()));
+        target.setStatus(source.getStatus() == null ? StudyStatusEntity.ACTIVE : StudyStatusEntity.valueOf(source.getStatus().name()));
+        target.setMinEduGuidanceArea(source.getMinEduGuidanceArea() == null ? null
+            : source.getMinEduGuidanceArea().stream().map(value -> MinEduGuidanceAreaEntity.valueOf(value.name())).toList());
+        target.setOrganizingOrganisationId(source.getOrganizingOrganisationId());
     }
 }

@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "id": "classpath:/messageschemas/v8/common/registrationSelectionItemHier2.json",
+  "id": "classpath:/messageschemas/v8/common/registrationSelectionItemHier4_pending.json",
   "$schema": "http://json-schema.org/draft-04/schema#",
   "description": "4-tasoinen valintahierkarkia, jossa valinta kohdistuu tietyn opintojakson tietyn suoritusvaihtoehdon tiettyyn arviointikohteen toteutukseen",
   "required": [

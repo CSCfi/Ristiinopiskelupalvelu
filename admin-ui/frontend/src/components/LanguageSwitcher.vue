@@ -11,18 +11,14 @@
   </ul>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      languages: ['fi', 'en', 'sv']
-    };
-  },
-  methods: {
-    changeLang(lang) {
-      this.$i18n.locale = lang;
-    }
-  }
+<script setup>
+import { useI18n } from 'vue-i18n';
+
+const { locale } = useI18n();
+const languages = ['fi', 'en', 'sv'];
+
+const changeLang = lang => {
+  locale.value = lang;
 };
 </script>
 

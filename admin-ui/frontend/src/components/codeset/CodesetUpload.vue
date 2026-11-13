@@ -9,63 +9,55 @@
       </v-card-text>
       <v-card-text>
         <v-flex xs12 sm6 md3>
-          <input type="file" id="file" ref="file" v-on:change="handleFileUpload()" />
+          <input type="file" id="file" ref="fileInput" v-on:change="handleFileUpload()" />
         </v-flex>
       </v-card-text>
       <v-card-actions>
         <v-btn @click="submitFile" small>{{ $t('send') }}</v-btn>
       </v-card-actions>
 
-      <v-alert :value="success" type="success">
+      <v-alert v-if="success" type="success">
         {{ $t('codesetUpdatedMessage') }}
       </v-alert>
-      <v-alert :value="error" type="error">
+      <v-alert v-if="error" type="error">
         {{ $t('codesetFailedMessage') }}
       </v-alert>
     </v-card>
   </div>
 </template>
 
-<script>
-import axios from 'axios';
-import { setTimeout } from 'timers';
+<script setup>
+import { ref } from 'vue';
+import { useCodesetStore } from '../../stores/codesets';
 
-export default {
-  data() {
-    return {
-      codeUrl: null,
-      file: '',
-      success: false,
-      error: false
-    };
-  },
-  methods: {
-    submitFile() {
-      let formData = new FormData();
-      formData.append('file', this.file);
-      axios
-        .post('/admin-ui/api/codes/import', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        })
-        .then(() => {
-          this.success = true;
-          this.$emit('refresh');
-          setTimeout(() => {
-            this.success = false;
-          }, 2000);
-        })
-        .catch(() => {
-          this.error = true;
-          setTimeout(() => {
-            this.error = false;
-          }, 2000);
-        });
-    },
-    handleFileUpload() {
-      this.file = this.$refs.file.files[0];
-    }
-  }
+const emit = defineEmits(['refresh']);
+const fileInput = ref(null);
+const file = ref('');
+const success = ref(false);
+const error = ref(false);
+const codesetStore = useCodesetStore();
+
+const submitFile = () => {
+  const formData = new FormData();
+  formData.append('file', file.value);
+  codesetStore
+    .importCodes(formData)
+    .then(() => {
+      success.value = true;
+      emit('refresh');
+      setTimeout(() => {
+        success.value = false;
+      }, 2000);
+    })
+    .catch(() => {
+      error.value = true;
+      setTimeout(() => {
+        error.value = false;
+      }, 2000);
+    });
+};
+
+const handleFileUpload = () => {
+  file.value = fileInput.value?.files?.[0] || '';
 };
 </script>

@@ -1,18 +1,19 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.github.mpolla.HetuUtil;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.StudyRightType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentMessageType;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.StudentStudyRight;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationSelectionItemStatusEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationStatusEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.student.StudentMessageTypeEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -34,7 +35,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.commons.util.StringUtils;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,7 +72,7 @@ public class StudentRouteIntegrationTest {
     }
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private OrganisationRepository organisationRepository;
@@ -89,9 +89,6 @@ public class StudentRouteIntegrationTest {
     @Autowired
     private StudentRepository studentRepository;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
     @Value("${general.message-schema.version.current}")
     private int messageSchemaVersion;
 
@@ -107,32 +104,32 @@ public class StudentRouteIntegrationTest {
 
         JmsHelper.setMessageSchemaVersion(previousSchemaVersion);
 
-        Validity validity = new Validity();
+        ValidityEntity validity = new ValidityEntity();
         validity.setStart(OffsetDateTime.now().minusDays(30));
 
-        NetworkOrganisation organisation = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation = new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TESTORG1");
         organisation.setValidityInNetwork(validity);
 
-        NetworkOrganisation organisation2 = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation2 = new NetworkOrganisationEntity();
         organisation2.setOrganisationTkCode("TESTORG2");
         organisation2.setValidityInNetwork(validity);
 
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(
-            "CN-1", new LocalisedString("verkosto", null, null), Arrays.asList(organisation, organisation2), validity, true);
+            "CN-1", new LocalisedStringEntity("verkosto", null, null), Arrays.asList(organisation, organisation2), validity, true);
         networkRepository.create(networkEntity);
 
         OrganisationEntity sendingOrganisation = EntityInitializer.getOrganisationEntity(
-            "TESTORG1", "testiorganisaatio1", new LocalisedString("Lähettävä testiorganisaatio", null, null), previousSchemaVersion);
+            "TESTORG1", "testiorganisaatio1", new LocalisedStringEntity("Lähettävä testiorganisaatio", null, null), previousSchemaVersion);
 
         OrganisationEntity receivingOrganisation = EntityInitializer.getOrganisationEntity(
-            "TESTORG2", "testiorganisaatio2", new LocalisedString("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
+            "TESTORG2", "testiorganisaatio2", new LocalisedStringEntity("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
 
         organisationRepository.create(sendingOrganisation);
         organisationRepository.create(receivingOrganisation);
 
         RegistrationEntity registrationEntity = EntityInitializer.getRegistrationEntity(sendingOrganisation.getId(), receivingOrganisation.getId(),
-            null, RegistrationStatus.REGISTERED, networkEntity.getId());
+            null, RegistrationStatusEntity.REGISTERED, networkEntity.getId());
         registrationRepository.create(registrationEntity);
 
         fi.uta.ristiinopiskelu.datamodel.dto.v8.student.StudentStudyRight homeStudyRight = DtoInitializerV8.getStudentStudyRight(sendingOrganisation.getId(), true);
@@ -153,38 +150,38 @@ public class StudentRouteIntegrationTest {
 
     @Test
     public void testSendingUpdateStudentStudyRightRequest_shouldSucceed() throws JMSException {
-        Validity validity = new Validity();
+        ValidityEntity validity = new ValidityEntity();
         validity.setStart(OffsetDateTime.now().minusDays(30));
 
-        NetworkOrganisation organisation = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation = new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TESTORG1");
         organisation.setValidityInNetwork(validity);
 
-        NetworkOrganisation organisation2 = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation2 = new NetworkOrganisationEntity();
         organisation2.setOrganisationTkCode("TESTORG2");
         organisation2.setValidityInNetwork(validity);
 
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(
-                "CN-1", new LocalisedString("verkosto", null, null), Arrays.asList(organisation, organisation2), validity, true);
+                "CN-1", new LocalisedStringEntity("verkosto", null, null), Arrays.asList(organisation, organisation2), validity, true);
         networkRepository.create(networkEntity);
 
         OrganisationEntity sendingOrganisation = EntityInitializer.getOrganisationEntity(
-                "TESTORG1", "testiorganisaatio1", new LocalisedString("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
+                "TESTORG1", "testiorganisaatio1", new LocalisedStringEntity("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
 
         OrganisationEntity receivingOrganisation = EntityInitializer.getOrganisationEntity(
-                "TESTORG2", "testiorganisaatio2", new LocalisedString("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
+                "TESTORG2", "testiorganisaatio2", new LocalisedStringEntity("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
 
         organisationRepository.create(sendingOrganisation);
         organisationRepository.create(receivingOrganisation);
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
                 networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
-                "OJ1", "OJ1-CODE", receivingOrganisation.getId(), Collections.singletonList(cooperationNetwork), new LocalisedString("Opintojakso", null, null));
+                "OJ1", "OJ1-CODE", receivingOrganisation.getId(), Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso", null, null));
         courseUnitRepository.create(courseUnitEntity);
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
                 courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
 
         CreateRegistrationRequest req = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), "CN-1");
@@ -208,11 +205,11 @@ public class StudentRouteIntegrationTest {
 
         // now the target university replies with a message "yes you are now registered"
         // accept registration for selected request
-        List<RegistrationSelection> replySelections = new ArrayList<>();
-        for(RegistrationSelection sel : receivedRequest.getSelections()) {
+        List<RegistrationReplySelection> replySelections = new ArrayList<>();
+        for(CreateRegistrationSelection sel : receivedRequest.getSelections()) {
             sel.setSelectionItemStatus(RegistrationSelectionItemStatus.ACCEPTED);
             sel.setSelectionItemStatusInfo("Hyväksytty kurssille.");
-            replySelections.add(sel);
+            replySelections.add(RegistrationReplySelection.fromCreate(sel));
         }
 
         RegistrationReplyRequest replyRequest = new RegistrationReplyRequest();
@@ -233,12 +230,12 @@ public class StudentRouteIntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(RegistrationStatus.REGISTERED, reg.getStatus());
+        assertEquals(RegistrationStatusEntity.REGISTERED, reg.getStatus());
 
         assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
         assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
             reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() == RegistrationSelectionItemStatus.ACCEPTED));
+        assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() == RegistrationSelectionItemStatusEntity.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
 
         // Consume message from sending organisation queue (forwarded by sending registration status message)
@@ -249,7 +246,7 @@ public class StudentRouteIntegrationTest {
         updateStudentStudyRightRequest.setPersonId(req.getStudent().getPersonId());
         updateStudentStudyRightRequest.setOid(req.getStudent().getOid());
 
-        StudentStudyRight studentStudyRight = modelMapper.map(req.getStudent().getHomeStudyRight(), StudentStudyRight.class);
+        StudentStudyRight studentStudyRight = StudentStudyRight.from(req.getStudent().getHomeStudyRight());
         studentStudyRight.setEligibleForNetworkStudies(false);
         updateStudentStudyRightRequest.setHomeStudyRight(studentStudyRight);
 
@@ -314,7 +311,7 @@ public class StudentRouteIntegrationTest {
             studentEntities.get(0).getHomeStudyRight().getStudyRightType());
         assertEquals(updateStudentStudyRightRequest.getHomeStudyRight().getEligibleForNetworkStudies(),
             studentEntities.get(0).getHomeStudyRight().getEligibleForNetworkStudies());
-        assertEquals(StudentMessageType.UPDATE_STUDENT_STUDYRIGHT, studentEntities.get(0).getMessageType());
+        assertEquals(StudentMessageTypeEntity.UPDATE_STUDENT_STUDYRIGHT, studentEntities.get(0).getMessageType());
         assertEquals(sendingOrganisation.getId(), studentEntities.get(0).getHomeOrganisationTkCode());
         assertNotNull(studentEntities.get(0).getTimestamp());
 
@@ -340,13 +337,13 @@ public class StudentRouteIntegrationTest {
     @Test
     public void testSendingUpdateStudentStudyRightRequest_testOnlyHostStudyRightsForwardedCorrectly_shouldSucceed() throws JMSException {
         OrganisationEntity sendingOrganisation = EntityInitializer.getOrganisationEntity(
-            "TESTORG1", "testiorganisaatio1", new LocalisedString("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
+            "TESTORG1", "testiorganisaatio1", new LocalisedStringEntity("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
 
         OrganisationEntity receivingOrganisation = EntityInitializer.getOrganisationEntity(
-            "TESTORG2", "testiorganisaatio2", new LocalisedString("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
+            "TESTORG2", "testiorganisaatio2", new LocalisedStringEntity("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
 
         OrganisationEntity receivingOrganisation2 = EntityInitializer.getOrganisationEntity(
-            "TESTORG3", "testiorganisaatio3", new LocalisedString("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
+            "TESTORG3", "testiorganisaatio3", new LocalisedStringEntity("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
 
         organisationRepository.create(sendingOrganisation);
         organisationRepository.create(receivingOrganisation);
@@ -361,7 +358,7 @@ public class StudentRouteIntegrationTest {
 
         // Create multiple host study rights for host
         RegistrationEntity registrationEntity = EntityInitializer.getRegistrationEntity(sendingOrganisation.getId(), receivingOrganisation.getId(),
-            null, RegistrationStatus.REGISTERED, null);
+            null, RegistrationStatusEntity.REGISTERED, null);
 
         StudyRightIdentifier hostStudyRightIdentifiers = new StudyRightIdentifier();
         hostStudyRightIdentifiers.setStudyRightId("OIK2");
@@ -379,7 +376,7 @@ public class StudentRouteIntegrationTest {
         registrationRepository.create(registrationEntity);
 
         RegistrationEntity registrationEntity2 = EntityInitializer.getRegistrationEntity(sendingOrganisation.getId(), receivingOrganisation.getId(),
-            null, RegistrationStatus.REGISTERED, null);
+            null, RegistrationStatusEntity.REGISTERED, null);
 
         StudyRightIdentifier hostStudyRightIdentifiers2 = new StudyRightIdentifier();
         hostStudyRightIdentifiers2.setStudyRightId("OIK3");
@@ -398,14 +395,14 @@ public class StudentRouteIntegrationTest {
 
         // Create one registration with same study right identifiers as first (OIK2) (should not be duplicated)
         RegistrationEntity registrationEntityWithSameStudyRightsAs1 = EntityInitializer.getRegistrationEntity(sendingOrganisation.getId(), receivingOrganisation.getId(),
-            null, RegistrationStatus.REGISTRATION_REJECTED, null);
+            null, RegistrationStatusEntity.REGISTRATION_REJECTED, null);
 
         registrationEntityWithSameStudyRightsAs1.setStudent(student);
         registrationRepository.create(registrationEntityWithSameStudyRightsAs1);
 
         // Create one registration for receivingOrganisation 2
         RegistrationEntity registrationEntityForOtherOrg = EntityInitializer.getRegistrationEntity(sendingOrganisation.getId(), receivingOrganisation2.getId(),
-            null, RegistrationStatus.REGISTERED, null);
+            null, RegistrationStatusEntity.REGISTERED, null);
 
         StudyRightIdentifier hostStudyRightIdentifiers3 = new StudyRightIdentifier();
         hostStudyRightIdentifiers3.setStudyRightId("OIK4");
@@ -468,38 +465,38 @@ public class StudentRouteIntegrationTest {
 
     @Test
     public void testSendingUpdateStudentStudyRightRequest_rejectUpdateMessageWithReason_shouldSucceed() throws JMSException {
-        Validity validity = new Validity();
+        ValidityEntity validity = new ValidityEntity();
         validity.setStart(OffsetDateTime.now().minusDays(30));
 
-        NetworkOrganisation organisation = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation = new NetworkOrganisationEntity();
         organisation.setOrganisationTkCode("TESTORG1");
         organisation.setValidityInNetwork(validity);
 
-        NetworkOrganisation organisation2 = new NetworkOrganisation();
+        NetworkOrganisationEntity organisation2 = new NetworkOrganisationEntity();
         organisation2.setOrganisationTkCode("TESTORG2");
         organisation2.setValidityInNetwork(validity);
 
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(
-            "CN-1", new LocalisedString("verkosto", null, null), Arrays.asList(organisation, organisation2), validity, true);
+            "CN-1", new LocalisedStringEntity("verkosto", null, null), Arrays.asList(organisation, organisation2), validity, true);
         networkRepository.create(networkEntity);
 
         OrganisationEntity sendingOrganisation = EntityInitializer.getOrganisationEntity(
-            "TESTORG1", "testiorganisaatio1", new LocalisedString("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
+            "TESTORG1", "testiorganisaatio1", new LocalisedStringEntity("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
 
         OrganisationEntity receivingOrganisation = EntityInitializer.getOrganisationEntity(
-            "TESTORG2", "testiorganisaatio2", new LocalisedString("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
+            "TESTORG2", "testiorganisaatio2", new LocalisedStringEntity("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
 
         organisationRepository.create(sendingOrganisation);
         organisationRepository.create(receivingOrganisation);
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
             networkEntity.getId(), networkEntity.getName(), true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
-            "OJ1", "OJ1-CODE", receivingOrganisation.getId(), Collections.singletonList(cooperationNetwork), new LocalisedString("Opintojakso", null, null));
+            "OJ1", "OJ1-CODE", receivingOrganisation.getId(), Collections.singletonList(cooperationNetwork), new LocalisedStringEntity("Opintojakso", null, null));
         courseUnitRepository.create(courseUnitEntity);
 
-        RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
+        CreateRegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
             courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatus.PENDING);
 
         CreateRegistrationRequest req = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisation.getId(), receivingOrganisation.getId(), "CN-1");
@@ -523,11 +520,11 @@ public class StudentRouteIntegrationTest {
 
         // now the target university replies with a message "yes you are now registered"
         // accept registration for selected request
-        List<RegistrationSelection> replySelections = new ArrayList<>();
-        for(RegistrationSelection sel : receivedRequest.getSelections()) {
+        List<RegistrationReplySelection> replySelections = new ArrayList<>();
+        for(CreateRegistrationSelection sel : receivedRequest.getSelections()) {
             sel.setSelectionItemStatus(RegistrationSelectionItemStatus.ACCEPTED);
             sel.setSelectionItemStatusInfo("Hyväksytty kurssille.");
-            replySelections.add(sel);
+            replySelections.add(RegistrationReplySelection.fromCreate(sel));
         }
 
         RegistrationReplyRequest replyRequest = new RegistrationReplyRequest();
@@ -548,12 +545,12 @@ public class StudentRouteIntegrationTest {
 
         RegistrationEntity reg = registrations.get(0);
 
-        assertEquals(RegistrationStatus.REGISTERED, reg.getStatus());
+        assertEquals(RegistrationStatusEntity.REGISTERED, reg.getStatus());
 
         assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId(), reg.getStudent().getHomeStudyRight().getIdentifiers().getStudyRightId());
         assertEquals(req.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference(),
             reg.getStudent().getHomeStudyRight().getIdentifiers().getOrganisationTkCodeReference());
-        assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() == RegistrationSelectionItemStatus.ACCEPTED));
+        assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatus() == RegistrationSelectionItemStatusEntity.ACCEPTED));
         assertTrue(reg.getSelectionsReplies().stream().allMatch(s -> s.getSelectionItemStatusInfo().equals("Hyväksytty kurssille.")));
 
         // Consume message from sending organisation queue (forwarded by sending registration status message)
@@ -564,7 +561,7 @@ public class StudentRouteIntegrationTest {
         updateStudentStudyRightRequest.setPersonId(req.getStudent().getPersonId());
         updateStudentStudyRightRequest.setOid(req.getStudent().getOid());
 
-        StudentStudyRight studentStudyRight = modelMapper.map(req.getStudent().getHomeStudyRight(), StudentStudyRight.class);
+        StudentStudyRight studentStudyRight = StudentStudyRight.from(req.getStudent().getHomeStudyRight());
         studentStudyRight.setEligibleForNetworkStudies(false);
         updateStudentStudyRightRequest.setHomeStudyRight(studentStudyRight);
 
@@ -629,7 +626,7 @@ public class StudentRouteIntegrationTest {
             studentEntities.get(0).getHomeStudyRight().getStudyRightType());
         assertEquals(updateStudentStudyRightRequest.getHomeStudyRight().getEligibleForNetworkStudies(),
             studentEntities.get(0).getHomeStudyRight().getEligibleForNetworkStudies());
-        assertEquals(StudentMessageType.UPDATE_STUDENT_STUDYRIGHT, studentEntities.get(0).getMessageType());
+        assertEquals(StudentMessageTypeEntity.UPDATE_STUDENT_STUDYRIGHT, studentEntities.get(0).getMessageType());
         assertEquals(sendingOrganisation.getId(), studentEntities.get(0).getHomeOrganisationTkCode());
         assertNotNull(studentEntities.get(0).getTimestamp());
 

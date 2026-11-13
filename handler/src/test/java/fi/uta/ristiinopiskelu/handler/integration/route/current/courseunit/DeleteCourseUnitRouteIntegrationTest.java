@@ -1,11 +1,11 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current.courseunit;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -28,7 +28,6 @@ import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,9 +83,6 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
     private NetworkService networkService;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
     private OrganisationService organisationService;
 
     @Autowired
@@ -104,9 +100,9 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         for(String organisationId : organisationIds) {
             if(!organisationService.findById(organisationId).isPresent()) {
                 OrganisationEntity organisation = EntityInitializer.getOrganisationEntity(organisationId, organisationId,
-                    new LocalisedString(organisationId, null, null), this.messageSchemaVersion);
+                    new LocalisedStringEntity(organisationId, null, null), this.messageSchemaVersion);
                 organisation.setSchemaVersion(this.messageSchemaVersion);
-                organisationService.create(modelMapper.map(organisation, OrganisationEntity.class));
+                organisationService.create(organisation);
             }
         }
     }
@@ -123,13 +119,13 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         organisationService.create(organisationEntity);
 
         CourseUnitEntity courseUnit1 = EntityInitializer.getCourseUnitEntity(id1, code1, organisationId1, null,
-            new LocalisedString("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv"));
+            new LocalisedStringEntity("jaksonnimi fi", "jaksonnimi en", "jaksonnimi sv"));
 
         CourseUnitEntity courseUnit2 = EntityInitializer.getCourseUnitEntity("ID2", code2, organisationId1, null,
-            new LocalisedString("jaksonnimi 2 fi", "jaksonnimi 2 en", "jaksonnimi 2 sv"));
+            new LocalisedStringEntity("jaksonnimi 2 fi", "jaksonnimi 2 en", "jaksonnimi 2 sv"));
 
         CourseUnitEntity courseUnit3 = EntityInitializer.getCourseUnitEntity("ID3", code1, organisationId2, null,
-            new LocalisedString("jaksonnimi 3 fi", "jaksonnimi 3 en", "jaksonnimi 3 sv"));
+            new LocalisedStringEntity("jaksonnimi 3 fi", "jaksonnimi 3 en", "jaksonnimi 3 sv"));
 
         courseUnitRepository.create(courseUnit1);
         courseUnitRepository.create(courseUnit2);
@@ -153,15 +149,14 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         assertTrue(courseUnits.stream().anyMatch(cu -> cu.getOrganizingOrganisationId().equals(organisationId2) && cu.getStudyElementIdentifierCode().equals(code1)));
     }
 
-
     @Test
     public void testSendingDeleteCourseUnitMessageWithRealisations_shouldSuccess() throws JMSException {
 
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("1", null, null, this.messageSchemaVersion);
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("1", "TEST1", "1",
-            Collections.emptyList(), new LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("2", "TEST2", "1",
-            Collections.singletonList(new StudyElementReference("1", "1", StudyElementType.COURSE_UNIT)),
+            Collections.singletonList(new StudyElementReferenceEntity("1", "1", StudyElementTypeEntity.COURSE_UNIT)),
             Collections.emptyList());
 
         organisationService.create(organisationEntity);
@@ -189,19 +184,19 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("1", null, null, this.messageSchemaVersion);
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "TEST1", "1",
-            Collections.emptyList(), new LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
 
         CourseUnitEntity courseUnit2 = EntityInitializer.getCourseUnitEntity("CU2", "TEST2", "1",
-            Collections.emptyList(), new LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("REAL1", "REAL1", "1",
-            Collections.singletonList(new StudyElementReference("CU1", "1", StudyElementType.COURSE_UNIT)),
+            Collections.singletonList(new StudyElementReferenceEntity("CU1", "1", StudyElementTypeEntity.COURSE_UNIT)),
             Collections.emptyList());
 
         RealisationEntity realisation2 = EntityInitializer.getRealisationEntity("REAL2", "REAL2", "1",
             Arrays.asList(
-                new StudyElementReference("CU1", "1", StudyElementType.COURSE_UNIT),
-                new StudyElementReference("CU2", "1", StudyElementType.COURSE_UNIT)),
+                new StudyElementReferenceEntity("CU1", "1", StudyElementTypeEntity.COURSE_UNIT),
+                new StudyElementReferenceEntity("CU2", "1", StudyElementTypeEntity.COURSE_UNIT)),
             Collections.emptyList());
 
         organisationService.create(organisationEntity);
@@ -244,20 +239,20 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
             hasProperty("realisationId", is(realisation2.getRealisationId()))
         ));
 
-        List<StudyElementReference> references = realisationEntities.get(0).getStudyElementReferences();
+        List<StudyElementReferenceEntity> references = realisationEntities.get(0).getStudyElementReferences();
         assertEquals(1, references.size());
         assertEquals(courseUnit2.getStudyElementId(), references.get(0).getReferenceIdentifier());
         assertEquals(courseUnit2.getOrganizingOrganisationId(), references.get(0).getReferenceOrganizer());
-        assertEquals(StudyElementType.COURSE_UNIT, references.get(0).getReferenceType());
+        assertEquals(StudyElementTypeEntity.COURSE_UNIT, references.get(0).getReferenceType());
     }
 
     @Test
     public void testSendingDeleteCourseUnitMessageWithRealisations_shouldFail() throws JMSException {
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("1", "TEST1", "1",
-            Collections.emptyList(), new LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("2", "TEST2", "1",
-            Collections.singletonList(new StudyElementReference("1",  "1", StudyElementType.COURSE_UNIT)), Collections.emptyList());
+            Collections.singletonList(new StudyElementReferenceEntity("1",  "1", StudyElementTypeEntity.COURSE_UNIT)), Collections.emptyList());
 
         courseUnitRepository.create(courseUnit);
         realisationRepository.create(realisation);
@@ -283,11 +278,11 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         organisationService.create(organisationEntity);
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("CU1", "CU1_CODE1", "ORG1",
-            Collections.emptyList(), new LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
 
-        List<StudyElementReference> references = new ArrayList<>();
-        references.add(new StudyElementReference("CU1",  "ORG1", StudyElementType.COURSE_UNIT));
-        references.add(new StudyElementReference("CU2",  "ORG2", StudyElementType.COURSE_UNIT));
+        List<StudyElementReferenceEntity> references = new ArrayList<>();
+        references.add(new StudyElementReferenceEntity("CU1",  "ORG1", StudyElementTypeEntity.COURSE_UNIT));
+        references.add(new StudyElementReferenceEntity("CU2",  "ORG2", StudyElementTypeEntity.COURSE_UNIT));
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("RS1", "RS1_CODE1", "ORG1",
             references,
@@ -331,12 +326,12 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
             "TEST1",
             "1",
             Collections.emptyList(),
-            new LocalisedString("test", "test", "test"));
+            new LocalisedStringEntity("test", "test", "test"));
 
-        StudyElementReference courseUnitRef = new StudyElementReference(courseUnit.getStudyElementId(),
-            courseUnit.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity courseUnitRef = new StudyElementReferenceEntity(courseUnit.getStudyElementId(),
+            courseUnit.getOrganizingOrganisationId(), StudyElementTypeEntity.COURSE_UNIT);
 
-        StudyElementReference extraRef = new StudyElementReference("123",  "1", StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity extraRef = new StudyElementReferenceEntity("123",  "1", StudyElementTypeEntity.COURSE_UNIT);
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity(
             "2",
@@ -389,10 +384,10 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         organisationService.create(organisationEntity);
 
         CourseUnitEntity courseUnit = EntityInitializer.getCourseUnitEntity("1", "TEST1", "1",
-            Collections.emptyList(), new LocalisedString("test", "test", "test"));
+            Collections.emptyList(), new LocalisedStringEntity("test", "test", "test"));
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("2", "TEST2", courseUnit.getOrganizingOrganisationId(),
-            Collections.singletonList(new StudyElementReference(courseUnit.getStudyElementId(), courseUnit.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT)),
+            Collections.singletonList(new StudyElementReferenceEntity(courseUnit.getStudyElementId(), courseUnit.getOrganizingOrganisationId(), StudyElementTypeEntity.COURSE_UNIT)),
             Collections.emptyList());
 
         courseUnitRepository.create(courseUnit);
@@ -438,6 +433,6 @@ public class DeleteCourseUnitRouteIntegrationTest extends AbstractRouteIntegrati
         assertEquals(1, realisationHistoryEntity.getStudyElementReferences().size());
         assertTrue(realisationHistoryEntity.getStudyElementReferences().stream().anyMatch(
             sr -> sr.getReferenceIdentifier().equals(courseUnit.getStudyElementId())
-                && sr.getReferenceType() == StudyElementType.COURSE_UNIT));
+                && sr.getReferenceType() == StudyElementTypeEntity.COURSE_UNIT));
     }
 }

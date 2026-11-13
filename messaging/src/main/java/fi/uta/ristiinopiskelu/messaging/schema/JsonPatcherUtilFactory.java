@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.messaging.schema;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -8,13 +8,13 @@ import org.springframework.stereotype.Component;
 public class JsonPatcherUtilFactory {
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     public JsonPatcherUtil create(String patchFilePath) {
-        return new JsonPatcherUtilImpl(objectMapper, patchFilePath);
+        return new JsonPatcherUtilImpl(jsonMapper, patchFilePath);
     }
 
     public JsonPatcherUtil create() {
-        return new JsonPatcherUtilImpl(objectMapper, null);
+        return new JsonPatcherUtilImpl(jsonMapper, null);
     }
 }

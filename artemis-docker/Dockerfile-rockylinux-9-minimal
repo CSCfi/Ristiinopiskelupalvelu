@@ -1,6 +1,6 @@
-FROM rockylinux:9.1-minimal
+FROM rockylinux:9-minimal
 
-ENV MICRODNF_CMD "microdnf -y --setopt=install_weak_deps=0"
+ENV MICRODNF_CMD="microdnf -y --setopt=install_weak_deps=0"
 
 # Make sure pipes are considered to determine success, see: https://github.com/hadolint/hadolint/wiki/DL4006
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -26,17 +26,17 @@ EXPOSE 8161 \
 #Port for STOMP
     61613
 
-ENV ARTEMIS_VERSION 2.37.0
-ENV ARTEMIS_DIST_FILE_NAME apache-artemis-${ARTEMIS_VERSION}-bin.tar.gz
+ENV ARTEMIS_VERSION=2.54.0
+ENV ARTEMIS_DIST_FILE_NAME=apache-artemis-${ARTEMIS_VERSION}-bin.tar.gz
+ENV ARTEMIS_DIST_FILE_URL=https://archive.apache.org/dist/artemis/artemis/${ARTEMIS_VERSION}/${ARTEMIS_DIST_FILE_NAME}
 
-# NOTE: this needs to be changed manually depending on version. Current release is downloadable from separate url than the current one.
-ENV ARTEMIS_DIST_FILE_URL https://archive.apache.org/dist/activemq/activemq-artemis/${ARTEMIS_VERSION}/apache-artemis-${ARTEMIS_VERSION}-bin.tar.gz
-
-ENV ARTEMIS_DIR_NAME apache-artemis-${ARTEMIS_VERSION}
-ENV ARTEMIS_USER artemis
-ENV ARTEMIS_PASSWORD artemis
-ENV ANONYMOUS_LOGIN false
-ENV EXTRA_ARGS --http-host 0.0.0.0 --relax-jolokia
+ENV ARTEMIS_DIR_NAME=apache-artemis-${ARTEMIS_VERSION}
+ENV ARTEMIS_USER=artemis
+ENV ANONYMOUS_LOGIN=false
+ENV EXTRA_ARGS="--http-host 0.0.0.0 --relax-jolokia"
+ENV JMX_EXPORTER_VERSION=1.5.0
+ENV JMX_EXPORTER_HOME=/opt/jmx_exporter
+ENV JMX_EXPORTER_DIST_FILE_URL=https://github.com/prometheus/jmx_exporter/releases/download/${JMX_EXPORTER_VERSION}/jmx_prometheus_javaagent-${JMX_EXPORTER_VERSION}.jar
 
 # add user and group for artemis
 RUN groupadd -g 1001 -r artemis && useradd -r -u 1001 -g artemis artemis
@@ -46,6 +46,18 @@ RUN curl --progress-bar "${ARTEMIS_DIST_FILE_URL}" --output ./${ARTEMIS_DIST_FIL
 RUN tar zxf ${ARTEMIS_DIST_FILE_NAME}
 RUN rm -f ${ARTEMIS_DIST_FILE_NAME}
 RUN mv ${ARTEMIS_DIR_NAME} activemq-artemis
+
+RUN mkdir -p ${JMX_EXPORTER_HOME} \
+    && curl --fail --location --show-error \
+        "${JMX_EXPORTER_DIST_FILE_URL}" \
+        --output "${JMX_EXPORTER_HOME}/jmx_prometheus_javaagent.jar" \
+    && printf '%s\n' \
+        'lowercaseOutputName: true' \
+        'lowercaseOutputLabelNames: true' \
+        'rules:' \
+        '  - pattern: ".*"' \
+        > "${JMX_EXPORTER_HOME}/config.yaml" \
+    && chown -R ${ARTEMIS_USER}.${ARTEMIS_USER} ${JMX_EXPORTER_HOME}
 
 RUN mkdir /var/lib/artemis-instance && chown -R ${ARTEMIS_USER}.${ARTEMIS_USER} /var/lib/artemis-instance
 
@@ -59,7 +71,7 @@ RUN chown -R ${ARTEMIS_USER}.${ARTEMIS_USER} lib/
 
 # create instance
 USER artemis
-RUN /opt/activemq-artemis/bin/artemis create --user ${ARTEMIS_USER} --password ${ARTEMIS_PASSWORD} --require-login --silent .
+RUN /opt/activemq-artemis/bin/artemis create --user ${ARTEMIS_USER} --password artemis --require-login --silent .
 
 ENTRYPOINT ["/docker-run.sh"]
 CMD ["run"]

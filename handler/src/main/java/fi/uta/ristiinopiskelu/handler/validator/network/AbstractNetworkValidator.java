@@ -4,6 +4,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrgani
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.NetworkOrganisationValidationException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.NetworkOrganisationsNotFoundValidationException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.ValidationException;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
 import fi.uta.ristiinopiskelu.handler.validator.AbstractObjectValidator;
@@ -41,8 +42,9 @@ public abstract class AbstractNetworkValidator extends AbstractObjectValidator<N
                         .filter(id -> organisations.stream().noneMatch(o -> o.getId().equals(id)))
                         .collect(Collectors.toList());
 
-                throw new ValidationException("Could not find all organisations that should be in network." +
-                        "Missing organisations: " + String.join(", ", missing));
+                throw new NetworkOrganisationsNotFoundValidationException(
+                    "Could not find all organisations that should be in network. Missing organisations: " +
+                        String.join(", ", missing));
             }
         }
     }

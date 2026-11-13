@@ -38,9 +38,7 @@ public class OrganisationReference {
   @Field(type = FieldType.Integer)
   private OrganisationRole organisationRole;
 
-  @Field(name = "target")
-  @JsonProperty("target")
-  private Organisation organisation = null;
+  private Organisation target = null;
 
   @JsonProperty("description")
   private LocalisedString description = null;
@@ -76,11 +74,11 @@ public class OrganisationReference {
   }
 
   @Schema(required = true)
-  public Organisation getOrganisation() {
-    return organisation;
+  public Organisation getTarget() {
+    return target;
   }
 
-  public void setOrganisation(Organisation organisation) {
-    this.organisation = organisation;
+  public void setTarget(Organisation target) {
+    this.target = target;
   }
 }

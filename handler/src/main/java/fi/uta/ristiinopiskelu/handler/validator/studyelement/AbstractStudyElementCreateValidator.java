@@ -7,6 +7,7 @@ import fi.uta.ristiinopiskelu.handler.exception.validation.ValidationException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.impl.AbstractStudyElementService;
 import fi.uta.ristiinopiskelu.handler.utils.KeyHelper;
+import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -29,7 +30,7 @@ public abstract class AbstractStudyElementCreateValidator<T extends AbstractStud
     @Override
     public void validateObject(List<T> studyElements, String organisationId) throws ValidationException {
         if(StringUtils.isEmpty(organisationId)) {
-            throw new MissingMessageHeaderException("Cannot perform create. Organisation Id is missing from header. This should not happen.");
+            throw new MissingMessageHeaderException(MessageHeader.JMS_XUSERID);
         }
 
         if(CollectionUtils.isEmpty(studyElements)) {

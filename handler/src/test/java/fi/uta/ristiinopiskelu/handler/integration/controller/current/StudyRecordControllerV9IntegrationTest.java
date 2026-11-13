@@ -1,15 +1,17 @@
 package fi.uta.ristiinopiskelu.handler.integration.controller.current;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyrecord.StudyRecordReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.*;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordStudentEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.CompletedCreditEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.RoutingTypeEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -21,14 +23,18 @@ import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyRecordRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.MultiValueMap;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -60,7 +66,7 @@ public class StudyRecordControllerV9IntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private StudyRecordRepository studyRecordRepository;
@@ -70,14 +76,14 @@ public class StudyRecordControllerV9IntegrationTest {
 
     @Test
     public void testFindStudyRecords_bySendingOrganisationAndSendingOrganisationInOwnNetwork_shouldSucceed() throws Exception {
-        List<NetworkOrganisation> organisations = Arrays.asList(
-            new NetworkOrganisation("UEF", true,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
-            new NetworkOrganisation("TUNI", false,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
+        List<NetworkOrganisationEntity> organisations = Arrays.asList(
+            new NetworkOrganisationEntity("UEF", true,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
+            new NetworkOrganisationEntity("TUNI", false,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
                 
-        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedString("test", null, null),
-            organisations, DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
+        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedStringEntity("test", null, null),
+            organisations, EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
 
         networkRepository.create(network);
 
@@ -86,9 +92,9 @@ public class StudyRecordControllerV9IntegrationTest {
         student.setSurName("Testaaja");
         student.setOid(Oid.randomOid(OidPersonNode.PERSON));
 
-        StudyRecordEntity studyRecord = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity("UEF", "TUNI", student));
-        StudyRecordEntity studyRecord2 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity("UEF", "TUNI", student));
-        StudyRecordEntity studyRecord3 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity("TUNI", "UEF", student));
+        StudyRecordEntity studyRecord = studyRecordRepository.create(createStudyRecordEntity("UEF", "TUNI", student));
+        StudyRecordEntity studyRecord2 = studyRecordRepository.create(createStudyRecordEntity("UEF", "TUNI", student));
+        StudyRecordEntity studyRecord3 = studyRecordRepository.create(createStudyRecordEntity("TUNI", "UEF", student));
 
         assertEquals(3, StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList()).size());
         
@@ -97,7 +103,7 @@ public class StudyRecordControllerV9IntegrationTest {
 
         MvcResult result = getMvcResult(searchParameters);
 
-        List<StudyRecordReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<StudyRecordReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(2, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("id", is(studyRecord.getId())),
@@ -109,7 +115,7 @@ public class StudyRecordControllerV9IntegrationTest {
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("id", is(studyRecord3.getId()))
@@ -118,14 +124,14 @@ public class StudyRecordControllerV9IntegrationTest {
 
     @Test
     public void testFindStudyRecords_bySendingOrganisationAndSendingOrganisationNotRequestingOrganisation_shouldSucceed() throws Exception {
-        List<NetworkOrganisation> organisations = Arrays.asList(
-            new NetworkOrganisation("UEF", true,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
-            new NetworkOrganisation("TUNI", false,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
+        List<NetworkOrganisationEntity> organisations = Arrays.asList(
+            new NetworkOrganisationEntity("UEF", true,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
+            new NetworkOrganisationEntity("TUNI", false,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
 
-        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedString("test", null, null),
-            organisations, DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
+        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedStringEntity("test", null, null),
+            organisations, EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
 
         networkRepository.create(network);
 
@@ -134,8 +140,8 @@ public class StudyRecordControllerV9IntegrationTest {
         student.setSurName("Testaaja");
         student.setOid(Oid.randomOid(OidPersonNode.PERSON));
         
-        studyRecordRepository.create(EntityInitializer.getStudyRecordEntity("JYU", "TUNI", student));
-        studyRecordRepository.create(EntityInitializer.getStudyRecordEntity("LAY", "UEF", student));
+        studyRecordRepository.create(createStudyRecordEntity("JYU", "TUNI", student));
+        studyRecordRepository.create(createStudyRecordEntity("LAY", "UEF", student));
 
         assertEquals(2, StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList()).size());
 
@@ -145,7 +151,7 @@ public class StudyRecordControllerV9IntegrationTest {
         this.mockMvc.perform(post("/api/v9/studyrecords/search")
                 .header("eppn", "testailija@testailija.fi")
                 .header("SSL_CLIENT_S_DN_O", "UEF")
-                .content(objectMapper.writeValueAsString(searchParameters))
+                .content(jsonMapper.writeValueAsString(searchParameters))
                 .contentType(MediaType.APPLICATION_JSON))
             .andDo(print())
             .andExpect(status().isBadRequest())
@@ -156,7 +162,7 @@ public class StudyRecordControllerV9IntegrationTest {
         this.mockMvc.perform(post("/api/v9/studyrecords/search")
                 .header("eppn", "testailija@testailija.fi")
                 .header("SSL_CLIENT_S_DN_O", "UEF")
-                .content(objectMapper.writeValueAsString(searchParameters))
+                .content(jsonMapper.writeValueAsString(searchParameters))
                 .contentType(MediaType.APPLICATION_JSON))
             .andDo(print())
             .andExpect(status().isBadRequest())
@@ -165,14 +171,14 @@ public class StudyRecordControllerV9IntegrationTest {
 
     @Test
     public void testFindStudyRecords_byCompletedCreditParameters_shouldSucceed() throws Exception {
-        List<NetworkOrganisation> organisations = Arrays.asList(
-            new NetworkOrganisation("UEF", true,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
-            new NetworkOrganisation("TUNI", false,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
+        List<NetworkOrganisationEntity> organisations = Arrays.asList(
+            new NetworkOrganisationEntity("UEF", true,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
+            new NetworkOrganisationEntity("TUNI", false,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
 
-        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedString("test", null, null),
-            organisations, DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
+        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedStringEntity("test", null, null),
+            organisations, EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
 
         networkRepository.create(network);
 
@@ -190,13 +196,13 @@ public class StudyRecordControllerV9IntegrationTest {
         CompletedCredit completedCredit4 = DtoInitializer.getCompletedCredit("CC4", "CU3",
             CompletedCreditTargetType.COURSE_UNIT, MinEduGuidanceArea.HUMANITIES, new LocalisedString("jarmon opintojakso 3", null, null));
         
-        StudyRecordEntity studyRecord = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord = studyRecordRepository.create(createStudyRecordEntity(
             "UEF", "TUNI", student, completedCredit));
-        StudyRecordEntity studyRecord2 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord2 = studyRecordRepository.create(createStudyRecordEntity(
             "UEF", "TUNI", student, completedCredit2));
-        StudyRecordEntity studyRecord3 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord3 = studyRecordRepository.create(createStudyRecordEntity(
             "TUNI", "UEF", student, completedCredit3));
-        StudyRecordEntity studyRecord4 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord4 = studyRecordRepository.create(createStudyRecordEntity(
             "TUNI", "UEF", student, completedCredit4));
 
         assertEquals(4, StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList()).size());
@@ -207,7 +213,7 @@ public class StudyRecordControllerV9IntegrationTest {
 
         MvcResult result = getMvcResult(searchParameters);
 
-        List<StudyRecordReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<StudyRecordReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("id", is(studyRecord.getId()))
@@ -220,7 +226,7 @@ public class StudyRecordControllerV9IntegrationTest {
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("id", is(studyRecord3.getId()))
@@ -235,7 +241,7 @@ public class StudyRecordControllerV9IntegrationTest {
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("id", is(studyRecord2.getId()))
@@ -244,14 +250,14 @@ public class StudyRecordControllerV9IntegrationTest {
 
     @Test
     public void testFindStudyRecords_byGradeStatus_shouldSucceed() throws Exception {
-        List<NetworkOrganisation> organisations = Arrays.asList(
-            new NetworkOrganisation("UEF", true,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
-            new NetworkOrganisation("TUNI", false,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
+        List<NetworkOrganisationEntity> organisations = Arrays.asList(
+            new NetworkOrganisationEntity("UEF", true,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
+            new NetworkOrganisationEntity("TUNI", false,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
 
-        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedString("test", null, null),
-            organisations, DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
+        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedStringEntity("test", null, null),
+            organisations, EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
 
         networkRepository.create(network);
 
@@ -271,11 +277,11 @@ public class StudyRecordControllerV9IntegrationTest {
             CompletedCreditTargetType.STUDY_MODULE, MinEduGuidanceArea.ARTS_AND_CULTURE, new LocalisedString("heikin opintokokonaisuus 1", null, null));
         completedCredit3.setAssessment(DtoInitializer.getCompletedCreditAssessment("hyväksytty", null, ScaleValue.FIVE_LEVEL, GradeCode.GRADE_3));
 
-        StudyRecordEntity studyRecord = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord = studyRecordRepository.create(createStudyRecordEntity(
             "UEF", "TUNI", student, completedCredit));
-        StudyRecordEntity studyRecord2 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord2 = studyRecordRepository.create(createStudyRecordEntity(
             "UEF", "TUNI", student, completedCredit2));
-        StudyRecordEntity studyRecord3 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord3 = studyRecordRepository.create(createStudyRecordEntity(
             "UEF", "TUNI", student, completedCredit3));
 
         assertEquals(3, StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList()).size());
@@ -286,7 +292,7 @@ public class StudyRecordControllerV9IntegrationTest {
 
         MvcResult result = getMvcResult(searchParameters);
 
-        List<StudyRecordReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<StudyRecordReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("id", is(studyRecord3.getId()))
@@ -296,7 +302,7 @@ public class StudyRecordControllerV9IntegrationTest {
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("id", is(studyRecord2.getId()))
@@ -306,11 +312,141 @@ public class StudyRecordControllerV9IntegrationTest {
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
         assertEquals(1, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
             hasProperty("id", is(studyRecord.getId()))
         ));
+    }
+
+    @Test
+    public void testFindStudyRecordAmounts_byNetworkWithoutOrganisationFilters_shouldSucceed() throws Exception {
+        List<NetworkOrganisationEntity> organisations = Arrays.asList(
+            new NetworkOrganisationEntity("UEF", true,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
+            new NetworkOrganisationEntity("TUNI", false,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
+
+        networkRepository.create(EntityInitializer.getNetworkEntity("CN-1", new LocalisedStringEntity("test", null, null),
+            organisations, EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true));
+
+        StudyRecordStudent student = new StudyRecordStudent();
+        student.setOid(Oid.randomOid(OidPersonNode.PERSON));
+
+        StudyRecordEntity networkStudyRecord = createStudyRecordEntity("JYU", "TUNI", student);
+        studyRecordRepository.create(networkStudyRecord);
+
+        StudyRecordEntity otherStudyRecord = createStudyRecordEntity("UEF", "TUNI", student);
+        otherStudyRecord.setRoutingType(RoutingTypeEntity.OTHER);
+        studyRecordRepository.create(otherStudyRecord);
+
+        StudyRecordEntity otherNetworkStudyRecord = createStudyRecordEntity("UEF", "TUNI", student);
+        otherNetworkStudyRecord.setNetworkIdentifier("CN-2");
+        studyRecordRepository.create(otherNetworkStudyRecord);
+
+        StudyRecordAmountSearchParameters searchParameters = new StudyRecordAmountSearchParameters();
+        searchParameters.setNetworkIdentifier("CN-1");
+
+        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts", jsonMapper.writeValueAsString(searchParameters));
+        StudyRecordAmountRestSearchResults actualResult = jsonMapper.readValue(
+            result.getResponse().getContentAsString(), StudyRecordAmountRestSearchResults.class);
+
+        assertEquals(1, actualResult.getTotalHits());
+
+        searchParameters.setSendingOrganisation("JYU");
+        result = getMvcResult("/api/v9/studyrecords/search/amounts", jsonMapper.writeValueAsString(searchParameters));
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudyRecordAmountRestSearchResults.class);
+
+        assertEquals(1, actualResult.getTotalHits());
+    }
+
+    @Test
+    public void testFindStudyRecordAmounts_withoutNetworkIdentifier_shouldExcludeOtherStudyRecords() throws Exception {
+        StudyRecordStudent student = new StudyRecordStudent();
+        student.setOid(Oid.randomOid(OidPersonNode.PERSON));
+
+        studyRecordRepository.create(createStudyRecordEntity("UEF", "TUNI", student));
+
+        StudyRecordEntity otherStudyRecord = createStudyRecordEntity("UEF", "TUNI", student);
+        otherStudyRecord.setRoutingType(RoutingTypeEntity.OTHER);
+        studyRecordRepository.create(otherStudyRecord);
+
+        StudyRecordAmountSearchParameters searchParameters = new StudyRecordAmountSearchParameters();
+        searchParameters.setSendingOrganisation("UEF");
+
+        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts", jsonMapper.writeValueAsString(searchParameters));
+        StudyRecordAmountRestSearchResults actualResult = jsonMapper.readValue(
+            result.getResponse().getContentAsString(), StudyRecordAmountRestSearchResults.class);
+
+        assertEquals(1, actualResult.getTotalHits());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "2026-10-16,,2",
+        ",2026-10-16,2",
+        "2026-10-16,2026-10-16,1"
+    })
+    public void testFindStudyRecordAmounts_byCompletionDates_shouldIncludeBoundaries(
+        LocalDate start, LocalDate end, long expectedTotalHits) throws Exception {
+        StudyRecordStudent student = new StudyRecordStudent();
+        student.setOid(Oid.randomOid(OidPersonNode.PERSON));
+
+        for (int day = 15; day <= 17; day++) {
+            CompletedCredit completedCredit = DtoInitializer.getCompletedCredit("CC" + day, "CU" + day,
+                CompletedCreditTargetType.COURSE_UNIT, MinEduGuidanceArea.EDUCATION,
+                new LocalisedString("test", null, null));
+            completedCredit.setCompletionDate(LocalDate.of(2026, 10, day));
+            studyRecordRepository.create(createStudyRecordEntity("UEF", "TUNI", student, completedCredit));
+        }
+
+        StudyRecordAmountSearchParameters searchParameters = new StudyRecordAmountSearchParameters();
+        searchParameters.setSendingOrganisation("UEF");
+        searchParameters.setCompletionDateStart(start);
+        searchParameters.setCompletionDateEnd(end);
+
+        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts", jsonMapper.writeValueAsString(searchParameters));
+        StudyRecordAmountRestSearchResults actualResult = jsonMapper.readValue(
+            result.getResponse().getContentAsString(), StudyRecordAmountRestSearchResults.class);
+
+        assertEquals(expectedTotalHits, actualResult.getTotalHits());
+
+        MvcResult csvResult = getMvcResult("/api/v9/studyrecords/search/amounts/csv", jsonMapper.writeValueAsString(searchParameters));
+        assertTrue(csvResult.getResponse().getContentAsString().contains("\"KAIKKI\",\"" + expectedTotalHits + "\""));
+    }
+
+    @Test
+    public void testFindStudyRecordAmounts_requestingOrganisationNotInNetwork_shouldFail() throws Exception {
+        List<NetworkOrganisationEntity> organisations = List.of(
+            new NetworkOrganisationEntity("TUNI", true,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
+
+        networkRepository.create(EntityInitializer.getNetworkEntity("CN-1", new LocalisedStringEntity("test", null, null),
+            organisations, EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true));
+
+        StudyRecordAmountSearchParameters searchParameters = new StudyRecordAmountSearchParameters();
+        searchParameters.setNetworkIdentifier("CN-1");
+
+        this.mockMvc.perform(post("/api/v9/studyrecords/search/amounts")
+                .header("eppn", "testailija@testailija.fi")
+                .header("SSL_CLIENT_S_DN_O", "UEF")
+                .content(jsonMapper.writeValueAsString(searchParameters))
+                .contentType(MediaType.APPLICATION_JSON))
+            .andDo(print())
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testFindStudyRecordAmounts_withoutNetworkIdentifierOrOrganisationFilters_shouldFail() throws Exception {
+        StudyRecordAmountSearchParameters searchParameters = new StudyRecordAmountSearchParameters();
+
+        this.mockMvc.perform(post("/api/v9/studyrecords/search/amounts")
+                .header("eppn", "testailija@testailija.fi")
+                .header("SSL_CLIENT_S_DN_O", "UEF")
+                .content(jsonMapper.writeValueAsString(searchParameters))
+                .contentType(MediaType.APPLICATION_JSON))
+            .andDo(print())
+            .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -322,7 +458,7 @@ public class StudyRecordControllerV9IntegrationTest {
         amountSearchParameters.setGroupBy(StudyRecordGrouping.SENDING_ORGANISATION);
         amountSearchParameters.setDivideBy(StudyRecordDividing.GRADING);
 
-        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", objectMapper.writeValueAsString(amountSearchParameters));
+        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", jsonMapper.writeValueAsString(amountSearchParameters));
 
         String csv = result.getResponse().getContentAsString();
         assertTrue(csv.contains("\"UEF\",\"1\",\"1\",\"2\""));
@@ -337,7 +473,7 @@ public class StudyRecordControllerV9IntegrationTest {
         amountSearchParameters.setGroupBy(StudyRecordGrouping.RECEIVING_ORGANISATION);
         amountSearchParameters.setDivideBy(StudyRecordDividing.GRADING);
 
-        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", objectMapper.writeValueAsString(amountSearchParameters));
+        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", jsonMapper.writeValueAsString(amountSearchParameters));
 
         String csv = result.getResponse().getContentAsString();
         assertTrue(csv.contains("\"TUNI\",\"1\",\"1\",\"2\""));
@@ -356,7 +492,7 @@ public class StudyRecordControllerV9IntegrationTest {
         amountSearchParameters.setGroupByDates(List.of(new StudyRecordGroupingDates(groupingStartDate, groupingEndDate)));
         amountSearchParameters.setDivideBy(StudyRecordDividing.GRADING);
 
-        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", objectMapper.writeValueAsString(amountSearchParameters));
+        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", jsonMapper.writeValueAsString(amountSearchParameters));
 
         String csv = result.getResponse().getContentAsString();
         assertTrue(csv.contains("\"2023-05-01:2023-09-01\",\"1\""));
@@ -371,7 +507,7 @@ public class StudyRecordControllerV9IntegrationTest {
         amountSearchParameters.setGroupBy(StudyRecordGrouping.STUDYELEMENT_IDENTIFIER_CODE);
         amountSearchParameters.setDivideBy(StudyRecordDividing.MIN_EDU_GUIDANCE_AREA);
 
-        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", objectMapper.writeValueAsString(amountSearchParameters));
+        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", jsonMapper.writeValueAsString(amountSearchParameters));
 
         String csv = result.getResponse().getContentAsString();
         assertTrue(csv.contains("\"CC1-CU1\",\"1\""));
@@ -389,7 +525,7 @@ public class StudyRecordControllerV9IntegrationTest {
         amountSearchParameters.setGroupBy(StudyRecordGrouping.SENDING_ORGANISATION);
         amountSearchParameters.setDivideBy(StudyRecordDividing.ORGANISATION_RESPONSIBLE_FOR_COMPLETION);
 
-        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", objectMapper.writeValueAsString(amountSearchParameters));
+        MvcResult result = getMvcResult("/api/v9/studyrecords/search/amounts/csv", jsonMapper.writeValueAsString(amountSearchParameters));
 
         String csv = result.getResponse().getContentAsString();
         assertTrue(csv.contains("\"ORGANISAATIO\",\"ORG1\",\"ORG2\""));
@@ -397,14 +533,14 @@ public class StudyRecordControllerV9IntegrationTest {
     }
 
     private void createCsvTestStudyRecords() {
-        List<NetworkOrganisation> organisations = Arrays.asList(
-            new NetworkOrganisation("UEF", true,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
-            new NetworkOrganisation("TUNI", false,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
+        List<NetworkOrganisationEntity> organisations = Arrays.asList(
+            new NetworkOrganisationEntity("UEF", true,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))),
+            new NetworkOrganisationEntity("TUNI", false,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(1))));
 
-        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedString("test", null, null),
-            organisations, DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
+        NetworkEntity network = EntityInitializer.getNetworkEntity("CN-1", new LocalisedStringEntity("test", null, null),
+            organisations, EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusDays(2)), true);
 
         networkRepository.create(network);
 
@@ -442,20 +578,32 @@ public class StudyRecordControllerV9IntegrationTest {
         completedCredit4.setCompletionDate(LocalDate.of(2023, 5, 15));
         completedCredit4.getCompletedCreditTarget().setCompletedCreditTargetIdentifierCode("CC4-SM1");
 
-        StudyRecordEntity studyRecord = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord = studyRecordRepository.create(createStudyRecordEntity(
             "UEF", "TUNI", student, completedCredit));
-        StudyRecordEntity studyRecord2 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord2 = studyRecordRepository.create(createStudyRecordEntity(
             "UEF", "TUNI", student, completedCredit2));
-        StudyRecordEntity studyRecord3 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord3 = studyRecordRepository.create(createStudyRecordEntity(
             "UEF", "TUNI", student, completedCredit3));
-        StudyRecordEntity studyRecord4 = studyRecordRepository.create(EntityInitializer.getStudyRecordEntity(
+        StudyRecordEntity studyRecord4 = studyRecordRepository.create(createStudyRecordEntity(
             "UEF", "TUNI", student, completedCredit4));
 
         assertEquals(4, StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList()).size());
     }
 
+    private StudyRecordEntity createStudyRecordEntity(String sendingOrganisation, String receivingOrganisation, StudyRecordStudent student, CompletedCredit... completedCredits) {
+        StudyRecordEntity studyRecord = EntityInitializer.getStudyRecordEntity(
+            sendingOrganisation,
+            receivingOrganisation,
+            StudyRecordStudentEntity.from(student),
+            CompletedCreditEntity.from(Arrays.asList(completedCredits)).toArray(new fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.CompletedCreditEntity[0])
+        );
+        studyRecord.setNetworkIdentifier("CN-1");
+        studyRecord.setRoutingType(RoutingTypeEntity.CROSS_STUDY);
+        return studyRecord;
+    }
+
     private MvcResult getMvcResult(StudyRecordSearchParameters searchParams) throws Exception {
-        return this.getMvcResult(objectMapper.writeValueAsString(searchParams));
+        return this.getMvcResult(jsonMapper.writeValueAsString(searchParams));
     }
 
     private MvcResult getMvcResult(String content) throws Exception {

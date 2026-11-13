@@ -1,10 +1,5 @@
 package fi.uta.ristiinopiskelu.handler.validator.realisation;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
@@ -15,17 +10,19 @@ import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
+import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
+import jakarta.validation.Validator;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
-import org.modelmapper.ModelMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
-import jakarta.validation.Validator;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.Optional;
@@ -34,42 +31,36 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class UpdateRealisationValidatorTest {
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
-    private ModelMapper modelMapper;
-
-    @MockBean
+    @MockitoBean
     private CourseUnitService courseUnitService;
 
-    @MockBean
+    @MockitoBean
     private NetworkService networkService;
 
-    @MockBean
+    @MockitoBean
     private RealisationService realisationService;
 
-    @MockBean
+    @MockitoBean
     private Validator beanValidator;
 
     @Spy
     private UpdateRealisationValidator validator;
 
-    private static final Logger logger = LoggerFactory.getLogger(UpdateRealisationValidatorTest.class);
-
     @BeforeEach
     public void before() {
-        objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .registerModule(new Jdk8Module());
-        modelMapper = new ModelMapper();
-        validator = spy(new UpdateRealisationValidator(modelMapper, objectMapper, realisationService, courseUnitService, networkService, beanValidator));
+        jsonMapper = new EsConfig().jsonMapper(null);
+        validator = spy(new UpdateRealisationValidator(jsonMapper, realisationService, courseUnitService, networkService, beanValidator));
     }
 
     @Test
     public void testValidate_shouldNotCallAnySpecificValidations() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(updateRealisationJson);
+        JsonNode updateRequest = jsonMapper.readTree(updateRealisationJson);
 
         when(realisationService.findByIdAndOrganizingOrganisationId(any(), any())).thenReturn(Optional.of(new RealisationEntity()));
 
@@ -81,7 +72,7 @@ public class UpdateRealisationValidatorTest {
 
     @Test
     public void testValidate_shouldFailOrganisationIdNull() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(updateRealisationJson);
+        JsonNode updateRequest = jsonMapper.readTree(updateRealisationJson);
 
         when(realisationService.findByIdAndOrganizingOrganisationId(any(), any())).thenReturn(Optional.of(new RealisationEntity()));
 
@@ -94,7 +85,7 @@ public class UpdateRealisationValidatorTest {
 
     @Test
     public void testValidate_shouldFailOrganisationIdEmpty() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(updateRealisationJson);
+        JsonNode updateRequest = jsonMapper.readTree(updateRealisationJson);
 
         assertThrows(InvalidMessageHeaderException.class, () -> validator.validateJson(updateRequest, ""));
 
@@ -105,7 +96,7 @@ public class UpdateRealisationValidatorTest {
 
     @Test
     public void testValidate_shouldFailRealisationJsonObjectMissing() throws Exception {
-        JsonNode updateRequest = objectMapper.createObjectNode();
+        JsonNode updateRequest = jsonMapper.createObjectNode();
 
         assertThrows(InvalidMessageBodyException.class, () -> validator.validateJson(updateRequest, "TUNI"));
 
@@ -116,7 +107,7 @@ public class UpdateRealisationValidatorTest {
 
     @Test
     public void testValidate_shouldThrowExceptionRealisationNotFound() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(updateRealisationJson);
+        JsonNode updateRequest = jsonMapper.readTree(updateRealisationJson);
         when(realisationService.findByIdAndOrganizingOrganisationId(any(), any())).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> validator.validateJson(updateRequest, "TUNI"));
@@ -131,8 +122,8 @@ public class UpdateRealisationValidatorTest {
         CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork("CN-1", null, true,
                 LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
-        JsonNode updateRequest = objectMapper.readTree(updateRealisationJson);
-        ((ObjectNode)updateRequest.get("realisation")).set("cooperationNetworks", objectMapper.convertValue(Collections.singletonList(cooperationNetwork), JsonNode.class));
+        JsonNode updateRequest = jsonMapper.readTree(updateRealisationJson);
+        ((ObjectNode)updateRequest.get("realisation")).set("cooperationNetworks", jsonMapper.convertValue(Collections.singletonList(cooperationNetwork), JsonNode.class));
 
         when(realisationService.findByIdAndOrganizingOrganisationId(any(), any())).thenReturn(Optional.of(new RealisationEntity()));
         doNothing().when(validator).validateStudyElementReferences(any(), any());
@@ -149,8 +140,8 @@ public class UpdateRealisationValidatorTest {
     public void testValidate_shouldCallStudyElementReferenceValidationHasReferences() throws Exception {
         StudyElementReference reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU-1", "TUNI");
 
-        JsonNode updateRequest = objectMapper.readTree(updateRealisationJson);
-        ((ObjectNode)updateRequest.get("realisation")).set("studyElementReferences", objectMapper.convertValue(Collections.singletonList(reference), JsonNode.class));
+        JsonNode updateRequest = jsonMapper.readTree(updateRealisationJson);
+        ((ObjectNode)updateRequest.get("realisation")).set("studyElementReferences", jsonMapper.convertValue(Collections.singletonList(reference), JsonNode.class));
 
         when(realisationService.findByIdAndOrganizingOrganisationId(any(), any())).thenReturn(Optional.of(new RealisationEntity()));
         doNothing().when(validator).validateStudyElementReferences(any(), any());
@@ -163,23 +154,25 @@ public class UpdateRealisationValidatorTest {
     }
 
     private final String updateRealisationJson =
-            "{\n" +
-            "    \"realisation\": {\n" +
-            "        \"realisationId\": \"129177\",\n" +
-            "        \"realisationIdentifierCode\": \"129177\",\n" +
-            "        \"minSeats\": 20,\n" +
-            "        \"maxSeats\": 200,\n" +
-            "        \"personReferences\": [\n" +
-            "           {\n" +
-            "               \"personRole\": {\n" +
-            "                   \"key\": \"teacher\",\n" +
-            "                   \"codeSetKey\": \"personRole\"\n" +
-            "               },\n" +
-            "               \"person\": {\n" +
-            "                   \"homeEppn\": \"testi2@test.fi\"\n" +
-            "               }\n" +
-            "           }\n" +
-            "        ]\n" +
-            "   }\n" +
-            "}";
+            """
+                {
+                    "realisation": {
+                        "realisationId": "129177",
+                        "realisationIdentifierCode": "129177",
+                        "minSeats": 20,
+                        "maxSeats": 200,
+                        "personReferences": [
+                           {
+                               "personRole": {
+                                   "key": "teacher",
+                                   "codeSetKey": "personRole"
+                               },
+                               "person": {
+                                   "homeEppn": "testi2@test.fi"
+                               }
+                           }
+                        ]
+                   }
+                }
+            """;
 }

@@ -1,23 +1,23 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.AssessmentItemWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
-import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
-import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CompositeIdentifiedEntityTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
 import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.DeleteFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.CourseUnitAlreadyExistsValidationException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.CourseUnitDeleteBlockedByRealisationsValidationException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityModificationResult;
@@ -25,7 +25,6 @@ import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyElementRepository;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,24 +47,17 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
 
     private CourseUnitRepository courseUnitRepository;
     private RealisationRepository realisationRepository;
-    private ModelMapper modelMapper;
 
     @Autowired
-    public CourseUnitServiceImpl(CourseUnitRepository courseUnitRepository, RealisationRepository realisationRepository, ModelMapper modelMapper) {
+    public CourseUnitServiceImpl(CourseUnitRepository courseUnitRepository, RealisationRepository realisationRepository) {
         super(CourseUnitWriteDTO.class, CourseUnitEntity.class, CourseUnitReadDTO.class, StudyElementType.COURSE_UNIT);
         this.courseUnitRepository = courseUnitRepository;
         this.realisationRepository = realisationRepository;
-        this.modelMapper = modelMapper;
     }
 
     @Override
     protected StudyElementRepository<CourseUnitEntity> getRepository() {
         return courseUnitRepository;
-    }
-
-    @Override
-    public ModelMapper getModelMapper() {
-        return modelMapper;
     }
 
     @Override
@@ -103,18 +95,21 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
                         courseUnit.getStudyElementId(), organisationId).orElse(null);
 
                 if(existing != null) {
-                    throw new IllegalStateException("Course unit already exists with id " + existing.getId());
+                    throw new CourseUnitAlreadyExistsValidationException(
+                        "Course unit already exists [studyElementId: %s, organizingOrganisationId: %s]"
+                            .formatted(courseUnit.getStudyElementId(), organisationId));
                 }
 
-                StudyElementReference courseUnitReference = new StudyElementReference(courseUnit.getStudyElementId(), organisationId, StudyElementType.COURSE_UNIT);
+                StudyElementReferenceEntity courseUnitReference = new StudyElementReferenceEntity(courseUnit.getStudyElementId(),
+                    organisationId, StudyElementTypeEntity.COURSE_UNIT);
 
                 if(!CollectionUtils.isEmpty(courseUnit.getRealisations())) {
                     modificationResults.addAll(createOrUpdateRealisations(courseUnit.getRealisations(), courseUnitReference, organisationId, createdRealisationHistoryIds));
                 }
 
                 for(AssessmentItemWriteDTO assessmentItem : courseUnit.getAssessmentItems()) {
-                    StudyElementReference assessmentItemReference = new StudyElementReference(courseUnit.getStudyElementId(),
-                            organisationId, StudyElementType.ASSESSMENT_ITEM, assessmentItem.getAssessmentItemId());
+                    StudyElementReferenceEntity assessmentItemReference = new StudyElementReferenceEntity(courseUnit.getStudyElementId(),
+                            organisationId, StudyElementTypeEntity.ASSESSMENT_ITEM, assessmentItem.getAssessmentItemId());
 
                     if(!CollectionUtils.isEmpty(assessmentItem.getRealisations())) {
                         modificationResults.addAll(createOrUpdateRealisations(assessmentItem.getRealisations(), assessmentItemReference,
@@ -122,8 +117,8 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
                     }
                 }
 
-                CourseUnitEntity courseUnitEntity = modelMapper.map(courseUnit, CourseUnitEntity.class);
-                courseUnitEntity.setType(CompositeIdentifiedEntityType.COURSE_UNIT);
+                CourseUnitEntity courseUnitEntity = CourseUnitEntity.from(courseUnit);
+                courseUnitEntity.setType(CompositeIdentifiedEntityTypeEntity.COURSE_UNIT);
                 modificationResults.addAll(this.create(courseUnitEntity));
             }
         } catch(Exception e) {
@@ -172,7 +167,7 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
 
                 if(!CollectionUtils.isEmpty(realisationEntity)) {
                     assessmentItemEntity.setRealisations(realisationEntity.stream()
-                        .map(r -> modelMapper.map(r, CourseUnitRealisationEntity.class))
+                        .map(CourseUnitRealisationEntity::from)
                         .collect(Collectors.toList()));
                 }
             }
@@ -198,9 +193,10 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
                     if(realisation.getStudyElementReferences().size() == 1) {
                         realisationRepository.saveHistory(realisation, RealisationEntity.class);
                         realisationRepository.deleteById(realisation.getId());
-                        modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.DELETE, realisation.getType(), realisation, null));
+                        modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.DELETE,
+                            CompositeIdentifiedEntityType.from(realisation.getType()), realisation, null));
                     } else {
-                        Predicate<StudyElementReference> matches =
+                        Predicate<StudyElementReferenceEntity> matches =
                                 ser -> ser.getReferenceIdentifier().equals(studyElementId) &&
                                 ser.getReferenceOrganizer().equals(organizingOrganisationId);
 
@@ -210,11 +206,16 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
                             .orElseThrow(() -> new EntityNotFoundException("Realisation not found with realisationId %s and organizingOrganisationId %s".formatted(realisation.getRealisationId(), realisation.getOrganizingOrganisationId())));
                         updated.getStudyElementReferences().removeIf(matches);
                         updated = realisationRepository.update(updated);
-                        modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE, realisation.getType(), realisation, updated));
+                        modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
+                            CompositeIdentifiedEntityType.from(realisation.getType()), realisation, updated));
                     }
                 }
             } else {
-                throw new DeleteFailedException("Course unit cannot be deleted if it has realisations and deleteRealisations is false.");
+                throw new DeleteFailedException(getEntityClass(),
+                    new CourseUnitDeleteBlockedByRealisationsValidationException(
+                        "Course unit cannot be deleted because it has realisations and deleteRealisations is false " +
+                            "[studyElementId: %s, organizingOrganisationId: %s]"
+                                .formatted(studyElementId, organizingOrganisationId)));
             }
         }
 
@@ -225,14 +226,15 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
             courseUnitRepository.saveHistory(courseUnitEntity, CourseUnitEntity.class);
             courseUnitRepository.delete(courseUnitEntity);
 
-            modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.DELETE, courseUnitEntity.getType(), courseUnitEntity, null));
+            modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.DELETE,
+                CompositeIdentifiedEntityType.from(courseUnitEntity.getType()), courseUnitEntity, null));
             return modificationResults;
         } catch (Exception e) {
             throw new DeleteFailedException(getEntityClass(), e);
         }
     }
 
-    private List<CompositeIdentifiedEntityModificationResult> createOrUpdateRealisations(List<RealisationWriteDTO> realisations, StudyElementReference reference,
+    private List<CompositeIdentifiedEntityModificationResult> createOrUpdateRealisations(List<RealisationWriteDTO> realisations, StudyElementReferenceEntity reference,
                                                                                          String organisationId, List<String> createdRealisationHistoryIds) {
         List<CompositeIdentifiedEntityModificationResult> results = new ArrayList<>();
 
@@ -251,9 +253,9 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
                 results.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE, CompositeIdentifiedEntityType.REALISATION, original, updated));
             } else {
                 // add organizingOrganisationId
-                RealisationEntity realisationEntity = modelMapper.map(realisation, RealisationEntity.class);
+                RealisationEntity realisationEntity = RealisationEntity.from(realisation);
                 realisationEntity.setOrganizingOrganisationId(organisationId);
-                realisationEntity.setStatus(realisation.getStatus() != null ? realisation.getStatus() : StudyStatus.ACTIVE);
+                realisationEntity.setStatus(realisation.getStatus() != null ? StudyStatusEntity.from(realisation.getStatus()) : StudyStatusEntity.ACTIVE);
 
                 realisationEntity = checkReferences(realisationEntity, reference);
                 RealisationEntity created = realisationRepository.create(realisationEntity);
@@ -265,7 +267,7 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
         return results;
     }
 
-    private RealisationEntity checkReferences(RealisationEntity realisationEntity, StudyElementReference reference) {
+    private RealisationEntity checkReferences(RealisationEntity realisationEntity, StudyElementReferenceEntity reference) {
         if (!CollectionUtils.isEmpty(realisationEntity.getStudyElementReferences())) {
             if (!realisationEntity.getStudyElementReferences().contains(reference)) {
                 realisationEntity.getStudyElementReferences().add(reference);
@@ -310,7 +312,7 @@ public class CourseUnitServiceImpl extends AbstractStudyElementService<CourseUni
 
             try {
                 // note: this returns references other than the one that matches
-                List<StudyElementReference> validReferences = realisation.getStudyElementReferences().stream().filter(sre -> {
+                List<StudyElementReferenceEntity> validReferences = realisation.getStudyElementReferences().stream().filter(sre -> {
                     Optional<CourseUnitEntity> courseUnitEntity = this.findByStudyElementIdAndOrganizingOrganisationId(
                             sre.getReferenceIdentifier(), sre.getReferenceOrganizer());
                     return courseUnitEntity.isEmpty();

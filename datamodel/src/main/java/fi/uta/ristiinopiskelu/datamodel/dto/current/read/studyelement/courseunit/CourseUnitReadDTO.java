@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.ScaleValue;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.annotation.Transient;
 import org.springframework.util.CollectionUtils;
@@ -81,5 +83,23 @@ public class CourseUnitReadDTO extends AbstractStudyElementReadDTO {
             }
         }
         return assessmentItemEntities;
+    }
+
+    public static CourseUnitReadDTO from(CourseUnitEntity source) {
+        if(source == null) {
+            return null;
+        }
+
+        CourseUnitReadDTO target = new CourseUnitReadDTO();
+        StudyElementEntity.copyStudyElementEntityToReadDto(source, target);
+        target.setAssessmentScale(ScaleValue.from(source.getAssessmentScale()));
+        target.setLearningMaterials(source.getLearningMaterials() == null
+            ? null
+            : source.getLearningMaterials().stream().map(LocalisedString::from).toList());
+        target.setExamBookEnquiry(source.getExamBookEnquiry());
+        target.setGroupSize(source.getGroupSize());
+        target.setCompletionOptions(CompletionOptionReadDTO.from(source.getCompletionOptions()));
+        target.setRealisations(CourseUnitRealisationReadDTO.from(source.getRealisations()));
+        return target;
     }
 }

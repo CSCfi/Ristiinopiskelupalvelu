@@ -1,11 +1,13 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationReferenceEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Organisationreference
@@ -38,9 +40,7 @@ public class OrganisationReference {
   @Field(type = FieldType.Integer)
   private OrganisationRole organisationRole;
 
-  @Field(name = "target")
-  @JsonProperty("target")
-  private Organisation organisation = null;
+  private Organisation target = null;
 
   @JsonProperty("description")
   private LocalisedString description = null;
@@ -76,11 +76,30 @@ public class OrganisationReference {
   }
 
   @Schema(required = true)
-  public Organisation getOrganisation() {
-    return organisation;
+  public Organisation getTarget() {
+    return target;
   }
 
-  public void setOrganisation(Organisation organisation) {
-    this.organisation = organisation;
+  public void setTarget(Organisation target) {
+    this.target = target;
+  }
+
+  public static OrganisationReference from(OrganisationReferenceEntity source) {
+    if (source == null) {
+      return null;
+    }
+    OrganisationReference target = new OrganisationReference();
+    target.setPercent(source.getPercent());
+    target.setOrganisationRole(source.getOrganisationRole() == null ? null : OrganisationRole.valueOf(source.getOrganisationRole().name()));
+    target.setTarget(Organisation.from(source.getTarget()));
+    target.setDescription(LocalisedString.from(source.getDescription()));
+    return target;
+  }
+
+  public static List<OrganisationReference> from(List<OrganisationReferenceEntity> source) {
+    if (source == null) {
+      return null;
+    }
+    return source.stream().map(OrganisationReference::from).toList();
   }
 }

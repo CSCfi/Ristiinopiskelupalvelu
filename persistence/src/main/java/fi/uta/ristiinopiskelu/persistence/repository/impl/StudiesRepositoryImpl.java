@@ -10,25 +10,34 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
 import fi.uta.ristiinopiskelu.persistence.querybuilder.StudiesSearchRequestBuilder;
 import fi.uta.ristiinopiskelu.persistence.repository.StudiesRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHitsIterator;
+import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.stereotype.Repository;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
+import java.util.Map;
 
+@Slf4j
 @Repository
 public class StudiesRepositoryImpl implements StudiesRepository {
-
-    private static final Logger logger = LoggerFactory.getLogger(StudiesRepositoryImpl.class);
 
     @Autowired
     protected ElasticsearchTemplate elasticsearchTemplate;
 
+    @Autowired
+    private JsonMapper jsonMapper;
+
     @Override
-    public SearchResponse<StudyElementEntity> findAllStudiesByParentReferences(String referenceIdentifier, String referenceOrganizer) {
+    public List<StudyElementEntity> findAllStudiesByParentReferences(String referenceIdentifier, String referenceOrganizer) {
         Query query = new Query.Builder().bool(q -> q
                         .must(q2 -> q2
                                 .nested(nq -> nq
@@ -45,9 +54,20 @@ public class StudiesRepositoryImpl implements StudiesRepository {
                                                                         .field("parents.referenceOrganizer")
                                                                         .value(referenceOrganizer))))))))
                 .build();
-        
-        SearchRequest searchRequest = SearchRequest.of(q -> q.index("opintojaksot", "opintokokonaisuudet", "tutkinnot").query(query));
-        return elasticsearchTemplate.execute(client -> client.search(searchRequest, StudyElementEntity.class));
+
+        NativeQuery nativeQuery = new NativeQueryBuilder()
+                .withQuery(query)
+                .withPageable(Pageable.unpaged())
+                .withReactiveBatchSize(ElasticsearchQueryUtils.SEARCH_BATCH_SIZE)
+                .build();
+
+        try (SearchHitsIterator<Map> searchHits = elasticsearchTemplate.searchForStream(nativeQuery, Map.class,
+                IndexCoordinates.of("opintojaksot", "opintokokonaisuudet", "tutkinnot"))) {
+            return searchHits.stream()
+                    .map(SearchHit::getContent)
+                    .map(source -> jsonMapper.convertValue(source, StudyElementEntity.class))
+                    .toList();
+        }
     }
 
     @Override

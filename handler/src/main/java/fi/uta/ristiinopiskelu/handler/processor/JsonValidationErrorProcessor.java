@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.processor;
 
 import com.networknt.schema.ValidationMessage;
+import fi.uta.ristiinopiskelu.messaging.message.ErrorCode;
 import fi.uta.ristiinopiskelu.messaging.message.current.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.RistiinopiskeluMessage;
@@ -10,7 +11,6 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class JsonValidationErrorProcessor extends AbstractErrorProcessor {
 
@@ -21,11 +21,12 @@ public class JsonValidationErrorProcessor extends AbstractErrorProcessor {
         List<String> errors = new ArrayList<>();
         if(!CollectionUtils.isEmpty(validationException.getErrors())) {
             errors.addAll(validationException.getErrors().stream()
-                .map(ValidationMessage::getMessage).collect(Collectors.toList()));
+                .map(ValidationMessage::getMessage)
+                .toList());
         }
 
         return new RistiinopiskeluMessage(exchange,
                 MessageType.JSON_VALIDATION_FAILED_RESPONSE,
-                new JsonValidationFailedResponse(validationException.getMessage(), errors));
+                new JsonValidationFailedResponse(validationException.getMessage(), errors, ErrorCode.JSON_VALIDATION_FAILED));
     }
 }

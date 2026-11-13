@@ -1,12 +1,12 @@
 package fi.uta.ristiinopiskelu.handler.integration.repository;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
-import org.apache.http.HttpStatus;
-import org.elasticsearch.client.ResponseException;
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +32,7 @@ public class NetworkRepositoryIntegrationTest {
 
     @Test
     public void testCreateNetwork() {
-        LocalisedString name = new LocalisedString("Testiverkosto","Testiverkosto","Testiverkosto");
+        LocalisedStringEntity name = new LocalisedStringEntity("Testiverkosto","Testiverkosto","Testiverkosto");
         NetworkEntity network = new NetworkEntity();
         network.setId("NETWORK-1");
         network.setName(name);
@@ -45,32 +45,32 @@ public class NetworkRepositoryIntegrationTest {
 
     @Test
     public void testUpdateOptimisticLockNetwork() {
-        LocalisedString name = new LocalisedString("Testiverkosto","Testiverkosto","Testiverkosto");
+        LocalisedStringEntity name = new LocalisedStringEntity("Testiverkosto","Testiverkosto","Testiverkosto");
         NetworkEntity network = new NetworkEntity();
         network.setId("NETWORK-UPDATE-1");
         network.setName(name);
         networkRepository.create(network);
 
-        LocalisedString name2 = new LocalisedString("Testiverkosto MUOKATTU","Testiverkosto MODIFIED","Testiverkosto MOD");
+        LocalisedStringEntity name2 = new LocalisedStringEntity("Testiverkosto MUOKATTU","Testiverkosto MODIFIED","Testiverkosto MOD");
         NetworkEntity network2 = networkRepository.findById("NETWORK-UPDATE-1").get();
         network2.setName(name2);
 
         VersionConflictException exception = Assertions.assertThrows(VersionConflictException.class,
             () -> networkRepository.create(network2));
-        assertTrue(exception.getCause() instanceof ResponseException);
-        ResponseException responseException = (ResponseException) exception.getCause();
-        assertEquals(HttpStatus.SC_CONFLICT, responseException.getResponse().getStatusLine().getStatusCode());
+        assertTrue(exception.getCause() instanceof ElasticsearchException);
+        ElasticsearchException elasticsearchException = (ElasticsearchException) exception.getCause();
+        assertEquals(HttpStatus.SC_CONFLICT, elasticsearchException.status());
     }
 
     @Test
     public void testUpdateNetwork() {
-        LocalisedString name = new LocalisedString("Testiverkosto","Testiverkosto","Testiverkosto");
+        LocalisedStringEntity name = new LocalisedStringEntity("Testiverkosto","Testiverkosto","Testiverkosto");
         NetworkEntity network = new NetworkEntity();
         network.setId("NETWORK-UPDATE-2");
         network.setName(name);
         networkRepository.create(network);
 
-        LocalisedString name2 = new LocalisedString("Testiverkosto MUOKATTU","Testiverkosto","Testiverkosto");
+        LocalisedStringEntity name2 = new LocalisedStringEntity("Testiverkosto MUOKATTU","Testiverkosto","Testiverkosto");
         NetworkEntity updatedEntity = new NetworkEntity();
         updatedEntity.setName(name2);
 
@@ -85,7 +85,7 @@ public class NetworkRepositoryIntegrationTest {
 
     @Test
     public void testDeleteNetwork() {
-        LocalisedString name = new LocalisedString("Testiverkosto","Testiverkosto","Testiverkosto");
+        LocalisedStringEntity name = new LocalisedStringEntity("Testiverkosto","Testiverkosto","Testiverkosto");
         NetworkEntity network = new NetworkEntity();
         network.setId("NETWORK-DELETE");
         network.setName(name);

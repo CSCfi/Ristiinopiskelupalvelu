@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.processor.registration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
@@ -16,13 +16,8 @@ import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.CreateRegistrationRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.ForwardedCreateRegistrationRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.RegistrationResponse;
-import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
-import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
-import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
-import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,48 +33,31 @@ public class CreateRegistrationProcessor implements Processor {
 
     private RegistrationService registrationService;
     private OrganisationService organisationService;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private CreateRegistrationValidator validator;
-    private ModelMapper modelMapper;
     private JmsMessageForwarder messageForwarder;
 
     @Autowired
     public CreateRegistrationProcessor(RegistrationService registrationService,
                                        OrganisationService organisationService,
                                        CreateRegistrationValidator validator,
-                                       ObjectMapper objectMapper,
-                                       ModelMapper modelMapper,
+                                       JsonMapper jsonMapper,
                                        JmsMessageForwarder messageForwarder) {
         this.registrationService = registrationService;
         this.organisationService = organisationService;
         this.validator = validator;
-        this.objectMapper = objectMapper;
-        this.modelMapper = modelMapper;
+        this.jsonMapper = jsonMapper;
         this.messageForwarder = messageForwarder;
     }
-
-    @AsyncListener(operation = @AsyncOperation(
-            channelName = "handler",
-            description = "Creates a registration",
-            servers = {"production", "staging"},
-            message = @AsyncMessage(
-                    description = "Creates a registration"
-            ),
-            payloadType = CreateRegistrationRequest.class
-    ))
-    @AsyncPublisher(operation = @AsyncOperation(
-            channelName = "<ORGANISATION_QUEUE>",
-            description = "Forwarded registration request",
-            servers = {"production", "staging"},
-            payloadType = ForwardedCreateRegistrationRequest.class
-    ))
     @Override
     public void process(Exchange exchange) throws Exception {
-        CreateRegistrationRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), CreateRegistrationRequest.class);
+        CreateRegistrationRequest request = jsonMapper.readValue(exchange.getIn().getBody(String.class), CreateRegistrationRequest.class);
         logger.info("Handling registration request");
 
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
-        String correlationId = exchange.getIn().getHeader("JMSMessageID", String.class);
+        String correlationId = exchange.getIn().getHeader(MessageHeader.JMS_MESSAGEID, String.class);
+        Long messageTimestamp = exchange.getIn().getHeader(MessageHeader.MESSAGE_TIMESTAMP, Long.class);
+        Long messageSequence = exchange.getIn().getHeader(MessageHeader.MESSAGE_SEQUENCE, Long.class);
 
         validator.validateRequest(request, organisationId);
 
@@ -87,14 +65,16 @@ public class CreateRegistrationProcessor implements Processor {
                 .orElseThrow(() -> new EntityNotFoundException(OrganisationEntity.class, request.getReceivingOrganisationTkCode()));
 
         // Persist the request. RegistrationRequest & RegistrationReply map nicely to entity :)
-        RegistrationEntity registrationEntity = modelMapper.map(request, RegistrationEntity.class);
+        RegistrationEntity registrationEntity = CreateRegistrationRequest.toRegistrationEntity(request);
         registrationEntity.setReceivingDateTime(OffsetDateTime.now());
+        registrationEntity.setReceivingTimestamp(messageTimestamp);
+        registrationEntity.setReceivingSequence(messageSequence);
 
         List<? extends EntityModificationResult<?>> modificationResults = registrationService.create(registrationEntity);
         registrationEntity = (RegistrationEntity) modificationResults.get(0).getCurrent();
 
         // Add generated registration id for registration
-        ForwardedCreateRegistrationRequest forwardedRequest = modelMapper.map(request, ForwardedCreateRegistrationRequest.class);
+        ForwardedCreateRegistrationRequest forwardedRequest = ForwardedCreateRegistrationRequest.from(request);
         forwardedRequest.setRegistrationRequestId(registrationEntity.getId());
 
         // send to correct organisations

@@ -1,12 +1,11 @@
 package fi.uta.ristiinopiskelu.handler.integration.controller.current;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
@@ -14,7 +13,6 @@ import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyModuleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.MultiValueMap;
@@ -32,20 +30,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * TODO: @DirtiesContext is a quick'n'dirty fix here, should _NOT_ be necessary. Removing it will make
- * StudyRecordRouteIntegrationTest#testSendingCreateStudyRecordMessageForCourseUnit_withOnlyTestPersonsAllowed_shouldFail() test case
- * fail mystically when running *all* tests in handler. Probably something to do with MockMvc use here, all controller integration
- * tests should probably be refactored to use TestRestTemplate or something similar that does actual requests. Just a hunch though.
- */
-@DirtiesContext
 public class AbstractStudiesControllerV9IntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private CourseUnitRepository courseUnitRepository;
@@ -60,7 +51,7 @@ public class AbstractStudiesControllerV9IntegrationTest {
     private RealisationRepository realisationRepository;
 
     protected MvcResult getMvcResult(StudiesSearchParameters searchParams) throws Exception {
-        return this.getMvcResult("/api/v9/studies/search", objectMapper.writeValueAsString(searchParams));
+        return this.getMvcResult("/api/v9/studies/search", jsonMapper.writeValueAsString(searchParams));
     }
 
     protected MvcResult getMvcResult(String url, MultiValueMap<String, String> params, String org) throws Exception {
@@ -92,13 +83,14 @@ public class AbstractStudiesControllerV9IntegrationTest {
     }
 
     protected NetworkEntity createNetworkWithOrganisations(String networkId, String... organisationTkCodes) {
-        Validity validity = new Validity();
-        validity.setContinuity(Validity.ContinuityEnum.FIXED);
+        ValidityEntity validity = new ValidityEntity();
+        validity.setContinuity(ValidityEntity.ContinuityEntity.FIXED);
         validity.setStart(OffsetDateTime.now().minusYears(1));
         validity.setEnd(OffsetDateTime.now().plusYears(2));
 
-        List<NetworkOrganisation> networkOrganisations = Arrays.asList(organisationTkCodes)
-            .stream().map(organisationTkCode -> new NetworkOrganisation(organisationTkCode, true, validity)).collect(Collectors.toList());
+        List<NetworkOrganisationEntity> networkOrganisations = Arrays.asList(organisationTkCodes).stream()
+            .map(organisationTkCode -> new NetworkOrganisationEntity(organisationTkCode, true, validity))
+            .collect(Collectors.toList());
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity(networkId, null, networkOrganisations, validity, true);
 
         networkRepository.create(networkEntity);
@@ -106,50 +98,50 @@ public class AbstractStudiesControllerV9IntegrationTest {
         return networkEntity;
     }
 
-    protected CooperationNetwork createCooperationNetwork(String networkId) {
-        return DtoInitializer.getCooperationNetwork(networkId, null, true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(2));
+    protected CooperationNetworkEntity createCooperationNetwork(String networkId) {
+        return EntityInitializer.getCooperationNetwork(networkId, null, true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(2));
     }
 
     protected CourseUnitEntity createCourseUnit(String courseUnitId, String identifierCode, String organisationTkCode,
-                                              String name, CooperationNetwork coopNetwork, List<CourseUnitRealisationEntity> realisationRefs, BigDecimal creditsMin, BigDecimal creditsMax) {
+                                              String name, CooperationNetworkEntity coopNetwork, List<CourseUnitRealisationEntity> realisationRefs, BigDecimal creditsMin, BigDecimal creditsMax) {
         return this.createCourseUnit(courseUnitId, identifierCode, organisationTkCode, name, Collections.singletonList(coopNetwork), realisationRefs, creditsMin, creditsMax);
     }
 
     protected CourseUnitEntity createCourseUnit(String courseUnitId, String identifierCode, String organisationTkCode,
-                                              String name, List<CooperationNetwork> coopNetworks, List<CourseUnitRealisationEntity> realisationRefs, BigDecimal creditsMin, BigDecimal creditsMax) {
+                                              String name, List<CooperationNetworkEntity> coopNetworks, List<CourseUnitRealisationEntity> realisationRefs, BigDecimal creditsMin, BigDecimal creditsMax) {
         return this.createCourseUnit(courseUnitId, identifierCode, organisationTkCode, name, coopNetworks, realisationRefs, creditsMin, creditsMax, null);
     }
 
     protected CourseUnitEntity createCourseUnit(String courseUnitId, String identifierCode, String organisationTkCode,
-                                              String name, List<CooperationNetwork> coopNetworks, List<CourseUnitRealisationEntity> realisationRefs, BigDecimal creditsMin, BigDecimal creditsMax,
+                                              String name, List<CooperationNetworkEntity> coopNetworks, List<CourseUnitRealisationEntity> realisationRefs, BigDecimal creditsMin, BigDecimal creditsMax,
                                               List<String> teachingLanguages) {
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(courseUnitId, organisationTkCode, coopNetworks,
-            new LocalisedString(name, null, null));
+            new LocalisedStringEntity(name, null, null));
         courseUnitEntity.setStudyElementIdentifierCode(identifierCode);
         courseUnitEntity.setOrganisationReferences(
-            Collections.singletonList(DtoInitializer.getOrganisationReference(DtoInitializer.getOrganisation(organisationTkCode, organisationTkCode), OrganisationRole.ROLE_MAIN_ORGANIZER)));
+            Collections.singletonList(EntityInitializer.getOrganisationReference(EntityInitializer.getOrganisation(organisationTkCode, organisationTkCode), OrganisationRoleEntity.ROLE_MAIN_ORGANIZER)));
         courseUnitEntity.setRealisations(realisationRefs);
         courseUnitEntity.setCreditsMax(creditsMax);
         courseUnitEntity.setCreditsMin(creditsMin);
         courseUnitEntity.setTeachingLanguage(teachingLanguages);
         courseUnitEntity.setOrganizingOrganisationId(organisationTkCode);
-        courseUnitEntity.setStatus(StudyStatus.ACTIVE);
+        courseUnitEntity.setStatus(StudyStatusEntity.ACTIVE);
 
         courseUnitRepository.create(courseUnitEntity);
         return courseUnitEntity;
     }
 
-    protected StudyModuleEntity createStudyModule(String studyModuleId, String identifierCode, String organisationTkCode, String name, CooperationNetwork coopNetwork) {
+    protected StudyModuleEntity createStudyModule(String studyModuleId, String identifierCode, String organisationTkCode, String name, CooperationNetworkEntity coopNetwork) {
         StudyModuleEntity studyModuleEntity = EntityInitializer.getStudyModuleEntity(studyModuleId, identifierCode, organisationTkCode, Collections.singletonList(coopNetwork),
-            new LocalisedString(name, null, null));
+            new LocalisedStringEntity(name, null, null));
         studyModuleEntity.setOrganisationReferences(
-            Collections.singletonList(DtoInitializer.getOrganisationReference(DtoInitializer.getOrganisation(organisationTkCode, organisationTkCode), OrganisationRole.ROLE_MAIN_ORGANIZER)));
+            Collections.singletonList(EntityInitializer.getOrganisationReference(EntityInitializer.getOrganisation(organisationTkCode, organisationTkCode), OrganisationRoleEntity.ROLE_MAIN_ORGANIZER)));
 
         studyModuleRepository.create(studyModuleEntity);
         return studyModuleEntity;
     }
 
-    protected RealisationEntity createRealisation(String realisationId, String organizingOrganisationTkCode, List<StudyElementReference> studyElements, List<CooperationNetwork> cooperationNetworks) {
+    protected RealisationEntity createRealisation(String realisationId, String organizingOrganisationTkCode, List<StudyElementReferenceEntity> studyElements, List<CooperationNetworkEntity> cooperationNetworks) {
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(realisationId, organizingOrganisationTkCode, studyElements, cooperationNetworks);
         realisationRepository.create(realisationEntity);
         return realisationEntity;

@@ -1,16 +1,12 @@
 package fi.uta.ristiinopiskelu.handler.integration.controller.current;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.TeachingLanguage;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.read.realisation.RealisationReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchElementType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchResults;
@@ -20,10 +16,15 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.deprecated.SimpleBucketDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.aggregation.deprecated.SimpleMultiBucketAggregationDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.MinEduGuidanceAreaEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
+import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyModuleRepository;
@@ -31,12 +32,16 @@ import fi.uta.ristiinopiskelu.persistence.utils.SemesterDatePeriod;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.CollectionUtils;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -60,7 +65,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStudiesControllerV9IntegrationTest {
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private CourseUnitRepository courseUnitRepository;
@@ -74,7 +79,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_returnsTimestampsAndDatesInCorrectStringFormat_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", null, "UEF",
             "Testijakso", coopNetwork, null, null, null);
@@ -94,10 +99,10 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
 
-        JsonNode resultNode = objectMapper.readTree(content);
+        JsonNode resultNode = jsonMapper.readTree(content);
         ArrayNode resultsNode = (ArrayNode) resultNode.get("results");
 
         Pattern offsetDateTimePattern = Pattern.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{1,3}");
@@ -121,7 +126,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_returnsTypeAttribute_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", null, "UEF",
             "Testijakso", coopNetwork, null, null, null);
         StudyModuleEntity studyModuleEntity = createStudyModule("SM1", null, "UEF",
@@ -136,11 +141,11 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(StudyElementType.COURSE_UNIT, actualResult.getResults().get(0).getType());
         assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
-        assertEquals(courseUnitEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getOrganisation().getOrganisationTkCode());
+        assertEquals(courseUnitEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getTarget().getOrganisationTkCode());
 
         searchParams.setType(StudiesSearchElementType.STUDY_MODULE);
         searchParams.setOrganizingOrganisationIdentifiers(Collections.singletonList("UEF"));
@@ -149,17 +154,17 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(StudyElementType.STUDY_MODULE, actualResult.getResults().get(0).getType());
         assertEquals(studyModuleEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
-        assertEquals(studyModuleEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getOrganisation().getOrganisationTkCode());
+        assertEquals(studyModuleEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getTarget().getOrganisationTkCode());
     }
 
     @Test
     public void testFindStudies_teachingLanguagesForStudyModules_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         CourseUnitRealisationEntity enrollableRealisationRef = new CourseUnitRealisationEntity();
         enrollableRealisationRef.setEnrollmentStartDateTime(SemesterDatePeriod.getSemesterDatePeriod(LocalDate.now(), 1).getStartDateAsOffset());
@@ -167,13 +172,13 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         enrollableRealisationRef.setRealisationId("TOT-1");
         enrollableRealisationRef.setOrganizingOrganisationId("UEF");
         enrollableRealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
-        enrollableRealisationRef.setStatus(StudyStatus.ACTIVE);
+        enrollableRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity notEnrollableRealisationRef = new CourseUnitRealisationEntity();
         notEnrollableRealisationRef.setRealisationId("TOT-2");
         notEnrollableRealisationRef.setOrganizingOrganisationId("UEF");
         notEnrollableRealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
-        notEnrollableRealisationRef.setStatus(StudyStatus.ACTIVE);
+        notEnrollableRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", null, "UEF",
             "Testijakso", Collections.singletonList(coopNetwork), Collections.singletonList(enrollableRealisationRef), null, null, Collections.singletonList("sv"));
@@ -181,8 +186,8 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         CourseUnitEntity courseUnitEntityWithoutTeachingLanguages = createCourseUnit("CU2", null, "UEF",
             "Testijakso", Collections.singletonList(coopNetwork), Collections.singletonList(notEnrollableRealisationRef), null, null, null);
 
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
-        StudyElementReference cu2Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity cu2Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
 
         // the actual realisations
         RealisationEntity realisationEntity = createRealisation("TOT-1", "UEF",
@@ -204,11 +209,11 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(StudyElementType.COURSE_UNIT, actualResult.getResults().get(0).getType());
         assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
-        assertEquals(courseUnitEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getOrganisation().getOrganisationTkCode());
+       assertEquals(courseUnitEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getTarget().getOrganisationTkCode());
 
         searchParams.setTeachingLanguages(null);
         searchParams.setRealisationTeachingLanguages(null);
@@ -217,7 +222,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
 
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -233,7 +238,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
 
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -251,7 +256,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
 
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -259,14 +264,14 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
             hasProperty("studyElementId", is(studyModuleEntity.getStudyElementId()))
         ));
 
-        studyModuleEntity.setStatus(StudyStatus.CANCELLED);
+        studyModuleEntity.setStatus(StudyStatusEntity.CANCELLED);
         studyModuleRepository.update(studyModuleEntity);
 
         result = getMvcResult(searchParams);
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
 
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -277,7 +282,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_queryParameterCaseInsensitiveFindsFromNameAndIdentifierCode_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "Testi Metro","UEF",
             "Raipatirai", coopNetwork, null, null, null);
         CourseUnitEntity courseUnitEntity2 = createCourseUnit("CU2", "JUY matikka","UEF",
@@ -292,11 +297,11 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(StudyElementType.COURSE_UNIT, actualResult.getResults().get(0).getType());
         assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
-        assertEquals(courseUnitEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getOrganisation().getOrganisationTkCode());
+        assertEquals(courseUnitEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getTarget().getOrganisationTkCode());
 
         searchParams = new StudiesSearchParameters();
         searchParams.setIncludeOwn(true);
@@ -307,11 +312,11 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(StudyElementType.COURSE_UNIT, actualResult.getResults().get(0).getType());
         assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
-        assertEquals(courseUnitEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getOrganisation().getOrganisationTkCode());
+        assertEquals(courseUnitEntity.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getTarget().getOrganisationTkCode());
 
         searchParams = new StudiesSearchParameters();
         searchParams.setIncludeOwn(true);
@@ -322,19 +327,19 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(StudyElementType.COURSE_UNIT, actualResult.getResults().get(0).getType());
         assertEquals(courseUnitEntity2.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
-        assertEquals(courseUnitEntity2.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getOrganisation().getOrganisationTkCode());
+        assertEquals(courseUnitEntity2.getOrganizingOrganisationId(), actualResult.getResults().get(0).getOrganisationReferences().get(0).getTarget().getOrganisationTkCode());
     }
 
     @Test
     public void testFindStudies_onlyEnrollable_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
 
-        CooperationNetwork validCoopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork expiredCoopNetwork = createCooperationNetwork("CN-2");
+        CooperationNetworkEntity validCoopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity expiredCoopNetwork = createCooperationNetwork("CN-2");
         expiredCoopNetwork.setValidityEndDate(LocalDate.now().minusDays(1));
 
         CourseUnitRealisationEntity closedRealisationRef = new CourseUnitRealisationEntity();
@@ -342,7 +347,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         closedRealisationRef.setOrganizingOrganisationId("UEF");
         closedRealisationRef.setCooperationNetworks(Collections.singletonList(validCoopNetwork));
         closedRealisationRef.setEnrollmentClosed(true);
-        closedRealisationRef.setStatus(StudyStatus.ACTIVE);
+        closedRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity enrollableRealisationRef = new CourseUnitRealisationEntity();
         enrollableRealisationRef.setEnrollmentStartDateTime(SemesterDatePeriod.getSemesterDatePeriod(LocalDate.now(), 1).getStartDateAsOffset());
@@ -350,13 +355,13 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         enrollableRealisationRef.setRealisationId("TOT-2");
         enrollableRealisationRef.setOrganizingOrganisationId("UEF");
         enrollableRealisationRef.setCooperationNetworks(Collections.singletonList(validCoopNetwork));
-        enrollableRealisationRef.setStatus(StudyStatus.ACTIVE);
+        enrollableRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity networkExpiredRealisationRef = new CourseUnitRealisationEntity();
         networkExpiredRealisationRef.setRealisationId("TOT-3");
         networkExpiredRealisationRef.setOrganizingOrganisationId("UEF");
         networkExpiredRealisationRef.setCooperationNetworks(Collections.singletonList(expiredCoopNetwork));
-        networkExpiredRealisationRef.setStatus(StudyStatus.ACTIVE);
+        networkExpiredRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "Testi Metro", "UEF",
             "Raipatirai", validCoopNetwork, Collections.singletonList(closedRealisationRef), null, null);
@@ -377,10 +382,10 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         CourseUnitEntity courseUnitEntity4 = createCourseUnit("CU4", "Testi Hrr", "UEF",
             "Raipatirai", validCoopNetwork, Collections.singletonList(networkExpiredRealisationRef), null, null);
 
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
-        StudyElementReference cu2Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
-        StudyElementReference cu3Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU3", "UEF");
-        StudyElementReference cu4Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU4", "UEF");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity cu2Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
+        StudyElementReferenceEntity cu3Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU3", "UEF");
+        StudyElementReferenceEntity cu4Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU4", "UEF");
 
         // the actual realisations
         RealisationEntity closedRealisationEntity = createRealisation("TOT-1", "UEF",
@@ -401,7 +406,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity2.getStudyElementId())),
@@ -414,7 +419,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(4, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -427,7 +432,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_filterByTeachingLanguage_caseInsensitive_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "JAR matikka", "UEF",
             "Keppivirtahepo", coopNetwork, null, null, null);
@@ -444,17 +449,20 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         courseUnitEntity3.setTeachingLanguage(Arrays.asList("EN"));
         courseUnitRepository.update(courseUnitEntity3);
 
-        String query = "{\n" +
-            "\"includeOwn\": \"true\",\n" +
-            "\"teachingLanguages\": [\"fi\"],\n" +
-            "\"realisationStatuses\": null\n" +
-            "}";
+        String query =
+            """
+                {
+                    "includeOwn": "true",
+                    "teachingLanguages": ["fi"],
+                    "realisationStatuses": null
+                }
+            """;
 
         MvcResult result = this.getMvcResult("/api/v9/studies/search", query);
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId()))
@@ -468,7 +476,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -485,7 +493,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -500,21 +508,21 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
     }
 
     @Test
     public void testFindStudies_filterByRealisationTeachingLanguage_caseInsensitive_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         CourseUnitRealisationEntity realisation1 = new CourseUnitRealisationEntity();
         realisation1.setRealisationId("TOT-1");
         realisation1.setOrganizingOrganisationId("UEF");
         realisation1.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation1.setTeachingLanguage(Arrays.asList("fi"));
-        realisation1.setStatus(StudyStatus.ACTIVE);
+        realisation1.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "JAR matikka", "UEF",
             "Keppivirtahepo", coopNetwork, Collections.singletonList(realisation1), null, null);
@@ -526,7 +534,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation2.setOrganizingOrganisationId("UEF");
         realisation2.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation2.setTeachingLanguage(Arrays.asList("SV"));
-        realisation2.setStatus(StudyStatus.ACTIVE);
+        realisation2.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitEntity courseUnitEntity2 = createCourseUnit("CU2", "DOR matikka", "UEF",
             "Keppivirtahepo2", coopNetwork, Collections.singletonList(realisation2), null, null);
@@ -538,7 +546,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation3.setOrganizingOrganisationId("UEF");
         realisation3.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation3.setTeachingLanguage(Arrays.asList("en"));
-        realisation3.setStatus(StudyStatus.ACTIVE);
+        realisation3.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitEntity courseUnitEntity3 = createCourseUnit("CU3", "HÖR matikka", "UEF",
             "Keppivirtahepo3", coopNetwork, Collections.singletonList(realisation3), null, null);
@@ -550,7 +558,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation4.setOrganizingOrganisationId("UEF");
         realisation4.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation4.setTeachingLanguage(Arrays.asList("en"));
-        realisation4.setStatus(StudyStatus.ACTIVE);
+        realisation4.setStatus(StudyStatusEntity.ACTIVE);
 
         CompletionOptionEntity completionOption = new CompletionOptionEntity();
         AssessmentItemEntity assessmentItem = new AssessmentItemEntity();
@@ -567,7 +575,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation5.setRealisationId("TOT-5");
         realisation5.setOrganizingOrganisationId("UEF");
         realisation5.setCooperationNetworks(Collections.singletonList(coopNetwork));
-        realisation5.setStatus(StudyStatus.ACTIVE);
+        realisation5.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitEntity courseUnitEntity5 = createCourseUnit("CU5", "HÖR matikka", "UEF",
             "Keppivirtahepo5", coopNetwork, Collections.singletonList(realisation5), null, null);
@@ -576,7 +584,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation6.setRealisationId("TOT-6");
         realisation6.setOrganizingOrganisationId("UEF");
         realisation6.setCooperationNetworks(Collections.singletonList(coopNetwork));
-        realisation6.setStatus(StudyStatus.ACTIVE);
+        realisation6.setStatus(StudyStatusEntity.ACTIVE);
 
         CompletionOptionEntity completionOption2 = new CompletionOptionEntity();
         AssessmentItemEntity assessmentItem2 = new AssessmentItemEntity();
@@ -590,12 +598,12 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         courseUnitRepository.update(courseUnitEntity6);
 
         // the actual realisations
-        StudyElementReference cu1Ref = new StudyElementReference(courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT);
-        StudyElementReference cu2Ref = new StudyElementReference(courseUnitEntity2.getStudyElementId(), courseUnitEntity2.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT);
-        StudyElementReference cu3Ref = new StudyElementReference(courseUnitEntity3.getStudyElementId(), courseUnitEntity3.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT);
-        StudyElementReference cu4Ref = new StudyElementReference(courseUnitEntity4.getStudyElementId(), courseUnitEntity4.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT);
-        StudyElementReference cu5Ref = new StudyElementReference(courseUnitEntity5.getStudyElementId(), courseUnitEntity5.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT);
-        StudyElementReference cu6Ref = new StudyElementReference(courseUnitEntity6.getStudyElementId(), courseUnitEntity6.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity cu1Ref = EntityInitializer.getStudyElementReferenceForCourseUnit(courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
+        StudyElementReferenceEntity cu2Ref = EntityInitializer.getStudyElementReferenceForCourseUnit(courseUnitEntity2.getStudyElementId(), courseUnitEntity2.getOrganizingOrganisationId());
+        StudyElementReferenceEntity cu3Ref = EntityInitializer.getStudyElementReferenceForCourseUnit(courseUnitEntity3.getStudyElementId(), courseUnitEntity3.getOrganizingOrganisationId());
+        StudyElementReferenceEntity cu4Ref = EntityInitializer.getStudyElementReferenceForCourseUnit(courseUnitEntity4.getStudyElementId(), courseUnitEntity4.getOrganizingOrganisationId());
+        StudyElementReferenceEntity cu5Ref = EntityInitializer.getStudyElementReferenceForCourseUnit(courseUnitEntity5.getStudyElementId(), courseUnitEntity5.getOrganizingOrganisationId());
+        StudyElementReferenceEntity cu6Ref = EntityInitializer.getStudyElementReferenceForCourseUnit(courseUnitEntity6.getStudyElementId(), courseUnitEntity6.getOrganizingOrganisationId());
 
         RealisationEntity realisationEntity = createRealisation(realisation1.getRealisationId(), realisation1.getOrganizingOrganisationId(),
             Collections.singletonList(cu1Ref), Collections.singletonList(coopNetwork));
@@ -615,16 +623,19 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         RealisationEntity realisationEntity6 = createRealisation(realisation6.getRealisationId(), realisation6.getOrganizingOrganisationId(),
             Collections.singletonList(cu6Ref), Collections.singletonList(coopNetwork));
 
-        String query = "{\n" +
-            "\"includeOwn\": \"true\",\n" +
-            "\"realisationTeachingLanguages\": [\"fi\"]\n" +
-            "}";
+        String query =
+            """
+                {
+                    "includeOwn": "true",
+                    "realisationTeachingLanguages": ["fi"]
+                }
+            """;
 
         MvcResult result = this.getMvcResult("/api/v9/studies/search", query);
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId()))
@@ -638,7 +649,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity2.getStudyElementId()))
@@ -654,7 +665,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(4, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -670,7 +681,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
 
         searchParams.setRealisationTeachingLanguages(Collections.singletonList(TeachingLanguage.UNSPECIFIED.getValue()));
@@ -679,7 +690,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity5.getStudyElementId())),
@@ -692,7 +703,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity5.getStudyElementId())),
@@ -706,7 +717,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(4, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity5.getStudyElementId())),
@@ -725,7 +736,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -748,7 +759,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -775,7 +786,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity5.getStudyElementId())),
@@ -802,7 +813,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         result = getMvcResult(searchParams);
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(4, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -828,14 +839,14 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     public void testFindStudies_onlyReturnRealisationsFromSameNetwork_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
         createNetworkWithOrganisations("CN-2", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork otherCoopNetwork = createCooperationNetwork("CN-2");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity otherCoopNetwork = createCooperationNetwork("CN-2");
 
-        List<CooperationNetwork> coopNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> coopNetworks = new ArrayList<>();
         coopNetworks.add(coopNetwork);
         coopNetworks.add(otherCoopNetwork);
 
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
 
         // the actual realisations
         RealisationEntity realisationEntity = createRealisation("TOT-1", "UEF",
@@ -852,19 +863,19 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisationInSameNetwork.setRealisationId("TOT-1");
         realisationInSameNetwork.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisationInSameNetwork.setOrganizingOrganisationId("UEF");
-        realisationInSameNetwork.setStatus(StudyStatus.ACTIVE);
+        realisationInSameNetwork.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity realisationInSameNetwork2 = new CourseUnitRealisationEntity();
         realisationInSameNetwork2.setRealisationId("TOT-2");
         realisationInSameNetwork2.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisationInSameNetwork2.setOrganizingOrganisationId("UEF");
-        realisationInSameNetwork2.setStatus(StudyStatus.ACTIVE);
+        realisationInSameNetwork2.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity realisationInDifferentNetwork = new CourseUnitRealisationEntity();
         realisationInDifferentNetwork.setRealisationId("TOT-3");
         realisationInDifferentNetwork.setCooperationNetworks(Collections.singletonList(otherCoopNetwork));
         realisationInDifferentNetwork.setOrganizingOrganisationId("UEF");
-        realisationInDifferentNetwork.setStatus(StudyStatus.ACTIVE);
+        realisationInDifferentNetwork.setStatus(StudyStatusEntity.ACTIVE);
 
         List<CourseUnitRealisationEntity> realisations = new LinkedList<>();
         realisations.add(realisationInSameNetwork);
@@ -893,7 +904,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -921,7 +932,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_sortingByFields_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "Testi Metro", "UEF",
             "Raipatirai", coopNetwork, null, BigDecimal.valueOf(1), BigDecimal.valueOf(5));
@@ -941,7 +952,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInRelativeOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -955,7 +966,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInRelativeOrder(
             hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId())),
@@ -970,7 +981,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInRelativeOrder(
             hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId())),
@@ -985,7 +996,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInRelativeOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -999,7 +1010,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInRelativeOrder(
             hasProperty("studyElementId", is(courseUnitEntity2.getStudyElementId())),
@@ -1014,7 +1025,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInRelativeOrder(
             hasProperty("studyElementId", is(courseUnitEntity2.getStudyElementId())),
@@ -1029,7 +1040,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInRelativeOrder(
             hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId())),
@@ -1052,10 +1063,10 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     public void testFindStudies_returnsAggregations_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF", "TUNI", "JYU");
         createNetworkWithOrganisations("CN-2", "LAY", "JYU", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork coopNetwork2 = createCooperationNetwork("CN-2");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork2 = createCooperationNetwork("CN-2");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
         allNetworks.add(coopNetwork2);
 
@@ -1067,7 +1078,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation1EnrollableInCurrentSemester.setEnrollmentClosed(false);
         realisation1EnrollableInCurrentSemester.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation1EnrollableInCurrentSemester.setOrganizingOrganisationId("UEF");
-        realisation1EnrollableInCurrentSemester.setStatus(StudyStatus.ACTIVE);
+        realisation1EnrollableInCurrentSemester.setStatus(StudyStatusEntity.ACTIVE);
         realisation1EnrollableInCurrentSemester.setTeachingLanguage(Collections.singletonList("fi"));
 
         // realisation 2, code TOT-2, networks CN-1 & CN-2, organizer UEF. Enrolment expired.
@@ -1076,7 +1087,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation2EnrollmentClosed.setRealisationId("TOT-2");
         realisation2EnrollmentClosed.setCooperationNetworks(allNetworks);
         realisation2EnrollmentClosed.setOrganizingOrganisationId("UEF");
-        realisation2EnrollmentClosed.setStatus(StudyStatus.ACTIVE);
+        realisation2EnrollmentClosed.setStatus(StudyStatusEntity.ACTIVE);
         realisation2EnrollmentClosed.setTeachingLanguage(Collections.singletonList("EN"));
 
         // realisation 3, code TOT-3, network CN-1, organizer TUNI. Enrollable in next semester.
@@ -1087,7 +1098,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation3EnrollableInNextSemester.setEnrollmentClosed(false);
         realisation3EnrollableInNextSemester.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation3EnrollableInNextSemester.setOrganizingOrganisationId("TUNI");
-        realisation3EnrollableInNextSemester.setStatus(StudyStatus.ACTIVE);
+        realisation3EnrollableInNextSemester.setStatus(StudyStatusEntity.ACTIVE);
         realisation3EnrollableInNextSemester.setTeachingLanguage(Collections.singletonList("sv"));
 
         // realisation 4, code TOT-4, network CN-2, organiser JYU. Enrollable after next semester
@@ -1098,7 +1109,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation4EnrollableAfterNextSemester.setEnrollmentClosed(true);
         realisation4EnrollableAfterNextSemester.setCooperationNetworks(Collections.singletonList(coopNetwork2));
         realisation4EnrollableAfterNextSemester.setOrganizingOrganisationId("JYU");
-        realisation4EnrollableAfterNextSemester.setStatus(StudyStatus.ACTIVE);
+        realisation4EnrollableAfterNextSemester.setStatus(StudyStatusEntity.ACTIVE);
 
         // realisation , code TOT-1, network CN-1, organizer UEF. Enrollable in current semester but not right now.
         CourseUnitRealisationEntity realisation5EnrollableLaterInCurrentSemester = new CourseUnitRealisationEntity();
@@ -1108,7 +1119,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation5EnrollableLaterInCurrentSemester.setEnrollmentClosed(false);
         realisation5EnrollableLaterInCurrentSemester.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation5EnrollableLaterInCurrentSemester.setOrganizingOrganisationId("UEF");
-        realisation5EnrollableLaterInCurrentSemester.setStatus(StudyStatus.ACTIVE);
+        realisation5EnrollableLaterInCurrentSemester.setStatus(StudyStatusEntity.ACTIVE);
 
         // realisation 6, code TOT-1, network CN-1, organizer UEF. Enrollable in current semester.
         CourseUnitRealisationEntity realisation6EnrollableInCurrentSemester = new CourseUnitRealisationEntity();
@@ -1118,16 +1129,16 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisation6EnrollableInCurrentSemester.setEnrollmentClosed(false);
         realisation6EnrollableInCurrentSemester.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation6EnrollableInCurrentSemester.setOrganizingOrganisationId("UEF");
-        realisation6EnrollableInCurrentSemester.setStatus(StudyStatus.ACTIVE);
+        realisation6EnrollableInCurrentSemester.setStatus(StudyStatusEntity.ACTIVE);
 
         // course unit references
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
-        StudyElementReference cu2Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
-        StudyElementReference cu3Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU3", "TUNI");
-        StudyElementReference cu4Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU4", "JYU");
-        StudyElementReference cu5Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU5", "UEF");
-        StudyElementReference cu6Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU6", "UEF");
-        StudyElementReference cu7Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU7", "UEF");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity cu2Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
+        StudyElementReferenceEntity cu3Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU3", "TUNI");
+        StudyElementReferenceEntity cu4Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU4", "JYU");
+        StudyElementReferenceEntity cu5Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU5", "UEF");
+        StudyElementReferenceEntity cu6Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU6", "UEF");
+        StudyElementReferenceEntity cu7Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU7", "UEF");
 
         // the actual realisations
         RealisationEntity realisation1EnrollableInCurrentSemesterEntity = createRealisation(
@@ -1200,7 +1211,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(6, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -1360,63 +1371,63 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_returnsStudyElementsByRealisationTeachingLanguagesAggregationCorrectly_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
 
         CourseUnitRealisationEntity realisation1CourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         realisation1CourseUnitRealisationEntity.setRealisationId("TOT-1");
         realisation1CourseUnitRealisationEntity.setCooperationNetworks(allNetworks);
         realisation1CourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
-        realisation1CourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        realisation1CourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
         realisation1CourseUnitRealisationEntity.setTeachingLanguage(Collections.singletonList("fi"));
 
         CourseUnitRealisationEntity realisation2CourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         realisation2CourseUnitRealisationEntity.setRealisationId("TOT-2");
         realisation2CourseUnitRealisationEntity.setCooperationNetworks(allNetworks);
         realisation2CourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
-        realisation2CourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        realisation2CourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
         realisation2CourseUnitRealisationEntity.setTeachingLanguage(Collections.singletonList("EN"));
 
         CourseUnitRealisationEntity realisation3CourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         realisation3CourseUnitRealisationEntity.setRealisationId("TOT-3");
         realisation3CourseUnitRealisationEntity.setCooperationNetworks(allNetworks);
         realisation3CourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
-        realisation3CourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        realisation3CourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
         realisation3CourseUnitRealisationEntity.setTeachingLanguage(Collections.singletonList("sv"));
 
         CourseUnitRealisationEntity realisation4CourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         realisation4CourseUnitRealisationEntity.setRealisationId("TOT-4");
         realisation4CourseUnitRealisationEntity.setCooperationNetworks(allNetworks);
         realisation4CourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
-        realisation4CourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        realisation4CourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity realisation5CourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         realisation5CourseUnitRealisationEntity.setRealisationId("TOT-5");
         realisation5CourseUnitRealisationEntity.setCooperationNetworks(allNetworks);
         realisation5CourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
-        realisation5CourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        realisation5CourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity realisation6CourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         realisation6CourseUnitRealisationEntity.setRealisationId("TOT-6");
         realisation6CourseUnitRealisationEntity.setCooperationNetworks(allNetworks);
         realisation6CourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
-        realisation6CourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        realisation6CourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
         realisation6CourseUnitRealisationEntity.setTeachingLanguage(Arrays.asList(TeachingLanguage.SV.getValue(), TeachingLanguage.RU.getValue()));
 
         CourseUnitRealisationEntity realisation7CourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         realisation7CourseUnitRealisationEntity.setRealisationId("TOT-7");
         realisation7CourseUnitRealisationEntity.setCooperationNetworks(allNetworks);
         realisation7CourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
-        realisation7CourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        realisation7CourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
         realisation7CourseUnitRealisationEntity.setTeachingLanguage(Arrays.asList(TeachingLanguage.FI.getValue(), TeachingLanguage.SV.getValue(), TeachingLanguage.RU.getValue()));
 
         // course unit references
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
-        StudyElementReference cu2Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
-        StudyElementReference cu3Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU3", "UEF");
-        StudyElementReference cu4Reference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU4", "UEF");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity cu2Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
+        StudyElementReferenceEntity cu3Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU3", "UEF");
+        StudyElementReferenceEntity cu4Reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU4", "UEF");
 
         // the actual realisations
         RealisationEntity realisation1Entity = createRealisation(
@@ -1486,7 +1497,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(4, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -1526,9 +1537,9 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     public void testFindStudies_returnsOnlyRealisationsWithEnrollmentOngoing_shouldSucceed() throws Exception {
 
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
 
         SemesterDatePeriod currentSemester = SemesterDatePeriod.getSemesterDatePeriod(LocalDate.now(), 0);
@@ -1539,7 +1550,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         closedRealisationRef.setRealisationId("TOT-1");
         closedRealisationRef.setCooperationNetworks(allNetworks);
         closedRealisationRef.setOrganizingOrganisationId("UEF");
-        closedRealisationRef.setStatus(StudyStatus.ACTIVE);
+        closedRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
         closedRealisationRef.setTeachingLanguage(Collections.singletonList("ru"));
 
         CourseUnitRealisationEntity enrollableRealisationRef = new CourseUnitRealisationEntity();
@@ -1548,7 +1559,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         enrollableRealisationRef.setRealisationId("TOT-2");
         enrollableRealisationRef.setCooperationNetworks(allNetworks);
         enrollableRealisationRef.setOrganizingOrganisationId("UEF");
-        enrollableRealisationRef.setStatus(StudyStatus.ACTIVE);
+        enrollableRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
         enrollableRealisationRef.setTeachingLanguage(Collections.singletonList("fi"));
 
         CourseUnitRealisationEntity archivedRealisationRef = new CourseUnitRealisationEntity();
@@ -1557,7 +1568,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         archivedRealisationRef.setRealisationId("TOT-3");
         archivedRealisationRef.setCooperationNetworks(allNetworks);
         archivedRealisationRef.setOrganizingOrganisationId("UEF");
-        archivedRealisationRef.setStatus(StudyStatus.ARCHIVED);
+        archivedRealisationRef.setStatus(StudyStatusEntity.ARCHIVED);
 
         CourseUnitRealisationEntity enrollableAssessmentItemRealisationRef = new CourseUnitRealisationEntity();
         enrollableAssessmentItemRealisationRef.setEnrollmentStartDateTime(currentSemester.getStartDateAsOffset());
@@ -1565,7 +1576,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         enrollableAssessmentItemRealisationRef.setRealisationId("TOT-4");
         enrollableAssessmentItemRealisationRef.setCooperationNetworks(allNetworks);
         enrollableAssessmentItemRealisationRef.setOrganizingOrganisationId("UEF");
-        enrollableAssessmentItemRealisationRef.setStatus(StudyStatus.ACTIVE);
+        enrollableAssessmentItemRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
         enrollableAssessmentItemRealisationRef.setTeachingLanguage(Collections.singletonList("sv"));
 
         List<CourseUnitRealisationEntity> allRealisations = new ArrayList<>();
@@ -1573,7 +1584,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         allRealisations.add(enrollableRealisationRef);
         allRealisations.add(archivedRealisationRef);
 
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
 
         // the actual realisations
         RealisationEntity closedRealisationEntity = createRealisation("TOT-1", "UEF",
@@ -1627,7 +1638,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
 
@@ -1687,7 +1698,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -1702,7 +1713,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         studyElementsByRealisationTeachingLanguagesAggregation = (SimpleMultiBucketAggregationDTO) actualResult.getAggregations().stream()
             .filter(agg -> agg.getName().equals("studyElementsByRealisationTeachingLanguages")).findAny().get();
@@ -1721,10 +1732,10 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         createNetworkWithOrganisations("aua12345-1234-99ac-cad5-yry8b401roeh", "UEF");
         createNetworkWithOrganisations("feb71594-0297-41ac-aae6-fcb8b20383d5", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("aua12345-1234-99ac-cad5-yry8b401roeh");
-        CooperationNetwork coopNetwork2 = createCooperationNetwork("feb71594-0297-41ac-aae6-fcb8b20383d5");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("aua12345-1234-99ac-cad5-yry8b401roeh");
+        CooperationNetworkEntity coopNetwork2 = createCooperationNetwork("feb71594-0297-41ac-aae6-fcb8b20383d5");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
         allNetworks.add(coopNetwork2);
 
@@ -1734,13 +1745,13 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         allNetworksRealisationRef.setRealisationId("TOT-1");
         allNetworksRealisationRef.setCooperationNetworks(allNetworks);
         allNetworksRealisationRef.setOrganizingOrganisationId("UEF");
-        allNetworksRealisationRef.setStatus(StudyStatus.ACTIVE);
+        allNetworksRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity network1RealisationRef = new CourseUnitRealisationEntity();
         network1RealisationRef.setRealisationId("TOT-2");
         network1RealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
         network1RealisationRef.setOrganizingOrganisationId("UEF");
-        network1RealisationRef.setStatus(StudyStatus.ACTIVE);
+        network1RealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity network2RealisationRef = new CourseUnitRealisationEntity();
         network2RealisationRef.setRealisationId("TOT-3");
@@ -1748,14 +1759,14 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         network2RealisationRef.setEnrollmentEndDateTime(nextSemester.getEndDateAsOffset());
         network2RealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork2));
         network2RealisationRef.setOrganizingOrganisationId("UEF");
-        network2RealisationRef.setStatus(StudyStatus.ACTIVE);
+        network2RealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         List<CourseUnitRealisationEntity> allRealisations = new ArrayList<>();
         allRealisations.add(allNetworksRealisationRef);
         allRealisations.add(network1RealisationRef);
         allRealisations.add(network2RealisationRef);
 
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
 
         // the actual realisations
         RealisationEntity allNetworksRealisationEntity = createRealisation("TOT-1", "UEF",
@@ -1789,7 +1800,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
 
@@ -1809,7 +1820,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
 
@@ -1827,7 +1838,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
 
@@ -1845,10 +1856,10 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         createNetworkWithOrganisations("aua12345-1234-99ac-cad5-yry8b401roeh", "UEF");
         createNetworkWithOrganisations("feb71594-0297-41ac-aae6-fcb8b20383d5", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("aua12345-1234-99ac-cad5-yry8b401roeh");
-        CooperationNetwork coopNetwork2 = createCooperationNetwork("feb71594-0297-41ac-aae6-fcb8b20383d5");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("aua12345-1234-99ac-cad5-yry8b401roeh");
+        CooperationNetworkEntity coopNetwork2 = createCooperationNetwork("feb71594-0297-41ac-aae6-fcb8b20383d5");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
         allNetworks.add(coopNetwork2);
 
@@ -1858,13 +1869,13 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         allNetworksRealisationRef.setRealisationId("TOT-1");
         allNetworksRealisationRef.setCooperationNetworks(allNetworks);
         allNetworksRealisationRef.setOrganizingOrganisationId("UEF");
-        allNetworksRealisationRef.setStatus(StudyStatus.ACTIVE);
+        allNetworksRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity network1RealisationRef = new CourseUnitRealisationEntity();
         network1RealisationRef.setRealisationId("TOT-2");
         network1RealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
         network1RealisationRef.setOrganizingOrganisationId("UEF");
-        network1RealisationRef.setStatus(StudyStatus.ACTIVE);
+        network1RealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity network2RealisationRef = new CourseUnitRealisationEntity();
         network2RealisationRef.setRealisationId("TOT-3");
@@ -1872,7 +1883,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         network2RealisationRef.setEnrollmentEndDateTime(nextSemester.getEndDateAsOffset());
         network2RealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork2));
         network2RealisationRef.setOrganizingOrganisationId("UEF");
-        network2RealisationRef.setStatus(StudyStatus.ACTIVE);
+        network2RealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         List<CourseUnitRealisationEntity> allRealisations = new ArrayList<>();
         allRealisations.add(allNetworksRealisationRef);
@@ -1892,7 +1903,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOptionEntity));
         courseUnitRepository.update(courseUnitEntity);
 
-        StudyElementReference aiReference = DtoInitializer.getStudyElementReferenceForAssessmentItem(courseUnitEntity.getStudyElementId(),
+        StudyElementReferenceEntity aiReference = EntityInitializer.getStudyElementReferenceForAssessmentItem(courseUnitEntity.getStudyElementId(),
             courseUnitEntity.getOrganizingOrganisationId(), assessmentItemEntity.getAssessmentItemId());
 
         // the actual realisations
@@ -1923,7 +1934,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
 
@@ -1943,7 +1954,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
 
@@ -1961,7 +1972,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
 
@@ -1977,9 +1988,9 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_emptyQuery_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF", "JYU");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
 
         SemesterDatePeriod currentSemester = SemesterDatePeriod.getSemesterDatePeriod(LocalDate.now(), 0);
@@ -1990,7 +2001,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         closedRealisationRef.setRealisationId("TOT-1");
         closedRealisationRef.setCooperationNetworks(allNetworks);
         closedRealisationRef.setOrganizingOrganisationId("JYU");
-        closedRealisationRef.setStatus(StudyStatus.ACTIVE);
+        closedRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity enrollableRealisationRef = new CourseUnitRealisationEntity();
         enrollableRealisationRef.setEnrollmentStartDateTime(currentSemester.getStartDateAsOffset());
@@ -1998,13 +2009,13 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         enrollableRealisationRef.setRealisationId("TOT-2");
         enrollableRealisationRef.setCooperationNetworks(allNetworks);
         enrollableRealisationRef.setOrganizingOrganisationId("JYU");
-        enrollableRealisationRef.setStatus(StudyStatus.ACTIVE);
+        enrollableRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         List<CourseUnitRealisationEntity> allRealisations = new ArrayList<>();
         allRealisations.add(closedRealisationRef);
         allRealisations.add(enrollableRealisationRef);
 
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "JYU");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "JYU");
 
         // the actual realisations
         RealisationEntity closedRealisationEntity = createRealisation("TOT-1", "JYU",
@@ -2036,7 +2047,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
 
@@ -2080,8 +2091,8 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     public void testFindStudies_realisationTeachingAggregatesWorkWithOrLogic_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
         createNetworkWithOrganisations("CN-2", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork coopNetwork2 = createCooperationNetwork("CN-2");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork2 = createCooperationNetwork("CN-2");
 
         SemesterDatePeriod currentSemester = SemesterDatePeriod.getSemesterDatePeriod(LocalDate.now(), 0);
 
@@ -2091,7 +2102,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         closedRealisationRef.setRealisationId("TOT-1");
         closedRealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
         closedRealisationRef.setOrganizingOrganisationId("UEF");
-        closedRealisationRef.setStatus(StudyStatus.ACTIVE);
+        closedRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
         closedRealisationRef.setTeachingLanguage(Collections.singletonList("fi"));
 
         CourseUnitRealisationEntity enrollableRealisationRef = new CourseUnitRealisationEntity();
@@ -2100,24 +2111,24 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         enrollableRealisationRef.setRealisationId("TOT-2");
         enrollableRealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
         enrollableRealisationRef.setOrganizingOrganisationId("UEF");
-        enrollableRealisationRef.setStatus(StudyStatus.ACTIVE);
+        enrollableRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity realisation3Ref = new CourseUnitRealisationEntity();
         realisation3Ref.setRealisationId("TOT-3");
         realisation3Ref.setCooperationNetworks(Collections.singletonList(coopNetwork));
         realisation3Ref.setOrganizingOrganisationId("UEF");
-        realisation3Ref.setStatus(StudyStatus.ARCHIVED);
+        realisation3Ref.setStatus(StudyStatusEntity.ARCHIVED);
 
         CourseUnitRealisationEntity realisationInOtherNetwork = new CourseUnitRealisationEntity();
         realisationInOtherNetwork.setRealisationId("TOT-4");
         realisationInOtherNetwork.setCooperationNetworks(Collections.singletonList(coopNetwork2));
         realisationInOtherNetwork.setOrganizingOrganisationId("UEF");
-        realisationInOtherNetwork.setStatus(StudyStatus.ACTIVE);
+        realisationInOtherNetwork.setStatus(StudyStatusEntity.ACTIVE);
         realisationInOtherNetwork.setTeachingLanguage(Collections.singletonList("ru"));
 
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
-        StudyElementReference cuReference2 = DtoInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
-        StudyElementReference cuReference3 = DtoInitializer.getStudyElementReferenceForCourseUnit("CU3", "UEF");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity cuReference2 = EntityInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
+        StudyElementReferenceEntity cuReference3 = EntityInitializer.getStudyElementReferenceForCourseUnit("CU3", "UEF");
 
         // the actual realisations
         RealisationEntity closedRealisationEntity = createRealisation("TOT-1", "UEF",
@@ -2154,7 +2165,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -2192,7 +2203,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -2214,18 +2225,18 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_returnsOnlyStudyElementsWithActiveRealisationsByDefault_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
 
         // CU1 with ACTIVE realisation
         CourseUnitRealisationEntity activeCourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         activeCourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
         activeCourseUnitRealisationEntity.setRealisationId("TOT-1");
-        activeCourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        activeCourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
 
-        StudyElementReference reference = new StudyElementReference("CU1", "UEF", StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity reference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
         RealisationEntity activeRealisationEntity = createRealisation("TOT-1", "UEF", Collections.singletonList(reference), allNetworks);
 
         CourseUnitEntity courseUnitWithActiveRealisation = createCourseUnit("CU1", "Testi Metro", "UEF",
@@ -2236,12 +2247,12 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         CourseUnitRealisationEntity cancelledCourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         cancelledCourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
         cancelledCourseUnitRealisationEntity.setRealisationId("TOT-2");
-        cancelledCourseUnitRealisationEntity.setStatus(StudyStatus.CANCELLED);
+        cancelledCourseUnitRealisationEntity.setStatus(StudyStatusEntity.CANCELLED);
 
-        StudyElementReference reference2 = new StudyElementReference("CU2", "UEF", StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity reference2 = EntityInitializer.getStudyElementReferenceForCourseUnit("CU2", "UEF");
 
         RealisationEntity cancelledRealisationEntity = createRealisation("TOT-2", "UEF", Collections.singletonList(reference2), allNetworks);
-        cancelledRealisationEntity.setStatus(StudyStatus.CANCELLED);
+        cancelledRealisationEntity.setStatus(StudyStatusEntity.CANCELLED);
         realisationRepository.update(cancelledRealisationEntity);
 
         // CU3 with ARCHIVED realisation
@@ -2252,12 +2263,12 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         CourseUnitRealisationEntity archivedCourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         archivedCourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
         archivedCourseUnitRealisationEntity.setRealisationId("TOT-3");
-        archivedCourseUnitRealisationEntity.setStatus(StudyStatus.ARCHIVED);
+        archivedCourseUnitRealisationEntity.setStatus(StudyStatusEntity.ARCHIVED);
 
-        StudyElementReference reference3 = new StudyElementReference("CU3", "UEF", StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity reference3 = EntityInitializer.getStudyElementReferenceForCourseUnit("CU3", "UEF");
 
         RealisationEntity archivedRealisationEntity = createRealisation("TOT-3", "UEF", Collections.singletonList(reference3), allNetworks);
-        archivedRealisationEntity.setStatus(StudyStatus.ARCHIVED);
+        archivedRealisationEntity.setStatus(StudyStatusEntity.ARCHIVED);
         realisationRepository.update(archivedRealisationEntity);
 
         CourseUnitEntity courseUnitWithArchivedRealisation = createCourseUnit("CU3", "Testi Metro", "UEF",
@@ -2268,12 +2279,12 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         CourseUnitRealisationEntity archivedAssessmentItemCourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         archivedAssessmentItemCourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
         archivedAssessmentItemCourseUnitRealisationEntity.setRealisationId("TOT-4");
-        archivedAssessmentItemCourseUnitRealisationEntity.setStatus(StudyStatus.ARCHIVED);
+        archivedAssessmentItemCourseUnitRealisationEntity.setStatus(StudyStatusEntity.ARCHIVED);
 
-        StudyElementReference reference4 = new StudyElementReference("CU4", "UEF", StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity reference4 = EntityInitializer.getStudyElementReferenceForCourseUnit("CU4", "UEF");
 
         RealisationEntity archivedAssessmentItemRealisationEntity = createRealisation("TOT-4", "UEF", Collections.singletonList(reference3), allNetworks);
-        archivedRealisationEntity.setStatus(StudyStatus.ARCHIVED);
+        archivedRealisationEntity.setStatus(StudyStatusEntity.ARCHIVED);
         realisationRepository.update(archivedRealisationEntity);
 
         AssessmentItemEntity assessmentItemEntity = new AssessmentItemEntity();
@@ -2298,7 +2309,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         MvcResult result = getMvcResult(searchParameters);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnitWithActiveRealisation.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
@@ -2308,7 +2319,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
 
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -2321,7 +2332,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
 
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnitWithCancelledRealisation.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
@@ -2331,7 +2342,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
 
         assertEquals(4, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -2346,7 +2357,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
 
         assertEquals(5, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -2363,7 +2374,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
 
         assertEquals(5, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
@@ -2378,9 +2389,9 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_pagingAndSimpleSortingWorksAsIntended_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
-        List<CooperationNetwork> allNetworks = new ArrayList<>();
+        List<CooperationNetworkEntity> allNetworks = new ArrayList<>();
         allNetworks.add(coopNetwork);
 
         CourseUnitEntity courseUnit1 = createCourseUnit("CU1", "Testi Metro", "UEF",
@@ -2409,7 +2420,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         MvcResult result = getMvcResult(searchParameters);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnit1.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
 
@@ -2417,7 +2428,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         searchParameters.setPage(1);
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnit2.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
 
@@ -2425,7 +2436,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         searchParameters.setPage(2);
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnit3.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
 
@@ -2433,7 +2444,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         searchParameters.setPage(3);
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnit4.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
 
@@ -2441,7 +2452,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         searchParameters.setPage(4);
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnit5.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
 
@@ -2449,7 +2460,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         searchParameters.setPage(5);
         result = getMvcResult(searchParameters);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
     }
 
@@ -2457,8 +2468,8 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     public void testFindStudies_returnsOnlyStudiesInOwnNetworks_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
         createNetworkWithOrganisations("CN-2", "JYU");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork coopNetwork2= createCooperationNetwork("CN-2");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork2= createCooperationNetwork("CN-2");
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "Testi Metro", "UEF",
             "Raipatirai", coopNetwork, null, BigDecimal.valueOf(1), BigDecimal.valueOf(5));
@@ -2480,7 +2491,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -2494,7 +2505,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
 
         searchParams = new StudiesSearchParameters();
@@ -2506,7 +2517,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
 
         // now test with inactives included
@@ -2518,7 +2529,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -2531,10 +2542,10 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     public void testFindStudies_returnsOnlyStudiesInSpecifiedNetworks_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF", "JYU");
         createNetworkWithOrganisations("CN-2", "UEF", "TUNI");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork coopNetwork2 = createCooperationNetwork("CN-2");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork2 = createCooperationNetwork("CN-2");
 
-        List<CooperationNetwork> allNetworks = Arrays.asList(coopNetwork, coopNetwork2);
+        List<CooperationNetworkEntity> allNetworks = Arrays.asList(coopNetwork, coopNetwork2);
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "Testi Metro", "UEF",
             "Raipatirai", coopNetwork, null, BigDecimal.valueOf(1), BigDecimal.valueOf(5));
@@ -2557,7 +2568,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(4, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -2572,7 +2583,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId())),
@@ -2584,10 +2595,10 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     public void testFindStudies_returnsNoResultsIfIncludeOwnFalseAndOnlyOwnOrganisationSpecified_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF", "JYU");
         createNetworkWithOrganisations("CN-2", "UEF", "TUNI");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork coopNetwork2 = createCooperationNetwork("CN-2");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork2 = createCooperationNetwork("CN-2");
 
-        List<CooperationNetwork> allNetworks = Arrays.asList(coopNetwork, coopNetwork2);
+        List<CooperationNetworkEntity> allNetworks = Arrays.asList(coopNetwork, coopNetwork2);
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "Testi Metro", "UEF",
             "Raipatirai", coopNetwork, null, BigDecimal.valueOf(1), BigDecimal.valueOf(5));
@@ -2610,7 +2621,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(4, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -2625,7 +2636,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(2, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId())),
@@ -2639,7 +2650,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
     }
 
@@ -2660,7 +2671,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId()))
@@ -2672,41 +2683,42 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
     }
 
     @Test
     public void testFindStudies_filterByMinEduGuidanceAreas_shouldSucceed() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "JAR matikka", "UEF",
             "Keppivirtahepo", coopNetwork, null, null, null);
-        courseUnitEntity.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.MEDICAL_SCIENCE, MinEduGuidanceArea.EDUCATION));
+        courseUnitEntity.setMinEduGuidanceArea(List.of(MinEduGuidanceAreaEntity.MEDICAL_SCIENCE, MinEduGuidanceAreaEntity.EDUCATION));
         courseUnitRepository.update(courseUnitEntity);
 
         CourseUnitEntity courseUnitEntity2 = createCourseUnit("CU2", "DOR matikka", "UEF",
             "Keppivirtahepo2", coopNetwork, null, null, null);
-        courseUnitEntity2.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.ARTS_AND_CULTURE, MinEduGuidanceArea.EDUCATION));
+        courseUnitEntity2.setMinEduGuidanceArea(List.of(MinEduGuidanceAreaEntity.ARTS_AND_CULTURE, MinEduGuidanceAreaEntity.EDUCATION));
         courseUnitRepository.update(courseUnitEntity2);
 
         CourseUnitEntity courseUnitEntity3 = createCourseUnit("CU3", "HÖR matikka", "UEF",
             "Keppivirtahepo3", coopNetwork, null, null, null);
-        courseUnitEntity3.setMinEduGuidanceArea(List.of(MinEduGuidanceArea.HEALTH_AND_WELFARE, MinEduGuidanceArea.EDUCATION, MinEduGuidanceArea.AGRICULTURE_AND_FORESTY));
+        courseUnitEntity3.setMinEduGuidanceArea(List.of(MinEduGuidanceAreaEntity.HEALTH_AND_WELFARE, MinEduGuidanceAreaEntity.EDUCATION, MinEduGuidanceAreaEntity.AGRICULTURE_AND_FORESTY));
         courseUnitRepository.update(courseUnitEntity3);
 
         String query = """
             {
                 "includeOwn": "true",
                 "minEduGuidanceAreas": [%s]
-            }""".formatted(MinEduGuidanceArea.EDUCATION.getCode());
+            }
+            """.formatted(MinEduGuidanceArea.EDUCATION.getCode());
 
         MvcResult result = this.getMvcResult("/api/v9/studies/search", query);
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -2722,7 +2734,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity3.getStudyElementId()))
@@ -2734,7 +2746,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId()))
@@ -2746,7 +2758,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(3, actualResult.getResults().size());
         assertThat(actualResult.getResults(), containsInAnyOrder(
             hasProperty("studyElementId", is(courseUnitEntity.getStudyElementId())),
@@ -2758,7 +2770,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
     @Test
     public void testFindStudies_langDependentOrIndependent() throws Exception {
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         CourseUnitRealisationEntity realisationRef = new CourseUnitRealisationEntity();
         realisationRef.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
@@ -2766,8 +2778,8 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         realisationRef.setRealisationId("TOT-1");
         realisationRef.setOrganizingOrganisationId("UEF");
         realisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
-        realisationRef.setName(new LocalisedString("cuRealisationNameFi", null, "cuRealisationNameSv"));
-        realisationRef.setStatus(StudyStatus.ACTIVE);
+        realisationRef.setName(new LocalisedStringEntity("cuRealisationNameFi", null, "cuRealisationNameSv"));
+        realisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity aiRealisationRef = new CourseUnitRealisationEntity();
         aiRealisationRef.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
@@ -2775,8 +2787,8 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         aiRealisationRef.setRealisationId("TOT-2");
         aiRealisationRef.setOrganizingOrganisationId("UEF");
         aiRealisationRef.setCooperationNetworks(Collections.singletonList(coopNetwork));
-        aiRealisationRef.setName(new LocalisedString("cuCoAiRealisationNameFi", null, "cuCoAiRealisationNameSv"));
-        aiRealisationRef.setStatus(StudyStatus.ACTIVE);
+        aiRealisationRef.setName(new LocalisedStringEntity("cuCoAiRealisationNameFi", null, "cuCoAiRealisationNameSv"));
+        aiRealisationRef.setStatus(StudyStatusEntity.ACTIVE);
 
         CompletionOptionEntity completionOption = new CompletionOptionEntity();
         AssessmentItemEntity assessmentItem = new AssessmentItemEntity();
@@ -2785,25 +2797,25 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
 
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", null, "UEF",
             "cuNameFi", Collections.singletonList(coopNetwork), Collections.singletonList(realisationRef), null, null);
-        courseUnitEntity.setName(new LocalisedString("cuNameFi", null, "cuNameSv"));
+        courseUnitEntity.setName(new LocalisedStringEntity("cuNameFi", null, "cuNameSv"));
         courseUnitEntity.setCompletionOptions(Collections.singletonList(completionOption));
         courseUnitRepository.update(courseUnitEntity);
 
-        StudyElementReference cuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
-        StudyElementReference aiCuReference = DtoInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity cuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
+        StudyElementReferenceEntity aiCuReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
         aiCuReference.setReferenceAssessmentItemId(courseUnitEntity.getCompletionOptions().get(0).getAssessmentItems().get(0).getAssessmentItemId());
 
         // the actual realisations
         RealisationEntity realisationEntity = createRealisation("TOT-1", "UEF",
             Collections.singletonList(cuReference), Collections.singletonList(coopNetwork));
-        realisationEntity.setName(new LocalisedString("cuRealisationNameFi", null, "cuRealisationNameSv"));
+        realisationEntity.setName(new LocalisedStringEntity("cuRealisationNameFi", null, "cuRealisationNameSv"));
         realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
         realisationEntity.setEnrollmentEndDateTime(OffsetDateTime.now().plusMonths(6));
         realisationRepository.update(realisationEntity);
 
         RealisationEntity aiRealisationEntity = createRealisation("TOT-2", "UEF",
             Collections.singletonList(aiCuReference), Collections.singletonList(coopNetwork));
-        aiRealisationEntity.setName(new LocalisedString("cuCoAiRealisationNameFi", null, "cuCoAiRealisationNameSv"));
+        aiRealisationEntity.setName(new LocalisedStringEntity("cuCoAiRealisationNameFi", null, "cuCoAiRealisationNameSv"));
         aiRealisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
         aiRealisationEntity.setEnrollmentEndDateTime(OffsetDateTime.now().plusMonths(6));
         realisationRepository.update(aiRealisationEntity);
@@ -2817,7 +2829,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         String content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        StudiesSearchResults actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        StudiesSearchResults actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
 
         // Then target course unit name with right language
@@ -2827,7 +2839,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
 
@@ -2839,7 +2851,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
 
@@ -2852,7 +2864,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(0, actualResult.getResults().size());
 
         // The same but with langIndependent = true (double match)
@@ -2862,7 +2874,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
 
@@ -2873,7 +2885,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
 
@@ -2884,7 +2896,7 @@ public class StudiesControllerV9StudyElementIntegrationTest extends AbstractStud
         content = result.getResponse().getContentAsString();
         System.out.print("Content:\n" + content);
 
-        actualResult = objectMapper.readValue(content, StudiesSearchResults.class);
+        actualResult = jsonMapper.readValue(content, StudiesSearchResults.class);
         assertEquals(1, actualResult.getResults().size());
         assertEquals(courseUnitEntity.getStudyElementId(), actualResult.getResults().get(0).getStudyElementId());
     }

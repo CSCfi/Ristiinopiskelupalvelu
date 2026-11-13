@@ -1,7 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.processor;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
 import fi.uta.ristiinopiskelu.messaging.util.MessageHeaderUtils;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
@@ -14,14 +14,14 @@ import org.springframework.stereotype.Component;
 public class MessageSchemaVersionCompatabilityProcessor implements Processor {
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private MessageSchemaService messageSchemaService;
 
     @Override
     public void process(Exchange exchange) throws Exception {
-        JsonNode json = objectMapper.readTree(exchange.getIn().getBody(String.class));
+        JsonNode json = jsonMapper.readTree(exchange.getIn().getBody(String.class));
         MessageType messageType = MessageHeaderUtils.getMessageType(exchange.getIn().getHeaders());
         int schemaVersion = MessageHeaderUtils.getSchemaVersion(exchange.getIn().getHeaders());
 
@@ -31,6 +31,6 @@ public class MessageSchemaVersionCompatabilityProcessor implements Processor {
 
         // reset headers too along with the converted JSON
         exchange.getMessage().setHeaders(exchange.getIn().getHeaders());
-        exchange.getMessage().setBody(objectMapper.writeValueAsString(convertedJson));
+        exchange.getMessage().setBody(jsonMapper.writeValueAsString(convertedJson));
     }
 }

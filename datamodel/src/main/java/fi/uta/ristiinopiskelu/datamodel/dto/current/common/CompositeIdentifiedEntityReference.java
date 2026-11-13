@@ -46,7 +46,11 @@ public class CompositeIdentifiedEntityReference {
 
     @JsonIgnore
     public static CompositeIdentifiedEntityReference from(CompositeIdentifiedEntity entity) {
-        return new CompositeIdentifiedEntityReference(entity.getElementId(), entity.getOrganizingOrganisationId(), entity.getType());
+        return new CompositeIdentifiedEntityReference(
+            entity.getElementId(),
+            entity.getOrganizingOrganisationId(),
+            entity.getType() != null ? CompositeIdentifiedEntityType.valueOf(entity.getType().name()) : null
+        );
     }
 
     @JsonIgnore

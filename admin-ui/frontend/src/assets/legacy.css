@@ -1,0 +1,9 @@
+.legacy-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.legacy-flex {
+  padding: 4px 0;
+}

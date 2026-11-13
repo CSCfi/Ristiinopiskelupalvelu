@@ -2,7 +2,10 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeReference;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.PersonReferenceEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.List;
 
 /**
  * Personreference
@@ -69,5 +72,23 @@ public class PersonReference {
 
   public void setPerson(Person person) {
     this.person = person;
+  }
+
+  public static PersonReference from(PersonReferenceEntity source) {
+    if (source == null) {
+      return null;
+    }
+    PersonReference target = new PersonReference();
+    target.setPersonRole(CodeReference.from(source.getPersonRole()));
+    target.setPerson(Person.from(source.getPerson()));
+    target.setDefinition(source.getDefinition());
+    return target;
+  }
+
+  public static List<PersonReference> from(List<PersonReferenceEntity> source) {
+    if (source == null) {
+      return null;
+    }
+    return source.stream().map(PersonReference::from).toList();
   }
 }

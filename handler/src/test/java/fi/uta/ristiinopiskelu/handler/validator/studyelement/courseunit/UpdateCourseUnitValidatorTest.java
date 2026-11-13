@@ -1,10 +1,5 @@
 package fi.uta.ristiinopiskelu.handler.validator.studyelement.courseunit;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
@@ -15,21 +10,26 @@ import fi.uta.ristiinopiskelu.datamodel.entity.AssessmentItemEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.CompletionOptionEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.handler.service.CourseUnitService;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
+import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
+import jakarta.validation.Validator;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
-import jakarta.validation.Validator;
 import java.io.IOException;
 import java.util.*;
 
@@ -37,42 +37,39 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class UpdateCourseUnitValidatorTest {
 
-    @MockBean
+    @MockitoBean
     private CourseUnitService courseUnitService;
 
-    @MockBean
+    @MockitoBean
     private NetworkService networkService;
 
-    @MockBean
+    @MockitoBean
     private RealisationService realisationService;
 
-    @MockBean
+    @MockitoBean
     private Validator beanValidator;
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     private UpdateCourseUnitValidator validator;
 
-    private static final Logger logger = LoggerFactory.getLogger(UpdateCourseUnitValidatorTest.class);
-
     @BeforeEach
     public void before() {
-        objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .registerModule(new Jdk8Module());
-        validator = spy(new UpdateCourseUnitValidator(new ArrayList<>(), networkService, realisationService, objectMapper, beanValidator));
+        jsonMapper = new EsConfig().jsonMapper(null);
+        validator = spy(new UpdateCourseUnitValidator(new ArrayList<>(), networkService, realisationService, jsonMapper, beanValidator));
         doReturn(courseUnitService).when(validator).getServiceForClass(any());
     }
 
     @Test
     public void testValidate_shouldCallAllValidationsOnce() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(courseUnitUpdateJsonTemplate);
-        ((ObjectNode)updateRequest.get("courseUnit")).set("parents", objectMapper.convertValue(new ArrayList<StudyElementReference>(), JsonNode.class));
-        ((ObjectNode)updateRequest.get("courseUnit")).set("organisationReferences", objectMapper.convertValue(new ArrayList<OrganisationReference>(), JsonNode.class));
-        ((ObjectNode)updateRequest.get("courseUnit")).set("cooperationNetworks", objectMapper.convertValue(new ArrayList<CooperationNetwork>(), JsonNode.class));
+        JsonNode updateRequest = jsonMapper.readTree(courseUnitUpdateJsonTemplate);
+        ((ObjectNode)updateRequest.get("courseUnit")).set("parents", jsonMapper.convertValue(new ArrayList<StudyElementReference>(), JsonNode.class));
+        ((ObjectNode)updateRequest.get("courseUnit")).set("organisationReferences", jsonMapper.convertValue(new ArrayList<OrganisationReference>(), JsonNode.class));
+        ((ObjectNode)updateRequest.get("courseUnit")).set("cooperationNetworks", jsonMapper.convertValue(new ArrayList<CooperationNetwork>(), JsonNode.class));
 
         when(courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(any(), any()))
                 .thenReturn(Optional.of(new CourseUnitEntity()));
@@ -90,7 +87,7 @@ public class UpdateCourseUnitValidatorTest {
 
     @Test
     public void testValidate_shouldThrowInvalidMessageHeaderException() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(courseUnitUpdateJsonTemplate);
+        JsonNode updateRequest = jsonMapper.readTree(courseUnitUpdateJsonTemplate);
         ((ObjectNode)updateRequest.get("courseUnit")).set("parents", null);
         assertThrows(InvalidMessageHeaderException.class, () -> validator.validateJson(updateRequest, null));
     }
@@ -102,15 +99,15 @@ public class UpdateCourseUnitValidatorTest {
 
     @Test
     public void testValidate_shouldThrowInvalidMessageBodyExceptionNoCourseUnit() throws Exception {
-        assertThrows(InvalidMessageBodyException.class, () -> validator.validateJson(objectMapper.createObjectNode(), "TUNI"));
+        assertThrows(InvalidMessageBodyException.class, () -> validator.validateJson(jsonMapper.createObjectNode(), "TUNI"));
     }
 
     @Test
     public void testValidate_shouldThrowEntityNotFoundException() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(courseUnitUpdateJsonTemplate);
-        ((ObjectNode)updateRequest.get("courseUnit")).set("parents", objectMapper.convertValue(new ArrayList<StudyElementReference>(), JsonNode.class));
-        ((ObjectNode)updateRequest.get("courseUnit")).set("organisationReferences", objectMapper.convertValue(new ArrayList<OrganisationReference>(), JsonNode.class));
-        ((ObjectNode)updateRequest.get("courseUnit")).set("cooperationNetworks", objectMapper.convertValue(new ArrayList<CooperationNetwork>(), JsonNode.class));
+        JsonNode updateRequest = jsonMapper.readTree(courseUnitUpdateJsonTemplate);
+        ((ObjectNode)updateRequest.get("courseUnit")).set("parents", jsonMapper.convertValue(new ArrayList<StudyElementReference>(), JsonNode.class));
+        ((ObjectNode)updateRequest.get("courseUnit")).set("organisationReferences", jsonMapper.convertValue(new ArrayList<OrganisationReference>(), JsonNode.class));
+        ((ObjectNode)updateRequest.get("courseUnit")).set("cooperationNetworks", jsonMapper.convertValue(new ArrayList<CooperationNetwork>(), JsonNode.class));
 
         when(courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(any(), any()))
                 .thenReturn(Optional.empty());
@@ -125,7 +122,7 @@ public class UpdateCourseUnitValidatorTest {
 
     @Test
     public void testValidate_shouldCallNoValidation() throws Exception {
-        JsonNode updateRequest = objectMapper.readTree(courseUnitUpdateJsonTemplate);
+        JsonNode updateRequest = jsonMapper.readTree(courseUnitUpdateJsonTemplate);
         ((ObjectNode)updateRequest.get("courseUnit")).set("parents", null);
 
         when(courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(any(), any()))
@@ -176,13 +173,13 @@ public class UpdateCourseUnitValidatorTest {
         oneMatchingNetwork.add(cooperationNetwork3);
 
         RealisationEntity realisation = new RealisationEntity();
-        realisation.setCooperationNetworks(oneMatchingNetworkAndOneNotMatching);
+        realisation.setCooperationNetworks(toEntityNetworks(oneMatchingNetworkAndOneNotMatching));
 
         RealisationEntity realisation2 = new RealisationEntity();
-        realisation2.setCooperationNetworks(twoMatchingNetworkAndOneNotMatching);
+        realisation2.setCooperationNetworks(toEntityNetworks(twoMatchingNetworkAndOneNotMatching));
 
         RealisationEntity realisation3 = new RealisationEntity();
-        realisation3.setCooperationNetworks(oneMatchingNetwork);
+        realisation3.setCooperationNetworks(toEntityNetworks(oneMatchingNetwork));
 
         CourseUnitWriteDTO courseUnit = DtoInitializer.getCourseUnit("ID1", "CODE-1", null,
                 courseUnitNetworks, null, null, null);
@@ -243,12 +240,12 @@ public class UpdateCourseUnitValidatorTest {
         RealisationEntity correctRealisation = new RealisationEntity();
         correctRealisation.setRealisationId("R1");
         correctRealisation.setRealisationIdentifierCode("RCODE1");
-        correctRealisation.setCooperationNetworks(oneMatchingNetworkAndOneNotMatching);
+        correctRealisation.setCooperationNetworks(toEntityNetworks(oneMatchingNetworkAndOneNotMatching));
 
         RealisationEntity failingRealisation = new RealisationEntity();
         failingRealisation.setRealisationId("R2");
         failingRealisation.setRealisationIdentifierCode("RCODE2");
-        failingRealisation.setCooperationNetworks(noMatchingNetworks);
+        failingRealisation.setCooperationNetworks(toEntityNetworks(noMatchingNetworks));
 
         CourseUnitWriteDTO courseUnit = DtoInitializer.getCourseUnit("ID1", "CODE-1", null,
                 courseUnitNetworks, null, null, null);
@@ -297,12 +294,12 @@ public class UpdateCourseUnitValidatorTest {
         RealisationEntity failingRealisation = new RealisationEntity();
         failingRealisation.setRealisationId("R1");
         failingRealisation.setRealisationIdentifierCode("RCODE1");
-        failingRealisation.setCooperationNetworks(noMatchingNetworks);
+        failingRealisation.setCooperationNetworks(toEntityNetworks(noMatchingNetworks));
 
         RealisationEntity failingRealisation2 = new RealisationEntity();
         failingRealisation2.setRealisationId("R2");
         failingRealisation2.setRealisationIdentifierCode("RCODE2");
-        failingRealisation2.setCooperationNetworks(noMatchingNetworks);
+        failingRealisation2.setCooperationNetworks(toEntityNetworks(noMatchingNetworks));
 
         RealisationEntity realisationWithBrokenData = new RealisationEntity();
         realisationWithBrokenData.setRealisationId("R3");
@@ -402,10 +399,10 @@ public class UpdateCourseUnitValidatorTest {
             null, null, null, null);
         updCourseUnit.setCompletionOptions(Arrays.asList(completionOption, completionOption2));
 
-        StudyElementReference studyElementReference = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity studyElementReference = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             originalCourseUnit.getStudyElementId(), originalCourseUnit.getOrganizingOrganisationId(), assessmentItem.getAssessmentItemId());
 
-        StudyElementReference studyElementReference2 = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity studyElementReference2 = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             originalCourseUnit.getStudyElementId(), originalCourseUnit.getOrganizingOrganisationId(), assessmentItem2.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("ID1", "IDENTIFIERCODE", originalCourseUnit.getOrganizingOrganisationId(),
@@ -444,10 +441,10 @@ public class UpdateCourseUnitValidatorTest {
             null, null, null, null);
         updCourseUnit.setCompletionOptions(Arrays.asList(completionOption, completionOption2));
 
-        StudyElementReference studyElementReference = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity studyElementReference = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             originalCourseUnit.getStudyElementId(), originalCourseUnit.getOrganizingOrganisationId(), assessmentItem.getAssessmentItemId());
 
-        StudyElementReference removedReference = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity removedReference = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             originalCourseUnit.getStudyElementId(), originalCourseUnit.getOrganizingOrganisationId(), removedAssessmentItemEntity.getAssessmentItemId());
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("ID1", "IDENTIFIERCODE", originalCourseUnit.getOrganizingOrganisationId(),
@@ -470,11 +467,25 @@ public class UpdateCourseUnitValidatorTest {
         assertTrue(exception.getMessage().contains(realisationEntityWithRemovedReference.getRealisationId()));
     }
 
+    private List<CooperationNetworkEntity> toEntityNetworks(List<CooperationNetwork> source) {
+        if (source == null) {
+            return null;
+        }
+        List<CooperationNetworkEntity> result = new ArrayList<>();
+        for (CooperationNetwork network : source) {
+            result.add(EntityInitializer.getCooperationNetwork(network.getId(), null, true,
+                network.getValidityStartDate(), network.getValidityEndDate()));
+        }
+        return result;
+    }
+
     private final String courseUnitUpdateJsonTemplate =
-            "{\n" +
-            "    \"courseUnit\": {\n" +
-            "        \"studyElementId\": \"ID1\",\n" +
-            "        \"studyElementIdentifierCode\": \"RAIRAI\"\n" +
-            "    }\n" +
-            "}";
+            """
+                {
+                    "courseUnit": {
+                        "studyElementId": "ID1",
+                        "studyElementIdentifierCode": "RAIRAI"
+                    }
+                }
+            """;
 }

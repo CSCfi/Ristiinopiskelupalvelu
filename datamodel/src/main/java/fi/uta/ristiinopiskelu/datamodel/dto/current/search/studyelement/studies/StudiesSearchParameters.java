@@ -8,6 +8,10 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.search.PageableSearchParamet
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.util.CollectionUtils;
 
@@ -18,6 +22,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 @Schema(name = "StudiesSearchParametersV9", title = "StudiesSearchParametersV9")
 public class StudiesSearchParameters extends PageableSearchParameters<StudyElementEntity> {
 
@@ -140,160 +148,20 @@ public class StudiesSearchParameters extends PageableSearchParameters<StudyEleme
     @JsonIgnore
     private int organisationAmount;
 
-    public String getQuery() {
-        return query;
-    }
-
-    public void setQuery(String query) {
-        this.query = query;
-    }
-
     public Language getLanguage() {
         return language != null ? language : Language.FI;
-    }
-
-    public void setLanguage(Language language) {
-        this.language = language;
-    }
-
-    public boolean isLangIndependent() { return langIndependent; }
-
-    public void setLangIndependent(boolean langIndependent) { this.langIndependent = langIndependent; }
-
-    public List<String> getNetworkIdentifiers() {
-        return networkIdentifiers;
-    }
-
-    public void setNetworkIdentifiers(List<String> networkIdentifiers) {
-        this.networkIdentifiers = networkIdentifiers;
-    }
-
-    public List<String> getOrganizingOrganisationIdentifiers() {
-        return organizingOrganisationIdentifiers;
-    }
-
-    public void setOrganizingOrganisationIdentifiers(List<String> organizingOrganisationIdentifiers) {
-        this.organizingOrganisationIdentifiers = organizingOrganisationIdentifiers;
-    }
-
-    public LocalDate getRealisationStartDate() {
-        return realisationStartDate;
-    }
-
-    public void setRealisationStartDate(LocalDate realisationStartDate) {
-        this.realisationStartDate = realisationStartDate;
-    }
-
-    public LocalDate getRealisationEndDate() {
-        return realisationEndDate;
-    }
-
-    public void setRealisationEndDate(LocalDate realisationEndDate) {
-        this.realisationEndDate = realisationEndDate;
-    }
-
-    public boolean isIncludeOwn() {
-        return includeOwn;
-    }
-
-    public void setIncludeOwn(boolean includeOwn) {
-        this.includeOwn = includeOwn;
-    }
-
-    public boolean isIncludeInactive() {
-        return includeInactive;
-    }
-
-    public void setIncludeInactive(boolean includeInactive) {
-        this.includeInactive = includeInactive;
     }
 
     public StudiesSearchElementType getType() {
         return type != null ? type : StudiesSearchElementType.ALL;
     }
 
-    public void setType(StudiesSearchElementType type) {
-        this.type = type;
-    }
-
-    public OffsetDateTime getRealisationEnrollmentStartDateTime() {
-        return realisationEnrollmentStartDateTime;
-    }
-
-    public void setRealisationEnrollmentStartDateTime(OffsetDateTime realisationEnrollmentStartDateTime) {
-        this.realisationEnrollmentStartDateTime = realisationEnrollmentStartDateTime;
-    }
-
-    public OffsetDateTime getRealisationEnrollmentEndDateTime() {
-        return realisationEnrollmentEndDateTime;
-    }
-
-    public void setRealisationEnrollmentEndDateTime(OffsetDateTime realisationEnrollmentEndDateTime) {
-        this.realisationEnrollmentEndDateTime = realisationEnrollmentEndDateTime;
-    }
-
-    public OffsetDateTime getRealisationEnrollmentStartDateTimeFrom() {
-        return realisationEnrollmentStartDateTimeFrom;
-    }
-
-    public void setRealisationEnrollmentStartDateTimeFrom(OffsetDateTime realisationEnrollmentStartDateTimeFrom) {
-        this.realisationEnrollmentStartDateTimeFrom = realisationEnrollmentStartDateTimeFrom;
-    }
-
-    public OffsetDateTime getRealisationEnrollmentStartDateTimeTo() {
-        return realisationEnrollmentStartDateTimeTo;
-    }
-
-    public void setRealisationEnrollmentStartDateTimeTo(OffsetDateTime realisationEnrollmentStartDateTimeTo) {
-        this.realisationEnrollmentStartDateTimeTo = realisationEnrollmentStartDateTimeTo;
-    }
-
-    public OffsetDateTime getRealisationEnrollmentEndDateTimeFrom() {
-        return realisationEnrollmentEndDateTimeFrom;
-    }
-
-    public void setRealisationEnrollmentEndDateTimeFrom(OffsetDateTime realisationEnrollmentEndDateTimeFrom) {
-        this.realisationEnrollmentEndDateTimeFrom = realisationEnrollmentEndDateTimeFrom;
-    }
-
-    public OffsetDateTime getRealisationEnrollmentEndDateTimeTo() {
-        return realisationEnrollmentEndDateTimeTo;
-    }
-
-    public void setRealisationEnrollmentEndDateTimeTo(OffsetDateTime realisationEnrollmentEndDateTimeTo) {
-        this.realisationEnrollmentEndDateTimeTo = realisationEnrollmentEndDateTimeTo;
-    }
-
-    public boolean isOnlyEnrollable() {
-        return onlyEnrollable;
-    }
-
-    public void setOnlyEnrollable(boolean onlyEnrollable) {
-        this.onlyEnrollable = onlyEnrollable;
-    }
-
     public StudiesSearchSortField getSortBy() {
         return sortBy != null ? sortBy : StudiesSearchSortField.NONE;
     }
 
-    public void setSortBy(StudiesSearchSortField sortBy) {
-        this.sortBy = sortBy;
-    }
-
     public Sort.Direction getSortDirection() {
         return sortDirection != null ? sortDirection : Sort.Direction.ASC;
-    }
-
-    public void setSortDirection(Sort.Direction sortDirection) {
-        this.sortDirection = sortDirection;
-    }
-
-    public String getRealisationQuery() {
-        return realisationQuery;
-    }
-
-    public void setRealisationQuery(String realisationQuery) {
-        this.realisationQuery = realisationQuery;
     }
 
     public List<String> getTeachingLanguages() {
@@ -301,65 +169,13 @@ public class StudiesSearchParameters extends PageableSearchParameters<StudyEleme
             null : teachingLanguages.stream().map(tl -> tl.toLowerCase().trim()).collect(Collectors.toList());
     }
 
-    public void setTeachingLanguages(List<String> teachingLanguages) {
-        this.teachingLanguages = teachingLanguages;
-    }
-
     public List<String> getRealisationTeachingLanguages() {
         return CollectionUtils.isEmpty(realisationTeachingLanguages) ?
             null : realisationTeachingLanguages.stream().map(rtl -> rtl.toLowerCase().trim()).collect(Collectors.toList());
     }
 
-    public void setRealisationTeachingLanguages(List<String> realisationTeachingLanguages) {
-        this.realisationTeachingLanguages = realisationTeachingLanguages;
-    }
-
     public List<StudyStatus> getStatuses() {
         return statuses != null ? statuses : Arrays.asList(StudyStatus.ACTIVE);
-    }
-
-    public void setStatuses(List<StudyStatus> statuses) {
-        this.statuses = statuses;
-    }
-
-    public List<StudyStatus> getRealisationStatuses() {
-        return realisationStatuses;
-    }
-
-    public void setRealisationStatuses(List<StudyStatus> realisationStatuses) {
-        this.realisationStatuses = realisationStatuses;
-    }
-
-    public List<MinEduGuidanceArea> getMinEduGuidanceAreas() {
-        return minEduGuidanceAreas;
-    }
-
-    public void setMinEduGuidanceAreas(List<MinEduGuidanceArea> minEduGuidanceAreas) {
-        this.minEduGuidanceAreas = minEduGuidanceAreas;
-    }
-
-    public List<MinEduGuidanceArea> getRealisationMinEduGuidanceAreas() {
-        return realisationMinEduGuidanceAreas;
-    }
-
-    public void setRealisationMinEduGuidanceAreas(List<MinEduGuidanceArea> realisationMinEduGuidanceAreas) {
-        this.realisationMinEduGuidanceAreas = realisationMinEduGuidanceAreas;
-    }
-
-    public boolean isIncludeCourseUnitsWithoutActiveRealisations() {
-        return includeCourseUnitsWithoutActiveRealisations;
-    }
-
-    public void setIncludeCourseUnitsWithoutActiveRealisations(boolean includeCourseUnitsWithoutActiveRealisations) {
-        this.includeCourseUnitsWithoutActiveRealisations = includeCourseUnitsWithoutActiveRealisations;
-    }
-
-    public List<NetworkEntity> getActualNetworksUsedInSearch() {
-        return actualNetworksUsedInSearch;
-    }
-
-    public void setActualNetworksUsedInSearch(List<NetworkEntity> actualNetworksUsedInSearch) {
-        this.actualNetworksUsedInSearch = actualNetworksUsedInSearch;
     }
 
     @JsonIgnore
@@ -367,13 +183,5 @@ public class StudiesSearchParameters extends PageableSearchParameters<StudyEleme
         return CollectionUtils.isEmpty(actualNetworksUsedInSearch) ? Collections.emptyList() : actualNetworksUsedInSearch.stream()
             .map(NetworkEntity::getId)
             .collect(Collectors.toList());
-    }
-
-    public int getOrganisationAmount() {
-        return organisationAmount;
-    }
-
-    public void setOrganisationAmount(int organisationAmount) {
-        this.organisationAmount = organisationAmount;
     }
 }

@@ -2,11 +2,11 @@ package fi.uta.ristiinopiskelu.persistence.repository.impl;
 
 import co.elastic.clients.elasticsearch._types.aggregations.*;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.GradeCode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyrecord.*;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.RoutingTypeEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyRecordRepositoryExtended;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +16,7 @@ import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.util.StringUtils;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
@@ -25,7 +26,7 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
     protected ElasticsearchTemplate elasticsearchTemplate;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Override
     public List<StudyRecordEntity> findAllByParams(StudyRecordSearchParameters searchParameters) {
@@ -118,13 +119,13 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
         if(searchParameters.getCompletionStartDate() != null) {
             query.must(m -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                 .field("completionDate")
-                .from(DateUtils.getFormatted(searchParameters.getCompletionStartDate())))));
+                .gte(DateUtils.getFormatted(searchParameters.getCompletionStartDate())))));
         }
 
         if(searchParameters.getCompletionEndDate() != null) {
             query.must(m -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                 .field("completionDate")
-                .to(DateUtils.getFormatted(searchParameters.getCompletionEndDate())))));
+                .lte(DateUtils.getFormatted(searchParameters.getCompletionEndDate())))));
         }
 
         if(searchParameters.getMinEduGuidanceArea() != null) {
@@ -144,15 +145,23 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
             .withPageable(searchParameters.getPageRequest())
             .build();
 
-        return elasticsearchTemplate.search(nativeQuery, StudyRecordEntity.class).get()
-                .map(SearchHit::getContent)
-                .toList();
+        return ElasticsearchQueryUtils.search(elasticsearchTemplate, nativeQuery, StudyRecordEntity.class);
     }
 
     @Override
     public SearchHits<StudyRecordEntity> findAmounts(StudyRecordAmountSearchParameters searchParams) {
 
         BoolQuery.Builder query = new BoolQuery.Builder();
+
+        query.must(q -> new Query.Builder().term(tq -> tq
+            .field("routingType")
+            .value(RoutingTypeEntity.CROSS_STUDY.name())));
+
+        if(StringUtils.hasText(searchParams.getNetworkIdentifier())) {
+            query.must(q -> new Query.Builder().term(tq -> tq
+                .field("networkIdentifier")
+                .value(searchParams.getNetworkIdentifier())));
+        }
 
         if(StringUtils.hasText(searchParams.getSendingOrganisation())) {
             query.must(q -> new Query.Builder().term(tq -> tq
@@ -171,7 +180,7 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
                 .path("completedCredits")
                 .query(q2 -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                     .field("completedCredits.completionDate")
-                    .from(DateUtils.getFormatter().format(searchParams.getCompletionDateStart())))))
+                    .gte(searchParams.getCompletionDateStart().toString()))))
                 .scoreMode(ChildScoreMode.None)));
         }
 
@@ -180,7 +189,7 @@ public class StudyRecordRepositoryExtendedImpl implements StudyRecordRepositoryE
                 .path("completedCredits")
                 .query(q2 -> new Query.Builder().range(rq -> rq.date(rq2 -> rq2
                     .field("completedCredits.completionDate")
-                    .to(DateUtils.getFormatter().format(searchParams.getCompletionDateEnd())))))
+                    .lte(searchParams.getCompletionDateEnd().toString()))))
                 .scoreMode(ChildScoreMode.None)));
         }
 

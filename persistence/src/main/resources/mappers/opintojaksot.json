@@ -620,7 +620,24 @@
           "type": "keyword"
         },
         "description": {
-          "type": "text"
+          "properties": {
+            "values": {
+              "properties": {
+                "fi": {
+                  "type": "text",
+                  "copy_to": "search_fi"
+                },
+                "en": {
+                  "type": "text",
+                  "copy_to": "search_en"
+                },
+                "sv": {
+                  "type": "text",
+                  "copy_to": "search_sv"
+                }
+              }
+            }
+          }
         },
         "name": {
           "properties": {

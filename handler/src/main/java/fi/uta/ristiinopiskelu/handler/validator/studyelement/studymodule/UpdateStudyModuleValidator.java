@@ -1,8 +1,8 @@
 package fi.uta.ristiinopiskelu.handler.validator.studyelement.studymodule;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.studymodule.StudyModuleWriteDTO;
@@ -25,15 +25,15 @@ import java.util.List;
 @Component
 public class UpdateStudyModuleValidator extends AbstractStudyElementValidator<StudyModuleWriteDTO> implements JsonRequestValidator<StudyModuleEntity> {
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private Validator beanValidator;
 
     @Autowired
     public UpdateStudyModuleValidator(List<AbstractStudyElementService> studyElementServices,
                                       NetworkService networkService,
-                                      ObjectMapper objectMapper, Validator beanValidator) {
+                                      JsonMapper jsonMapper, Validator beanValidator) {
         super(studyElementServices, networkService, beanValidator);
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.beanValidator = beanValidator;
     }
 
@@ -54,7 +54,7 @@ public class UpdateStudyModuleValidator extends AbstractStudyElementValidator<St
             ((ObjectNode)studyModuleJson).put("type", StudyElementType.STUDY_MODULE.name());
         }
 
-        StudyModuleWriteDTO parsedStudyModule = objectMapper.convertValue(studyModuleJson, StudyModuleWriteDTO.class);
+        StudyModuleWriteDTO parsedStudyModule = jsonMapper.convertValue(studyModuleJson, StudyModuleWriteDTO.class);
         this.beanValidator.validate(parsedStudyModule);
 
         StudyModuleEntity originalStudyModuleEntity = getServiceForClass(parsedStudyModule)

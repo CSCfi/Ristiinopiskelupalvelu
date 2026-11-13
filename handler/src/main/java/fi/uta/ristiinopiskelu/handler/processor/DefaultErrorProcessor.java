@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.processor;
 
-import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
+import fi.uta.ristiinopiskelu.messaging.message.ErrorCode;
 import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.RistiinopiskeluMessage;
@@ -11,8 +11,9 @@ public class DefaultErrorProcessor extends AbstractErrorProcessor {
 
     @Override
     public RistiinopiskeluMessage createErrorResponse(Exchange exchange, Exception exception) {
+        ErrorCode errorCode = ErrorResponseMessageResolver.resolveErrorCode(exception);
         return new RistiinopiskeluMessage(exchange, MessageType.DEFAULT_RESPONSE,
-                new DefaultResponse(Status.FAILED, "Failed to process message with type %s, error: %s"
-                        .formatted(exchange.getIn().getHeader(MessageHeader.MESSAGE_TYPE), exception.getMessage())));
+                new DefaultResponse(Status.FAILED, ErrorResponseMessageResolver.resolve(exchange, exception), errorCode));
     }
+
 }

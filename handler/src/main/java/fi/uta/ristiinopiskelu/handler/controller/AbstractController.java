@@ -1,9 +1,12 @@
 package fi.uta.ristiinopiskelu.handler.controller;
 
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.code.CodeReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.network.NetworkReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.organisation.OrganisationReadDTO;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.ListSearchResults;
-import fi.uta.ristiinopiskelu.datamodel.entity.GenericEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.*;
 import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 
@@ -12,9 +15,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public abstract class AbstractController {
-
-    @Autowired
-    private ModelMapper modelMapper;
 
     @Autowired
     private MessageSchemaService messageSchemaService;
@@ -32,11 +32,10 @@ public abstract class AbstractController {
     }
 
     public <T, C, E extends GenericEntity> T mapToDto(E entity, Class<T> targetDtoClazz, Class<C> currentDtoClazz) {
+        C currentDto = mapEntityToCurrentDto(entity, currentDtoClazz);
         if(currentDtoClazz.isAssignableFrom(targetDtoClazz)) {
-            return this.modelMapper.map(entity, targetDtoClazz);
+            return targetDtoClazz.cast(currentDto);
         }
-
-        C currentDto = this.modelMapper.map(entity, currentDtoClazz);
         return this.mapToDto(currentDto, targetDtoClazz);
     }
 
@@ -64,5 +63,23 @@ public abstract class AbstractController {
 
     public <T, C> List<T> mapSearchResultsToList(ListSearchResults<C> currentSearchResults, Class<T> targetResultType) {
         return this.mapSearchResults(currentSearchResults, targetResultType).getResults();
+    }
+
+    private <C, E extends GenericEntity> C mapEntityToCurrentDto(E entity, Class<C> currentDtoClazz) {
+        if(entity instanceof NetworkEntity networkEntity && currentDtoClazz.equals(NetworkReadDTO.class)) {
+            return currentDtoClazz.cast(NetworkReadDTO.from(networkEntity));
+        }
+        if(entity instanceof OrganisationEntity organisationEntity && currentDtoClazz.equals(OrganisationReadDTO.class)) {
+            return currentDtoClazz.cast(OrganisationReadDTO.from(organisationEntity));
+        }
+        if(entity instanceof StudyElementEntity studyElementEntity) {
+            return currentDtoClazz.cast(AbstractStudyElementReadDTO.from(studyElementEntity));
+        }
+        if(entity instanceof CodeEntity codeEntity && currentDtoClazz.equals(CodeReadDTO.class)) {
+            return currentDtoClazz.cast(CodeReadDTO.from(codeEntity));
+        }
+
+        throw new IllegalStateException("Unsupported entity -> current dto mapping: "
+            + entity.getClass().getSimpleName() + " -> " + currentDtoClazz.getSimpleName());
     }
 }

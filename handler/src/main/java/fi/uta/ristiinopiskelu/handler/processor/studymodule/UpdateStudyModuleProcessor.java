@@ -1,7 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.processor.studymodule;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.processor.AbstractCompositeIdentifiedEntityProcessor;
@@ -18,10 +18,6 @@ import fi.uta.ristiinopiskelu.messaging.message.current.RistiinopiskeluMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.notification.CompositeIdentifiedEntityModifiedNotification;
 import fi.uta.ristiinopiskelu.messaging.message.current.studymodule.UpdateStudyModuleRequest;
-import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
-import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
-import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
-import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -33,7 +29,7 @@ public class UpdateStudyModuleProcessor extends AbstractCompositeIdentifiedEntit
 
     private StudyModuleService studyModuleService;
     private UpdateStudyModuleValidator validator;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     public UpdateStudyModuleProcessor(NetworkService networkService,
@@ -41,32 +37,16 @@ public class UpdateStudyModuleProcessor extends AbstractCompositeIdentifiedEntit
                                       UpdateStudyModuleValidator validator,
                                       JmsMessageForwarder jmsMessageForwarder,
                                       StudyModuleService studyModuleService,
-                                      ObjectMapper objectMapper,
+                                      JsonMapper jsonMapper,
                                       MessageSchemaService messageSchemaService) {
         super(networkService, organisationService, jmsMessageForwarder, messageSchemaService);
         this.studyModuleService = studyModuleService;
         this.validator = validator;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
     }
-
-    @AsyncListener(operation = @AsyncOperation(
-            channelName = "handler",
-            description = "Updates a study module",
-            servers = {"production", "staging"},
-            message = @AsyncMessage(
-                    description = "Updates a study module"
-            ),
-            payloadType = UpdateStudyModuleRequest.class
-    ))
-    @AsyncPublisher(operation = @AsyncOperation(
-            channelName = "<ORGANISATION_QUEUE>",
-            description = "Notification about changed elements",
-            servers = {"production", "staging"},
-            payloadType = CompositeIdentifiedEntityModifiedNotification.class
-    ))
     @Override
     public void process(Exchange exchange) throws Exception {
-        JsonNode requestJsonNodeTree = objectMapper.readTree(exchange.getIn().getBody(String.class));
+        JsonNode requestJsonNodeTree = jsonMapper.readTree(exchange.getIn().getBody(String.class));
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
 
         StudyModuleEntity original = validator.validateJson(requestJsonNodeTree, organisationId);

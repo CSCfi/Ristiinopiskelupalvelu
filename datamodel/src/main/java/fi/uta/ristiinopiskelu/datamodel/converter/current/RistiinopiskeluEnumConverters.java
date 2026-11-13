@@ -1,15 +1,15 @@
 package fi.uta.ristiinopiskelu.datamodel.converter.current;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Country;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyRightStatusValue;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.StudyRightType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.CompletedCreditType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.GradeCode;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.ScaleValue;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CountryEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LanguageEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationRoleEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyRightStatusValueEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationSelectionItemStatusEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.StudyRightTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.CompletedCreditTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.GradeCodeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.MinEduGuidanceAreaEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.ScaleValueEntity;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.WritingConverter;
@@ -34,182 +34,182 @@ public class RistiinopiskeluEnumConverters {
     }
 
     @WritingConverter
-    private static class StudyRightTypeWritingConverter implements Converter<StudyRightType, String> {
+    private static class StudyRightTypeWritingConverter implements Converter<StudyRightTypeEntity, String> {
 
         @Override
-        public String convert(StudyRightType studyRightType) {
+        public String convert(StudyRightTypeEntity studyRightType) {
             return studyRightType.getCode();
         }
     }
 
     @ReadingConverter
-    private static class StudyRightTypeReadingConverter implements Converter<String, StudyRightType> {
+    private static class StudyRightTypeReadingConverter implements Converter<String, StudyRightTypeEntity> {
 
         @Override
-        public StudyRightType convert(String code) {
-            return StudyRightType.fromValue(code);
+        public StudyRightTypeEntity convert(String code) {
+            return StudyRightTypeEntity.fromValue(code);
         }
     }
 
     @WritingConverter
-    private static class GradeCodeWritingConverter implements Converter<GradeCode, String> {
+    private static class GradeCodeWritingConverter implements Converter<GradeCodeEntity, String> {
 
         @Override
-        public String convert(GradeCode gradeCode) {
+        public String convert(GradeCodeEntity gradeCode) {
             return gradeCode.getCode();
         }
     }
 
     @ReadingConverter
-    private static class GradeCodeReadingConverter implements Converter<String, GradeCode> {
+    private static class GradeCodeReadingConverter implements Converter<String, GradeCodeEntity> {
 
         @Override
-        public GradeCode convert(String code) {
-            return GradeCode.fromValue(code);
+        public GradeCodeEntity convert(String code) {
+            return GradeCodeEntity.fromValue(code);
         }
     }
 
     @WritingConverter
-    private static class CountryWritingConverter implements Converter<Country, String> {
+    private static class CountryWritingConverter implements Converter<CountryEntity, String> {
 
         @Override
-        public String convert(Country country) {
+        public String convert(CountryEntity country) {
             return country.getCode();
         }
     }
 
     @ReadingConverter
-    private static class CountryReadingConverter implements Converter<String, Country> {
+    private static class CountryReadingConverter implements Converter<String, CountryEntity> {
 
         @Override
-        public Country convert(String code) {
-            return Country.fromValue(code);
+        public CountryEntity convert(String code) {
+            return CountryEntity.fromValue(code);
         }
     }
 
     @WritingConverter
-    private static class OrganisationRoleWritingConverter implements Converter<OrganisationRole, Integer> {
+    private static class OrganisationRoleWritingConverter implements Converter<OrganisationRoleEntity, Integer> {
 
         @Override
-        public Integer convert(OrganisationRole organisationRole) {
+        public Integer convert(OrganisationRoleEntity organisationRole) {
             return organisationRole.getCode();
         }
     }
 
     @ReadingConverter
-    private static class OrganisationRoleReadingConverter implements Converter<Integer, OrganisationRole> {
+    private static class OrganisationRoleReadingConverter implements Converter<Integer, OrganisationRoleEntity> {
 
         @Override
-        public OrganisationRole convert(Integer integer) {
-            return OrganisationRole.fromValue(integer);
+        public OrganisationRoleEntity convert(Integer integer) {
+            return OrganisationRoleEntity.fromValue(integer);
         }
     }
 
     @WritingConverter
-    private static class LanguageWritingConverter implements Converter<Language, String> {
+    private static class LanguageWritingConverter implements Converter<LanguageEntity, String> {
 
         @Override
-        public String convert(Language language) {
+        public String convert(LanguageEntity language) {
             return language.getValue();
         }
     }
 
     @ReadingConverter
-    private static class LanguageReadingConverter implements Converter<String, Language> {
+    private static class LanguageReadingConverter implements Converter<String, LanguageEntity> {
 
         @Override
-        public Language convert(String s) {
-            return Language.fromValue(s);
+        public LanguageEntity convert(String s) {
+            return LanguageEntity.fromValue(s);
         }
     }
 
     @WritingConverter
-    private static class CompletedCreditTypeWritingConverter implements Converter<CompletedCreditType, Integer> {
+    private static class CompletedCreditTypeWritingConverter implements Converter<CompletedCreditTypeEntity, Integer> {
 
         @Override
-        public Integer convert(CompletedCreditType value) {
+        public Integer convert(CompletedCreditTypeEntity value) {
             return value.getCode();
         }
     }
 
     @ReadingConverter
-    private static class CompletedCreditTypeReadingConverter implements Converter<Integer, CompletedCreditType> {
+    private static class CompletedCreditTypeReadingConverter implements Converter<Integer, CompletedCreditTypeEntity> {
 
         @Override
-        public CompletedCreditType convert(Integer value) {
-            return CompletedCreditType.fromValue(value);
+        public CompletedCreditTypeEntity convert(Integer value) {
+            return CompletedCreditTypeEntity.fromValue(value);
         }
     }
 
     @WritingConverter
-    private static class MinEduGuidanceAreaWritingConverter implements Converter<MinEduGuidanceArea, Integer> {
+    private static class MinEduGuidanceAreaWritingConverter implements Converter<MinEduGuidanceAreaEntity, Integer> {
 
         @Override
-        public Integer convert(MinEduGuidanceArea value) {
+        public Integer convert(MinEduGuidanceAreaEntity value) {
             return value.getCode();
         }
     }
 
     @ReadingConverter
-    private static class MinEduGuidanceAreaReadingConverter implements Converter<Integer, MinEduGuidanceArea> {
+    private static class MinEduGuidanceAreaReadingConverter implements Converter<Integer, MinEduGuidanceAreaEntity> {
 
         @Override
-        public MinEduGuidanceArea convert(Integer value) {
-            return MinEduGuidanceArea.fromValue(value);
+        public MinEduGuidanceAreaEntity convert(Integer value) {
+            return MinEduGuidanceAreaEntity.fromValue(value);
         }
     }
 
     @WritingConverter
-    private static class RegistrationSelectionItemStatusWritingConverter implements Converter<RegistrationSelectionItemStatus, Integer> {
+    private static class RegistrationSelectionItemStatusWritingConverter implements Converter<RegistrationSelectionItemStatusEntity, Integer> {
 
         @Override
-        public Integer convert(RegistrationSelectionItemStatus value) {
+        public Integer convert(RegistrationSelectionItemStatusEntity value) {
             return value.getCode();
         }
     }
 
     @ReadingConverter
-    private static class RegistrationSelectionItemStatusReadingConverter implements Converter<Integer, RegistrationSelectionItemStatus> {
+    private static class RegistrationSelectionItemStatusReadingConverter implements Converter<Integer, RegistrationSelectionItemStatusEntity> {
 
         @Override
-        public RegistrationSelectionItemStatus convert(Integer value) {
-            return RegistrationSelectionItemStatus.fromValue(value);
+        public RegistrationSelectionItemStatusEntity convert(Integer value) {
+            return RegistrationSelectionItemStatusEntity.fromValue(value);
         }
     }
 
     @WritingConverter
-    private static class ScaleValueWritingConverter implements Converter<ScaleValue, Integer> {
+    private static class ScaleValueWritingConverter implements Converter<ScaleValueEntity, Integer> {
 
         @Override
-        public Integer convert(ScaleValue value) {
+        public Integer convert(ScaleValueEntity value) {
             return value.getCode();
         }
     }
 
     @ReadingConverter
-    private static class ScaleValueReadingConverter implements Converter<Integer, ScaleValue> {
+    private static class ScaleValueReadingConverter implements Converter<Integer, ScaleValueEntity> {
 
         @Override
-        public ScaleValue convert(Integer value) {
-            return ScaleValue.fromValue(value);
+        public ScaleValueEntity convert(Integer value) {
+            return ScaleValueEntity.fromValue(value);
         }
     }
 
     @WritingConverter
-    private static class StudyRightStatusValueWritingConverter implements Converter<StudyRightStatusValue, Integer> {
+    private static class StudyRightStatusValueWritingConverter implements Converter<StudyRightStatusValueEntity, Integer> {
 
         @Override
-        public Integer convert(StudyRightStatusValue value) {
+        public Integer convert(StudyRightStatusValueEntity value) {
             return value.getCode();
         }
     }
 
     @ReadingConverter
-    private static class StudyRightStatusValueReadingConverter implements Converter<Integer, StudyRightStatusValue> {
+    private static class StudyRightStatusValueReadingConverter implements Converter<Integer, StudyRightStatusValueEntity> {
 
         @Override
-        public StudyRightStatusValue convert(Integer value) {
-            return StudyRightStatusValue.fromValue(value);
+        public StudyRightStatusValueEntity convert(Integer value) {
+            return StudyRightStatusValueEntity.fromValue(value);
         }
     }
 }

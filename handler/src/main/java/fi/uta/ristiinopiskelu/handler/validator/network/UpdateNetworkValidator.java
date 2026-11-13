@@ -1,7 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.validator.network;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
@@ -19,14 +19,14 @@ import jakarta.validation.Validator;
 @Component
 public class UpdateNetworkValidator extends AbstractNetworkValidator implements JsonRequestValidator<NetworkEntity> {
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private NetworkService networkService;
 
     @Autowired
-    public UpdateNetworkValidator(OrganisationService organisationService, ObjectMapper objectMapper, Validator beanValidator,
+    public UpdateNetworkValidator(OrganisationService organisationService, JsonMapper jsonMapper, Validator beanValidator,
                                   NetworkService networkService) {
         super(organisationService, beanValidator);
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.networkService = networkService;
 
     }
@@ -42,7 +42,7 @@ public class UpdateNetworkValidator extends AbstractNetworkValidator implements 
         }
 
         JsonNode networkJson = request.get("network");
-        NetworkWriteDTO parsedNetwork = objectMapper.convertValue(networkJson, NetworkWriteDTO.class);
+        NetworkWriteDTO parsedNetwork = jsonMapper.convertValue(networkJson, NetworkWriteDTO.class);
 
         if(parsedNetwork == null) {
             throw new InvalidMessageBodyException("Update network failed. Unable to parse network network-object.");

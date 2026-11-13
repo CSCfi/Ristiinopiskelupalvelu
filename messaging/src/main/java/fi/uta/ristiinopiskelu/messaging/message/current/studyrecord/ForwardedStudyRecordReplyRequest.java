@@ -1,6 +1,8 @@
 package fi.uta.ristiinopiskelu.messaging.message.current.studyrecord;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.CompletedCredit;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.RoutingType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
@@ -12,7 +14,6 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ForwardedStudyRecordReplyRequest extends ForwardedCreateStudyRecordRequest {
-
     private StudyRecordStatus status;
     private LocalisedString rejectionReason;
 
@@ -23,10 +24,10 @@ public class ForwardedStudyRecordReplyRequest extends ForwardedCreateStudyRecord
         setStudent(StudyRecordStudent.from(entity.getStudent()));
         //Remove personId from reply message
         getStudent().setPersonId(null);
-        setCompletedCredits(entity.getCompletedCredits());
+        setCompletedCredits(CompletedCredit.from(entity.getCompletedCredits()));
         setSendingTime(entity.getSendingTime());
-        setRoutingType(entity.getRoutingType());
-        setStatus(entity.getStatus());
-        setRejectionReason(entity.getRejectionReason());
+        setRoutingType(RoutingType.from(entity.getRoutingType()));
+        setStatus(StudyRecordStatus.from(entity.getStatus()));
+        setRejectionReason(LocalisedString.from(entity.getRejectionReason()));
     }
 }

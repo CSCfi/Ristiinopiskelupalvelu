@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.messaging.schema.converter;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import fi.uta.ristiinopiskelu.messaging.exception.ObjectConversionException;
 
 public interface ObjectConverter<S, T> {

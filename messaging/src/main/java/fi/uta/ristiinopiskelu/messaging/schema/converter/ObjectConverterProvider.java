@@ -1,7 +1,6 @@
 package fi.uta.ristiinopiskelu.messaging.schema.converter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.modelmapper.ModelMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,10 +17,7 @@ public class ObjectConverterProvider {
     private List<ObjectConverter> converters;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     public <S, T> ObjectConverter<S, T> getConverter(Class<S> sourceType, Class<T> targetType) {
         for(ObjectConverter converter : this.converters) {
@@ -32,6 +28,6 @@ public class ObjectConverterProvider {
         }
 
         logger.debug("No converter found for sourceType {} to targetType {}; using default converter", sourceType, targetType);
-        return new DefaultObjectConverter(modelMapper, objectMapper, sourceType, targetType);
+        return new DefaultObjectConverter(jsonMapper, sourceType, targetType);
     }
 }

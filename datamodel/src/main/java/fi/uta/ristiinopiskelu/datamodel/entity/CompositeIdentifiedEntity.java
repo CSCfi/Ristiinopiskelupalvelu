@@ -1,8 +1,8 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CompositeIdentifiedEntityTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationReferenceEntity;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -15,11 +15,11 @@ public abstract class CompositeIdentifiedEntity extends GenericEntity {
 
     public abstract void setOrganizingOrganisationId(String id);
 
-    public abstract CompositeIdentifiedEntityType getType();
+    public abstract CompositeIdentifiedEntityTypeEntity getType();
 
-    public abstract List<CooperationNetwork> getCooperationNetworks();
+    public abstract List<CooperationNetworkEntity> getCooperationNetworks();
 
-    public abstract List<OrganisationReference> getOrganisationReferences();
+    public abstract List<OrganisationReferenceEntity> getOrganisationReferences();
 
     public abstract OffsetDateTime getUpdateTime();
 }

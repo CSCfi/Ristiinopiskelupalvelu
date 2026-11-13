@@ -33,9 +33,22 @@ public class StudyRight implements Serializable {
         }
 
         return StudyRight.builder()
-            .identifiers(studyRight.getIdentifiers())
-            .studyRightStatus(studyRight.getStudyRightStatus())
-            .studyRightType(studyRight.getStudyRightType())
+            .identifiers(studyRight.getIdentifiers() != null
+                ? new StudyRightIdentifier(
+                    studyRight.getIdentifiers().getOrganisationTkCodeReference(),
+                    studyRight.getIdentifiers().getStudyRightId())
+                : null)
+            .studyRightStatus(studyRight.getStudyRightStatus() != null
+                ? new StudyRightStatus(
+                    studyRight.getStudyRightStatus().getStudyRightStatusValue() != null
+                        ? StudyRightStatusValue.valueOf(studyRight.getStudyRightStatus().getStudyRightStatusValue().name())
+                        : null,
+                    studyRight.getStudyRightStatus().getStartDate(),
+                    studyRight.getStudyRightStatus().getEndDate())
+                : null)
+            .studyRightType(studyRight.getStudyRightType() != null
+                ? StudyRightType.valueOf(studyRight.getStudyRightType().name())
+                : null)
             .build();
     }
 }

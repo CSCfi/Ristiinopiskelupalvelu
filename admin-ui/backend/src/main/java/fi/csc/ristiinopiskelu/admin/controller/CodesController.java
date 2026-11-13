@@ -1,13 +1,14 @@
 package fi.csc.ristiinopiskelu.admin.controller;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeSet;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.virta.VirtaCode;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.virta.VirtaCodeSet;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.virta.VirtaCodeValue;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.code.CodeSetKeyWithCodeCount;
 import fi.uta.ristiinopiskelu.datamodel.entity.CodeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LanguageEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.code.CodeSetEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.code.CodeValueEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.CodeRepository;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,13 +16,18 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 @RequestMapping("/api/codes")
@@ -34,10 +40,7 @@ public class CodesController {
     private CodeRepository codeRepository;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('ADMIN','SUPERUSER')")
     @RequestMapping(method = RequestMethod.GET)
@@ -54,7 +57,9 @@ public class CodesController {
     @PreAuthorize("isAuthenticated() and hasAnyRole('ADMIN','SUPERUSER')")
     @RequestMapping(value = "/codesets/{codeset}", method = RequestMethod.GET)
     public List<CodeEntity> codesWithCodeset(@PathVariable("codeset") String codeset) {
-        return codeRepository.findAllByCodeSetKeyOrderByCodeUri(codeset);
+        try (Stream<CodeEntity> codes = codeRepository.findAllByCodeSetKeyOrderByCodeUri(codeset)) {
+            return codes.toList();
+        }
     }
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('ADMIN','SUPERUSER')")
@@ -79,7 +84,7 @@ public class CodesController {
     @PreAuthorize("isAuthenticated() and hasAnyRole('SUPERUSER')")
     @RequestMapping(value = "/codesets/{codeset}", method = RequestMethod.PUT)
     public CodeEntity addEmptyCode(@PathVariable("codeset") String codeset) {
-        CodeSet cs = new CodeSet();
+        CodeSetEntity cs = new CodeSetEntity();
         cs.setKey(codeset);
         cs.setVersion(1);
 
@@ -105,14 +110,53 @@ public class CodesController {
         codeRepository.deleteById(code);
     }
 
-    private void mapAndCreateAll(InputStream codeset) throws Exception {
+    private void mapAndCreateAll(InputStream codeset) {
         try{
-            List<VirtaCode> myObjects = objectMapper.readValue(codeset, new TypeReference<>(){});
-            List<CodeEntity> entities = myObjects.stream().map(cu -> modelMapper.map(cu, CodeEntity.class)).collect(Collectors.toList());
+            List<VirtaCode> myObjects = jsonMapper.readValue(codeset, new TypeReference<>(){});
+            List<CodeEntity> entities = myObjects.stream().map(this::toCodeEntity).collect(Collectors.toList());
             codeRepository.saveAll(entities);
-        } catch(IOException | NullPointerException e) {
+        } catch(JacksonException | NullPointerException e) {
             logger.error("Failed to read codes mapper : " + e.getMessage());
             throw e;
         }
+    }
+
+    private CodeEntity toCodeEntity(VirtaCode source) {
+        CodeEntity target = new CodeEntity();
+        target.setCodeUri(source.getKoodiUri());
+        target.setResourceUri(source.getResourceUri());
+        target.setCodeSet(toCodeSet(source.getKoodisto()));
+        target.setKey(source.getKoodiArvo());
+        target.setCodeVersion(source.getVersio());
+        target.setUpdateDate(toLocalDate(source.getPaivitysPvm()));
+        target.setValidityStartDate(toLocalDate(source.getVoimassaAlkuPvm()));
+        target.setValidityEndDate(toLocalDate(source.getVoimassaLoppuPvm()));
+        target.setStatus(source.getTila());
+        target.setCodeValues(source.getMetadata() == null ? null : source.getMetadata().stream().map(this::toCodeValue).collect(Collectors.toList()));
+        return target;
+    }
+
+    private CodeSetEntity toCodeSet(VirtaCodeSet source) {
+        if (source == null) {
+            return null;
+        }
+        CodeSetEntity target = new CodeSetEntity();
+        target.setKey(source.getKoodistoUri());
+        target.setVersion(source.getKoodistoVersio());
+        target.setOrganisationOid(source.getOrganisaatioOid());
+        return target;
+    }
+
+    private CodeValueEntity toCodeValue(VirtaCodeValue source) {
+        CodeValueEntity target = new CodeValueEntity();
+        target.setLanguage(LanguageEntity.fromValue(source.getKieli()));
+        target.setDescription(source.getKuvaus());
+        target.setAbbreviation(source.getLyhytNimi());
+        target.setValue(source.getNimi());
+        return target;
+    }
+
+    private LocalDate toLocalDate(Date date) {
+        return date == null ? null : date.toInstant().atZone(ZoneOffset.UTC).toLocalDate();
     }
 }

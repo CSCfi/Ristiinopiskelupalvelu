@@ -3,6 +3,7 @@ package fi.uta.ristiinopiskelu.handler.processor;
 import fi.uta.ristiinopiskelu.handler.exception.validation.MissingMessageHeaderException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.UnallowedMessageTypeException;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageGroup;
+import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -26,6 +27,21 @@ public class AuthenticationProcessor implements Processor {
         String messageType = exchange.getIn().getHeader(MessageHeader.MESSAGE_TYPE, String.class);
         String organisationId;
 
+        if(!StringUtils.hasText(jmsxUserId)) {
+            throw new MissingMessageHeaderException(MessageHeader.JMS_XUSERID);
+        }
+
+        if(!StringUtils.hasText(messageType)) {
+            throw new MissingMessageHeaderException(MessageHeader.MESSAGE_TYPE);
+        }
+
+        try {
+            MessageType parsedMessageType = MessageType.valueOf(messageType);
+            MessageType.getMessageGroup(parsedMessageType);
+        } catch (IllegalArgumentException e) {
+            throw new UnallowedMessageTypeException("Unknown or unrouteable message type: " + messageType, e);
+        }
+
         if(jmsxUserId.equals(adminUiUser)) {
             if(!MessageGroup.NETWORK.contains(messageType)) {
                 throw new UnallowedMessageTypeException("Admin-ui user cannot exchange message type " + messageType + ", only Network message types.");
@@ -33,9 +49,7 @@ public class AuthenticationProcessor implements Processor {
                 organisationId = adminUiUser;
             }
         } else {
-            if(StringUtils.isEmpty(jmsxUserId)) {
-                throw new MissingMessageHeaderException("Message is missing header:" + MessageHeader.JMS_XUSERID);
-            } else if(MessageGroup.NETWORK.contains(messageType)) {
+            if(MessageGroup.NETWORK.contains(messageType)) {
                 throw new UnallowedMessageTypeException("Organisation user cannot exchange message type " + messageType);
             }
             organisationId = jmsxUserId;

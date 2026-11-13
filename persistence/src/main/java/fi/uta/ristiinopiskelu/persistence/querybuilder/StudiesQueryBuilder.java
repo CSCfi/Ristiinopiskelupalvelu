@@ -76,7 +76,9 @@ public class StudiesQueryBuilder extends AbstractStudiesQueryBuilder {
 
     public void filterByStatuses(List<StudyStatus> statuses) {
         if(!CollectionUtils.isEmpty(statuses)) {
-            statuses.removeIf(Objects::isNull);
+            statuses = statuses.stream()
+                .filter(Objects::nonNull)
+                .toList();
         }
 
         if(CollectionUtils.isEmpty(statuses)) {

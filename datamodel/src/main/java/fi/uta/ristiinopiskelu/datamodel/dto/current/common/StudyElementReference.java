@@ -3,8 +3,10 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyElementEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.util.List;
 import java.util.Objects;
 
 @Schema(name = "StudyElementReferenceV9", title = "StudyElementReferenceV9")
@@ -126,4 +128,28 @@ public class StudyElementReference {
     public static StudyElementReference from(AbstractStudyElementWriteDTO studyElement, String organizingOrganisationId) {
         return new StudyElementReference(studyElement.getStudyElementId(), organizingOrganisationId, studyElement.getType());
     }
+
+    public static List<StudyElementReference> from(List<StudyElementReferenceEntity> source) {
+        if (source == null) {
+            return null;
+        }
+        return source.stream()
+            .map(StudyElementReference::from)
+            .toList();
+    }
+
+    public static StudyElementReference from(StudyElementReferenceEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        StudyElementReference target = new StudyElementReference();
+        target.setReferenceIdentifier(source.getReferenceIdentifier());
+        target.setReferenceOrganizer(source.getReferenceOrganizer());
+        target.setReferenceType(StudyElementType.from(source.getReferenceType()));
+        target.setReferenceAssessmentItemId(source.getReferenceAssessmentItemId());
+        target.setOnlyEnrollableWithParent(source.getOnlyEnrollableWithParent());
+        return target;
+    }
+
 }

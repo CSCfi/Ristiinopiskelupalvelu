@@ -1,27 +1,29 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.network.NetworkReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.GenericEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.UpdateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.PublishedNetworkCannotBeUnpublishedValidationException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationResult;
 import fi.uta.ristiinopiskelu.persistence.repository.ExtendedRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.utils.DateUtils;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -38,10 +40,7 @@ public class NetworkServiceImpl extends AbstractService<NetworkWriteDTO, Network
     private NetworkRepository networkRepository;
 
     @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private ModelMapper modelMapper;
+    private JsonMapper jsonMapper;
 
     public NetworkServiceImpl() {
         super(NetworkWriteDTO.class, NetworkEntity.class, NetworkReadDTO.class);
@@ -53,13 +52,8 @@ public class NetworkServiceImpl extends AbstractService<NetworkWriteDTO, Network
     }
 
     @Override
-    public ObjectMapper getObjectMapper() {
-        return objectMapper;
-    }
-
-    @Override
-    public ModelMapper getModelMapper() {
-        return modelMapper;
+    public JsonMapper getJsonMapper() {
+        return jsonMapper;
     }
 
     // network is allowed to be created with a custom id
@@ -110,10 +104,11 @@ public class NetworkServiceImpl extends AbstractService<NetworkWriteDTO, Network
         try {
             NetworkEntity original = networkRepository.findById(networkId)
                     .orElseThrow(() -> new EntityNotFoundException(NetworkEntity.class, networkId));
-            ObjectReader reader = objectMapper.readerForUpdating(original);
+            ObjectReader reader = jsonMapper.readerForUpdating(original);
             NetworkEntity updatedNetWorkEntity = reader.readValue(updateJson);
             if (original.isPublished() && !updatedNetWorkEntity.isPublished()) {
-                throw new UpdateFailedException("Published network can not be marked as unpublished");
+                throw new PublishedNetworkCannotBeUnpublishedValidationException(
+                    "Published network cannot be marked as unpublished [networkId: %s]".formatted(networkId));
             }
 
             return networkRepository.update(updatedNetWorkEntity);
@@ -166,10 +161,11 @@ public class NetworkServiceImpl extends AbstractService<NetworkWriteDTO, Network
     @Override
     public List<String> findOrganisationIdsFromOrganisationNetworks(String organisationId, Pageable pageable) throws FindFailedException {
         try {
-            List<NetworkEntity> networks = this.networkRepository.findAllNetworksByOrganisationId(organisationId, pageable);
-            return networks.stream()
-                    .flatMap(network -> network.getOrganisations().stream().map(org ->
-                            org.getOrganisationTkCode())).distinct().collect(Collectors.toList());
+            return this.networkRepository.findAllNetworksByOrganisationId(organisationId, pageable).stream()
+                .flatMap(network -> network.getOrganisations().stream()
+                    .map(NetworkOrganisationEntity::getOrganisationTkCode))
+                .distinct()
+                .toList();
         } catch (Exception e) {
             throw new FindFailedException(getEntityClass(), organisationId, e);
         }
@@ -178,9 +174,11 @@ public class NetworkServiceImpl extends AbstractService<NetworkWriteDTO, Network
     @Override
     public List<String> findOrganisationIdsFromNetworks(List<String> networkIds) {
         try {
-            List<NetworkEntity> networks = StreamSupport.stream(this.networkRepository.findAllById(networkIds).spliterator(), false).collect(Collectors.toList());
-            return networks.stream().flatMap(network -> network.getOrganisations().stream().map(org ->
-                    org.getOrganisationTkCode())).collect(Collectors.toList());
+            return StreamSupport.stream(this.networkRepository.findAllById(networkIds).spliterator(), false)
+                .flatMap(network -> network.getOrganisations().stream()
+                    .map(NetworkOrganisationEntity::getOrganisationTkCode))
+                .distinct()
+                .toList();
         } catch (Exception e) {
             throw new FindFailedException(getEntityClass(), networkIds, e);
         }
@@ -189,8 +187,9 @@ public class NetworkServiceImpl extends AbstractService<NetworkWriteDTO, Network
     @Override
     public List<String> findNetworkIdsFromOrganisationNetworks(String organisationId, Pageable pageable) throws FindFailedException {
         try {
-            List<NetworkEntity> networks = this.networkRepository.findAllNetworksByOrganisationId(organisationId, pageable);
-            return networks.stream().map(network -> network.getId()).collect(Collectors.toList());
+            return this.networkRepository.findAllNetworksByOrganisationId(organisationId, pageable).stream()
+                .map(GenericEntity::getId)
+                .toList();
         } catch (Exception e) {
             throw new FindFailedException(getEntityClass(), organisationId, e);
         }
@@ -208,7 +207,7 @@ public class NetworkServiceImpl extends AbstractService<NetworkWriteDTO, Network
 
         // Filter out non valid networks and networks in which requesting organisation is no longer a member
         return networkEntities.stream()
-                .filter(network -> network.isPublished())
+                .filter(NetworkEntity::isPublished)
                 .filter(network ->
                         (network.getValidity().getStart() != null && DateUtils.isBeforeOrEqual(network.getValidity().getStart(), now))
                                 && (network.getValidity().getEnd() == null || DateUtils.isAfterOrEqual(network.getValidity().getEnd(), now)))

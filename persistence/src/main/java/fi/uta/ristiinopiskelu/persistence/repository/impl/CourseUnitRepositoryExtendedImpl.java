@@ -42,7 +42,7 @@ public class CourseUnitRepositoryExtendedImpl implements CourseUnitRepositoryExt
 
         NativeQuery builder = new NativeQueryBuilder()
                 .withQuery(query.build()._toQuery())
-                .withPageable(Pageable.unpaged())
+                .withMaxResults(1)
                 .build();
 
         return elasticsearchTemplate.search(builder, CourseUnitEntity.class).get().map(SearchHit::getContent).findFirst();

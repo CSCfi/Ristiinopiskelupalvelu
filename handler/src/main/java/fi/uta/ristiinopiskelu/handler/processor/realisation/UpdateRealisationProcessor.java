@@ -1,7 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.processor.realisation;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.processor.AbstractCompositeIdentifiedEntityProcessor;
@@ -18,10 +18,6 @@ import fi.uta.ristiinopiskelu.messaging.message.current.RistiinopiskeluMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.notification.CompositeIdentifiedEntityModifiedNotification;
 import fi.uta.ristiinopiskelu.messaging.message.current.realisation.UpdateRealisationRequest;
-import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
-import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
-import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
-import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +32,7 @@ public class UpdateRealisationProcessor extends AbstractCompositeIdentifiedEntit
 
     private RealisationService realisationService;
     private UpdateRealisationValidator realisationValidator;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     public UpdateRealisationProcessor(NetworkService networkService,
@@ -44,32 +40,16 @@ public class UpdateRealisationProcessor extends AbstractCompositeIdentifiedEntit
                                       JmsMessageForwarder jmsMessageForwarder,
                                       RealisationService realisationService,
                                       UpdateRealisationValidator realisationValidator,
-                                      ObjectMapper objectMapper,
+                                      JsonMapper jsonMapper,
                                       MessageSchemaService messageSchemaService) {
         super(networkService, organisationService, jmsMessageForwarder, messageSchemaService);
         this.realisationService = realisationService;
         this.realisationValidator = realisationValidator;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
     }
-
-    @AsyncListener(operation = @AsyncOperation(
-            channelName = "handler",
-            description = "Updates a realisation",
-            servers = {"production", "staging"},
-            message = @AsyncMessage(
-                    description = "Updates a realisation"
-            ),
-            payloadType = UpdateRealisationRequest.class
-    ))
-    @AsyncPublisher(operation = @AsyncOperation(
-            channelName = "<ORGANISATION_QUEUE>",
-            description = "Notification about changed elements",
-            servers = {"production", "staging"},
-            payloadType = CompositeIdentifiedEntityModifiedNotification.class
-    ))
     @Override
     public void process(Exchange exchange) throws Exception {
-        JsonNode requestJsonNodeTree = objectMapper.readTree(exchange.getIn().getBody(String.class));
+        JsonNode requestJsonNodeTree = jsonMapper.readTree(exchange.getIn().getBody(String.class));
 
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
 

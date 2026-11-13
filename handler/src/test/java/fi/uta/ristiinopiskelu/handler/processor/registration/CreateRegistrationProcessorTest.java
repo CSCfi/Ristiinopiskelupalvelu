@@ -1,17 +1,13 @@
 package fi.uta.ristiinopiskelu.handler.processor.registration;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelectionParent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.MessageTemplateInitializer;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
@@ -26,6 +22,8 @@ import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.CreateRegistrationRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.registration.RegistrationResponse;
+import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.support.DefaultExchange;
@@ -33,61 +31,50 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.commons.util.StringUtils;
-import org.modelmapper.ModelMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import tools.jackson.databind.json.JsonMapper;
 
-import java.text.SimpleDateFormat;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static junit.framework.TestCase.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class CreateRegistrationProcessorTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(CreateRegistrationProcessorTest.class);
+    private JsonMapper jsonMapper;
 
-    private ObjectMapper objectMapper;
-
-    @MockBean
+    @MockitoBean
     private RegistrationService registrationService;
 
-    @MockBean
+    @MockitoBean
     private OrganisationService organisationService;
 
-    @MockBean
+    @MockitoBean
     private StudentService studentService;
 
-    @MockBean
+    @MockitoBean
     private CreateRegistrationValidator validator;
 
-    @MockBean
+    @MockitoBean
     private JmsMessageForwarder messageForwarder;
 
     private CreateRegistrationProcessor processor;
 
     @BeforeEach
     public void before() {
-        objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .registerModule(new Jdk8Module());
-
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        objectMapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
-        objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
-
+        jsonMapper = new EsConfig().jsonMapper(null);
         processor = spy(new CreateRegistrationProcessor(registrationService, organisationService, validator,
-            objectMapper, new ModelMapper(), messageForwarder));
+            jsonMapper, messageForwarder));
     }
 
     @Test
@@ -105,32 +92,32 @@ public class CreateRegistrationProcessorTest {
         regEntity.setSendingOrganisationTkCode(sendingOrganisationId);
         regEntity.setReceivingOrganisationTkCode(receivingOrganisationId);
 
-        RegistrationSelection parentCourseUnit = DtoInitializer.getRegistrationSelectionCourseUnitParent("OJ1");
+        CreateRegistrationSelectionParent parentCourseUnit = DtoInitializer.getRegistrationSelectionCourseUnitParent("OJ1");
 
-        RegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
+        CreateRegistrationSelection realisationSelection = DtoInitializer.getRegistrationSelectionRealisation(
                 "TOT1",  RegistrationSelectionItemStatus.PENDING, parentCourseUnit, null);
 
         CreateRegistrationRequest registrationRequest = MessageTemplateInitializer.getCreateRegistrationRequestTemplate(sendingOrganisationId, receivingOrganisationId, "NETWORK-1");
         registrationRequest.setSelections(Collections.singletonList(realisationSelection));
 
-        Validity validity = new Validity();
-        validity.setStart(OffsetDateTime.now());
-        validity.setContinuity(Validity.ContinuityEnum.INDEFINITELY);
+        ValidityEntity validityEntity = new ValidityEntity();
+        validityEntity.setStart(OffsetDateTime.now());
+        validityEntity.setContinuity(ValidityEntity.ContinuityEntity.INDEFINITELY);
 
-        NetworkOrganisation org1 = new NetworkOrganisation();
-        org1.setOrganisationTkCode(sendingOrganisationId);
-        org1.setValidityInNetwork(validity);
+        NetworkOrganisationEntity orgEntity1 = new NetworkOrganisationEntity();
+        orgEntity1.setOrganisationTkCode(sendingOrganisationId);
+        orgEntity1.setValidityInNetwork(validityEntity);
 
-        NetworkOrganisation org2 = new NetworkOrganisation();
-        org2.setOrganisationTkCode(receivingOrganisationId);
-        org2.setValidityInNetwork(validity);
+        NetworkOrganisationEntity orgEntity2 = new NetworkOrganisationEntity();
+        orgEntity2.setOrganisationTkCode(receivingOrganisationId);
+        orgEntity2.setValidityInNetwork(validityEntity);
 
         NetworkEntity returnEntity = new NetworkEntity();
         returnEntity.setId("CN-1");
-        returnEntity.setOrganisations(Arrays.asList(org1, org2));
+        returnEntity.setOrganisations(Arrays.asList(orgEntity1, orgEntity2));
         
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
-        exchange.getIn().setBody(objectMapper.writeValueAsString(registrationRequest));
+        exchange.getIn().setBody(jsonMapper.writeValueAsString(registrationRequest));
         exchange.getIn().setHeader(MessageHeader.JMS_XUSERID, sendingOrganisationId);
 
         doNothing().when(validator).validateRequest(any(), any());

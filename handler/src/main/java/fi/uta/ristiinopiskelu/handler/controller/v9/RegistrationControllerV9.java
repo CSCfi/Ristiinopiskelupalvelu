@@ -27,7 +27,8 @@ public class RegistrationControllerV9 {
         "tilojen lukumääriä annetuista verkostoista.", tags = "registrations")
     @PostMapping(value = "/search/status/amounts")
     public RegistrationStatusAmountSearchResults search(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                            @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody RegistrationStatusAmountSearchParameters searchParams) {
+                                                            @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                        @RequestBody RegistrationStatusAmountSearchParameters searchParams) {
         return registrationService.searchStatusAmounts(SSL_CLIENT_S_DN_O, searchParams);
     }
 
@@ -35,7 +36,8 @@ public class RegistrationControllerV9 {
         "lukumääriä annetuilla hakuehdoilla.", tags = "registrations")
     @PostMapping(value = "/search/amounts")
     public List<RegistrationAmountSearchResult> search(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                                           @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody RegistrationAmountSearchParameters searchParams) {
+                                                           @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                                       @RequestBody RegistrationAmountSearchParameters searchParams) {
         return registrationService.searchAmounts(SSL_CLIENT_S_DN_O, searchParams).getResults();
     }
 }

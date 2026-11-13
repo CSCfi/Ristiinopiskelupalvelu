@@ -1,6 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
+import fi.uta.ristiinopiskelu.datamodel.entity.common.KeywordEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.List;
 
 @Schema(name = "KeywordV9", title = "KeywordV9")
 public class Keyword {
@@ -61,5 +64,24 @@ public class Keyword {
 
     public void setKeySetValue(LocalisedString keySetValue) {
         this.keySetValue = keySetValue;
+    }
+
+    public static Keyword from(KeywordEntity source) {
+        if (source == null) {
+            return null;
+        }
+        Keyword target = new Keyword();
+        target.setKey(source.getKey());
+        target.setValue(LocalisedString.from(source.getValue()));
+        target.setKeySet(source.getKeySet());
+        target.setKeySetValue(LocalisedString.from(source.getKeySetValue()));
+        return target;
+    }
+
+    public static List<Keyword> from(List<KeywordEntity> source) {
+        if (source == null) {
+            return null;
+        }
+        return source.stream().map(Keyword::from).toList();
     }
 }

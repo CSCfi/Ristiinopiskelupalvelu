@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.messageschema.MessageSchemaReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.messageschema.MessageSchemaWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.MessageSchemaEntity;

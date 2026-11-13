@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.processor.courseunit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.AssessmentItemWriteDTO;
@@ -22,10 +22,6 @@ import fi.uta.ristiinopiskelu.messaging.message.current.RistiinopiskeluMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.courseunit.CreateCourseUnitRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.notification.CompositeIdentifiedEntityModifiedNotification;
-import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
-import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
-import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
-import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +38,7 @@ public class CreateCourseUnitProcessor extends AbstractCompositeIdentifiedEntity
 
     private CourseUnitService courseUnitService;
     private StudyModuleService studyModuleService;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private CreateCourseUnitValidator validator;
     private CreateRealisationValidator realisationValidator;
 
@@ -52,36 +48,20 @@ public class CreateCourseUnitProcessor extends AbstractCompositeIdentifiedEntity
                                      NetworkService networkService,
                                      OrganisationService organisationService,
                                      JmsMessageForwarder jmsMessageForwarder,
-                                     ObjectMapper objectMapper,
+                                     JsonMapper jsonMapper,
                                      CreateCourseUnitValidator validator,
                                      CreateRealisationValidator realisationValidator,
                                      MessageSchemaService messageSchemaService) {
         super(networkService, organisationService, jmsMessageForwarder, messageSchemaService);
         this.courseUnitService = courseUnitService;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.validator = validator;
         this.realisationValidator = realisationValidator;
         this.studyModuleService = studyModuleService;
     }
-
-    @AsyncListener(operation = @AsyncOperation(
-            channelName = "handler",
-            description = "Creates a course unit",
-            servers = {"production", "staging"},
-            message = @AsyncMessage(
-                    description = "Creates a course unit"
-            ),
-            payloadType = CreateCourseUnitRequest.class
-    ))
-    @AsyncPublisher(operation = @AsyncOperation(
-            channelName = "<ORGANISATION_QUEUE>",
-            description = "Notification about changed elements",
-            servers = {"production", "staging"},
-            payloadType = CompositeIdentifiedEntityModifiedNotification.class
-    ))
     @Override
     public void process(Exchange exchange) throws Exception {
-        CreateCourseUnitRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), CreateCourseUnitRequest.class);
+        CreateCourseUnitRequest request = jsonMapper.readValue(exchange.getIn().getBody(String.class), CreateCourseUnitRequest.class);
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
 
         List<CourseUnitWriteDTO> courseUnits = request.getCourseUnits();
@@ -99,10 +79,11 @@ public class CreateCourseUnitProcessor extends AbstractCompositeIdentifiedEntity
                     }
                 }
 
-            } catch (Exception e) {
+            } catch (ValidationException e) {
                 // Wrap realisation validator exception again to add course unit ids for error message
                 throw new ValidationException("Course unit's [studyElementId: " + courseUnit.getStudyElementId()
-                        + ", organizer " + organisationId + "] Realisation validation failed with error: " + e.getMessage());
+                        + ", organizer " + organisationId + "] Realisation validation failed with error: " + e.getMessage(),
+                    e, e.getErrorCode());
             }
 
             if (!CollectionUtils.isEmpty(courseUnit.getParents())) {

@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.processor.realisation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.processor.AbstractCompositeIdentifiedEntityProcessor;
@@ -16,10 +16,6 @@ import fi.uta.ristiinopiskelu.messaging.message.current.RistiinopiskeluMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.notification.CompositeIdentifiedEntityModifiedNotification;
 import fi.uta.ristiinopiskelu.messaging.message.current.realisation.DeleteRealisationRequest;
-import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
-import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
-import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
-import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -29,7 +25,7 @@ import java.util.List;
 @Component
 public class DeleteRealisationProcessor extends AbstractCompositeIdentifiedEntityProcessor<RealisationEntity> {
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private RealisationService realisationService;
 
     @Autowired
@@ -37,31 +33,15 @@ public class DeleteRealisationProcessor extends AbstractCompositeIdentifiedEntit
                                       OrganisationService organisationService,
                                       JmsMessageForwarder jmsMessageForwarder,
                                       RealisationService realisationService,
-                                      ObjectMapper objectMapper,
+                                      JsonMapper jsonMapper,
                                       MessageSchemaService messageSchemaService) {
         super(networkService, organisationService, jmsMessageForwarder, messageSchemaService);
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.realisationService = realisationService;
     }
-
-    @AsyncListener(operation = @AsyncOperation(
-            channelName = "handler",
-            description = "Deletes a realisation",
-            servers = {"production", "staging"},
-            message = @AsyncMessage(
-                    description = "Deletes a realisation"
-            ),
-            payloadType = DeleteRealisationRequest.class
-    ))
-    @AsyncPublisher(operation = @AsyncOperation(
-            channelName = "<ORGANISATION_QUEUE>",
-            description = "Notification about changed elements",
-            servers = {"production", "staging"},
-            payloadType = CompositeIdentifiedEntityModifiedNotification.class
-    ))
     @Override
     public void process(Exchange exchange) throws Exception {
-        DeleteRealisationRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), DeleteRealisationRequest.class);
+        DeleteRealisationRequest request = jsonMapper.readValue(exchange.getIn().getBody(String.class), DeleteRealisationRequest.class);
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
 
         List<CompositeIdentifiedEntityModificationResult> modificationResults = realisationService.delete(request.getRealisationId(), organisationId);

@@ -1,7 +1,5 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.messageschema.MessageSchemaReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.messageschema.MessageSchemaWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.MessageSchemaEntity;
@@ -13,7 +11,6 @@ import fi.uta.ristiinopiskelu.messaging.VersionedMessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageGroup;
 import fi.uta.ristiinopiskelu.messaging.schema.converter.ObjectConverterProvider;
 import fi.uta.ristiinopiskelu.persistence.repository.MessageSchemaRepository;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -21,6 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.InputStream;
 import java.util.List;
@@ -42,10 +41,7 @@ public class MessageSchemaServiceImpl extends AbstractService<MessageSchemaWrite
     private MessageTypeClassProvider messageTypeProvider;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     
     @Value("${general.message-schema.version.current}")
     private int currentMessageSchemaVersion;
@@ -56,13 +52,8 @@ public class MessageSchemaServiceImpl extends AbstractService<MessageSchemaWrite
     }
 
     @Override
-    public ObjectMapper getObjectMapper() {
-        return objectMapper;
-    }
-
-    @Override
-    protected ModelMapper getModelMapper() {
-        return modelMapper;
+    public JsonMapper getJsonMapper() {
+        return jsonMapper;
     }
 
 

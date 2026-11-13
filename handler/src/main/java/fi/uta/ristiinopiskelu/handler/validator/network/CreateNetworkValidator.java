@@ -3,6 +3,7 @@ package fi.uta.ristiinopiskelu.handler.validator.network;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.InvalidMessageBodyException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.NetworkAlreadyExistsValidationException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.ValidationException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.OrganisationService;
@@ -34,7 +35,7 @@ public class CreateNetworkValidator extends AbstractNetworkValidator implements 
 
         Optional<NetworkEntity> existing = networkService.findById(network.getId());
         if(existing.isPresent()) {
-            throw new ValidationException("Network already exists with id " + network.getId());
+            throw new NetworkAlreadyExistsValidationException("Network already exists [networkId: " + network.getId() + "]");
         }
 
         if(network.isPublished()) {

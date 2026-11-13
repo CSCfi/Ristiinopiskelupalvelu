@@ -1,8 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.registration.RegistrationReadDTO;
@@ -12,6 +10,8 @@ import fi.uta.ristiinopiskelu.datamodel.dto.v8.rest.studyrecord.SearchDirection;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationSelectionItemTypeEntity;
 import fi.uta.ristiinopiskelu.handler.exception.CreateFailedException;
 import fi.uta.ristiinopiskelu.handler.exception.FindFailedException;
 import fi.uta.ristiinopiskelu.handler.service.RegistrationService;
@@ -19,7 +19,6 @@ import fi.uta.ristiinopiskelu.handler.service.result.GenericEntityModificationRe
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.OrganisationRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RegistrationRepository;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,11 +26,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.groupingBy;
@@ -51,10 +52,7 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
     private OrganisationRepository organisationRepository;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     public RegistrationServiceImpl() {
         super(RegistrationWriteDTO.class, RegistrationEntity.class, RegistrationReadDTO.class);
@@ -66,13 +64,8 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
     }
 
     @Override
-    public ObjectMapper getObjectMapper() {
-        return objectMapper;
-    }
-
-    @Override
-    public ModelMapper getModelMapper() {
-        return modelMapper;
+    public JsonMapper getJsonMapper() {
+        return jsonMapper;
     }
 
     @Override
@@ -104,13 +97,11 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
 
     @Override
     public Map<OrganisationEntity, List<RegistrationEntity>> findAllRegistrationsWithValidStudyRightPerOrganisation(String studyRightId, String organisation) throws FindFailedException {
-        try {
+        try (Stream<RegistrationEntity> registrations =
+                 registrationRepository.findByStudentHomeStudyRightIdentifiersStudyRightIdAndStudentHomeStudyRightIdentifiersOrganisationTkCodeReference(
+                     studyRightId, organisation)) {
             // find all registrations for this study right
-            List<RegistrationEntity> registrations = registrationRepository.findByStudentHomeStudyRightIdentifiersStudyRightIdAndStudentHomeStudyRightIdentifiersOrganisationTkCodeReference(
-                studyRightId, organisation);
-
-            return getRegistrationsPerOrganisation(registrations);
-
+            return getRegistrationsPerOrganisation(registrations.toList());
         } catch (Exception e) {
             throw new FindFailedException(getEntityClass(), e);
         }
@@ -168,7 +159,7 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
         List<String> organisationIds = validSearchNetworks.stream()
                 .filter(network -> network.getOrganisations().stream().anyMatch(org -> org.getOrganisationTkCode().equals(organisationId) && org.getIsCoordinator()))
                 .flatMap(network -> network.getOrganisations().stream())
-                .map(NetworkOrganisation::getOrganisationTkCode)
+                .map(NetworkOrganisationEntity::getOrganisationTkCode)
                 .collect(Collectors.toList());
         
         // not a coordinator in any network. limit to own.
@@ -204,7 +195,7 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
         List<String> organisationIds = validSearchNetworks.stream()
                 .filter(network -> network.getOrganisations().stream().anyMatch(org -> org.getOrganisationTkCode().equals(organisationId)))
                 .flatMap(network -> network.getOrganisations().stream())
-                .map(NetworkOrganisation::getOrganisationTkCode)
+                .map(NetworkOrganisationEntity::getOrganisationTkCode)
                 .collect(Collectors.toList());
         
         List<RegistrationEntity> registrations = this.getRepository().findAllByParams(null, null, null,
@@ -212,7 +203,7 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
                 .stream().collect(Collectors.toList());
 
         List<RegistrationSelectionIdentifier> distinctSelections = registrations.stream().flatMap(reg -> reg.getSelections().stream()
-                .map(sel -> new RegistrationSelectionIdentifier(reg.getReceivingOrganisationTkCode(), sel)))
+                .map(sel -> new RegistrationSelectionIdentifier(reg.getReceivingOrganisationTkCode(), CreateRegistrationSelection.from(sel))))
                 .distinct().collect(Collectors.toList());
 
         if(searchParams.getType() != null) {
@@ -239,7 +230,7 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
         return regs.stream()
                 .filter(reg -> reg.getSelections().stream().
                     anyMatch(sel -> sel.getSelectionItemId().equals(id.getId())
-                            && sel.getSelectionItemType() == id.getType()
+                            && sel.getSelectionItemType() == RegistrationSelectionItemTypeEntity.from(id.getType())
                             && reg.getReceivingOrganisationTkCode().equals(id.getOrganisationId())))
                 .filter(reg -> reg.getSendingOrganisationTkCode().equals(sendingOrganisationTkCode))
                 .collect(Collectors.toList());
@@ -257,12 +248,12 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
         List<String> organisationIds = validSearchNetworks
                 .stream().filter(network -> network.getOrganisations().stream().anyMatch(org -> org.getOrganisationTkCode().equals(organisationId)))
                 .flatMap(network -> network.getOrganisations().stream())
-                .map(NetworkOrganisation::getOrganisationTkCode)
+                .map(NetworkOrganisationEntity::getOrganisationTkCode)
                 .collect(Collectors.toList());
 
         List<RegistrationReadDTO> registrations = this.getRepository().findAllByParams(null, null, null,
                 organisationIds, null, null, null, Pageable.unpaged())
-                .stream().map(r -> getModelMapper().map(r, RegistrationReadDTO.class)).collect(Collectors.toList());
+                .stream().map(this::toReadDTO).collect(Collectors.toList());
 
         return new RegistrationStatusAmountSearchResults(
                 groupByOrganisationTkCodeAndStatus(registrations, SearchDirection.INCOMING),
@@ -275,9 +266,9 @@ public class RegistrationServiceImpl extends AbstractService<RegistrationWriteDT
                 Collectors.groupingBy(registration -> direction == SearchDirection.OUTGOING ? registration.getSendingOrganisationTkCode() : registration.getReceivingOrganisationTkCode()));
 
         return registrationsByOrganisation.entrySet().stream().collect(Collectors.toMap(value -> value.getKey(), value -> {
-            List<RegistrationSelection> registrationSelections = value.getValue().stream().flatMap(reg -> reg.getSelections().stream()).collect(Collectors.toList());
-            Map<RegistrationSelectionItemStatus, List<RegistrationSelection>> selectionsByStatus =
-                    registrationSelections.stream().collect(Collectors.groupingBy(RegistrationSelection::getSelectionItemStatus));
+            List<CreateRegistrationSelection> registrationSelections = value.getValue().stream().flatMap(reg -> reg.getSelections().stream()).collect(Collectors.toList());
+            Map<RegistrationSelectionItemStatus, List<CreateRegistrationSelection>> selectionsByStatus =
+                    registrationSelections.stream().collect(Collectors.groupingBy(CreateRegistrationSelection::getSelectionItemStatus));
             return selectionsByStatus.entrySet().stream().collect(Collectors.toMap(val -> val.getKey(),
                     val -> val.getValue().stream().filter(rs -> rs.getSelectionItemStatus() == val.getKey()).count()));
         }));

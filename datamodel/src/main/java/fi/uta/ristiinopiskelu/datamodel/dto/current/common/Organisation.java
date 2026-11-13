@@ -1,6 +1,8 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationDataEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.Objects;
@@ -229,5 +231,41 @@ public class Organisation {
                 ", phone=" + phone +
                 ", url='" + url + '\'' +
                 '}';
+    }
+
+    public static Organisation from(OrganisationEntity source) {
+        if (source == null) {
+            return null;
+        }
+        Organisation target = new Organisation();
+        target.setOrganisationIdentifier(source.getOrganisationIdentifier());
+        target.setOrganisationTkCode(source.getId());
+        target.setOrganisationName(LocalisedString.from(source.getOrganisationName()));
+        target.setUnitName(LocalisedString.from(source.getUnitName()));
+        target.setNameDescription(LocalisedString.from(source.getNameDescription()));
+        target.setPostalAddress(Address.from(source.getPostalAddress()));
+        target.setStreetAddress(Address.from(source.getStreetAddress()));
+        target.setMunicipalityCode(source.getMunicipalityCode());
+        target.setPhone(Phone.from(source.getPhone()));
+        target.setUrl(source.getUrl());
+        return target;
+    }
+
+    public static Organisation from(OrganisationDataEntity source) {
+        if (source == null) {
+            return null;
+        }
+        Organisation target = new Organisation();
+        target.setOrganisationIdentifier(source.getOrganisationIdentifier());
+        target.setOrganisationTkCode(source.getOrganisationTkCode());
+        target.setOrganisationName(LocalisedString.from(source.getOrganisationName()));
+        target.setUnitName(LocalisedString.from(source.getUnitName()));
+        target.setNameDescription(LocalisedString.from(source.getNameDescription()));
+        target.setPostalAddress(Address.from(source.getPostalAddress()));
+        target.setStreetAddress(Address.from(source.getStreetAddress()));
+        target.setMunicipalityCode(source.getMunicipalityCode());
+        target.setPhone(Phone.from(source.getPhone()));
+        target.setUrl(source.getUrl());
+        return target;
     }
 }

@@ -1,12 +1,14 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * CooperationNetwork
@@ -83,5 +85,25 @@ public class CooperationNetwork {
 
     public void setEnrollable(Boolean enrollable) {
         this.enrollable = enrollable;
+    }
+
+    public static CooperationNetwork from(CooperationNetworkEntity source) {
+        if (source == null) {
+            return null;
+        }
+        CooperationNetwork target = new CooperationNetwork();
+        target.setId(source.getId());
+        target.setName(LocalisedString.from(source.getName()));
+        target.setValidityStartDate(source.getValidityStartDate());
+        target.setValidityEndDate(source.getValidityEndDate());
+        target.setEnrollable(source.getEnrollable());
+        return target;
+    }
+
+    public static List<CooperationNetwork> from(List<CooperationNetworkEntity> source) {
+        if (source == null) {
+            return null;
+        }
+        return source.stream().map(CooperationNetwork::from).toList();
     }
 }

@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.processor.student;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudentEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
@@ -14,13 +14,8 @@ import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.StudentMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.ForwardedUpdateStudentStudyRightReplyRequest;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.UpdateStudentStudyRightReplyRequest;
-import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
-import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
-import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
-import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -31,47 +26,29 @@ public class UpdateStudentStudyRightReplyProcessor implements Processor {
 
     private StudentService studentService;
     private OrganisationService organisationService;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private JmsMessageForwarder jmsMessageForwarder;
-    private ModelMapper modelMapper;
 
     @Autowired
     public UpdateStudentStudyRightReplyProcessor(StudentService studentService, OrganisationService organisationService,
-                                                 ObjectMapper objectMapper, JmsMessageForwarder jmsMessageForwarder, ModelMapper modelMapper) {
+                                                 JsonMapper jsonMapper, JmsMessageForwarder jmsMessageForwarder) {
         this.studentService = studentService;
         this.organisationService = organisationService;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.jmsMessageForwarder = jmsMessageForwarder;
-        this.modelMapper = modelMapper;
     }
-
-    @AsyncListener(operation = @AsyncOperation(
-            channelName = "handler",
-            description = "Replies to a student study right update request",
-            servers = {"production", "staging"},
-            message = @AsyncMessage(
-                    description = "Replies to a student study right update request"
-            ),
-            payloadType = UpdateStudentStudyRightReplyRequest.class
-    ))
-    @AsyncPublisher(operation = @AsyncOperation(
-            channelName = "<ORGANISATION_QUEUE>",
-            description = "Forwarded student study right update reply",
-            servers = {"production", "staging"},
-            payloadType = ForwardedUpdateStudentStudyRightReplyRequest.class
-    ))
     @Override
     public void process(Exchange exchange) throws Exception {
-        UpdateStudentStudyRightReplyRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), UpdateStudentStudyRightReplyRequest.class);
+        UpdateStudentStudyRightReplyRequest request = jsonMapper.readValue(exchange.getIn().getBody(String.class), UpdateStudentStudyRightReplyRequest.class);
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
-        String correlationId = exchange.getIn().getHeader("JMSMessageID", String.class);
+        String correlationId = exchange.getIn().getHeader(MessageHeader.JMS_MESSAGEID, String.class);
         StudentEntity entity = studentService.findById(request.getStudentRequestId())
                 .orElseThrow(() -> new EntityNotFoundException(StudentEntity.class, request.getStudentRequestId()));
 
         OrganisationEntity homeOrganisation = organisationService.findById(entity.getHomeOrganisationTkCode())
                 .orElseThrow(() -> new EntityNotFoundException(OrganisationEntity.class, entity.getHomeOrganisationTkCode()));
 
-        ForwardedUpdateStudentStudyRightReplyRequest forwardedRequest = modelMapper.map(request, ForwardedUpdateStudentStudyRightReplyRequest.class);
+        ForwardedUpdateStudentStudyRightReplyRequest forwardedRequest = ForwardedUpdateStudentStudyRightReplyRequest.from(request);
         forwardedRequest.setSendingOrganisationTkCode(organisationId);
 
         jmsMessageForwarder.forwardRequestToOrganisation(forwardedRequest.getStudentRequestId(), forwardedRequest,

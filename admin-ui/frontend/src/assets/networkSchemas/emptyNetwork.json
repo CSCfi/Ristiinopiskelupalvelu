@@ -9,16 +9,7 @@
   },
   "published": false,
   "abbreviation": "",
-  "organisations": [
-    {
-      "organisationTkCode": "",
-      "isCoordinator": false,
-      "validityInNetwork": {
-        "start": "",
-        "end": ""
-      }
-    }
-  ],
+  "organisations": [],
   "validity": {
     "continuity": "",
     "start": "",

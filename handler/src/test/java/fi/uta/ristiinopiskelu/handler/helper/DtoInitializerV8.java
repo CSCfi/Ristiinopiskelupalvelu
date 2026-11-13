@@ -40,7 +40,7 @@ public class DtoInitializerV8 {
 
     public static OrganisationReference getOrganisationReference(Organisation organisation, OrganisationRole role) {
         OrganisationReference organisationReference = new OrganisationReference();
-        organisationReference.setOrganisation(organisation);
+        organisationReference.setTarget(organisation);
         organisationReference.setPercent(new BigDecimal(100));
         organisationReference.setOrganisationRole(role);
         return organisationReference;

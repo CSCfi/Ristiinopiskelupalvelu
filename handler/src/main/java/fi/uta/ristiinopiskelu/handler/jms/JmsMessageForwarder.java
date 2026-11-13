@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.jms;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.InvalidMessageSchemaVersionException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.MessageForwardingFailedException;
@@ -10,6 +10,7 @@ import fi.uta.ristiinopiskelu.messaging.message.Message;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import org.apache.camel.ProducerTemplate;
+import org.apache.camel.component.jms.JmsConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,13 +27,13 @@ public class JmsMessageForwarder {
     private static final Logger logger = LoggerFactory.getLogger(JmsMessageForwarder.class);
 
     private ProducerTemplate producerTemplate;
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
     private MessageSchemaService messageSchemaService;
 
     @Autowired
-    public JmsMessageForwarder(ProducerTemplate producerTemplate, ObjectMapper objectMapper, MessageSchemaService messageSchemaService) {
+    public JmsMessageForwarder(ProducerTemplate producerTemplate, JsonMapper jsonMapper, MessageSchemaService messageSchemaService) {
         this.producerTemplate = producerTemplate;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.messageSchemaService = messageSchemaService;
     }
 
@@ -85,8 +86,11 @@ public class JmsMessageForwarder {
             forwardedHeaders.putAll(customHeaders);
         }
 
+        forwardedHeaders.put(JmsConstants.JMS_MESSAGE_TYPE,
+            JmsMessageTypeResolver.resolveForForwardedMessage(organisation.getSchemaVersion()));
+
         producerTemplate.sendBodyAndHeaders(
             String.format("jms:queue:%s", organisation.getQueue()),
-            objectMapper.writeValueAsString(forwardedMessage), forwardedHeaders);
+            jsonMapper.writeValueAsString(forwardedMessage), forwardedHeaders);
     }
 }

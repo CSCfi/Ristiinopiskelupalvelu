@@ -1,31 +1,30 @@
 package fi.uta.ristiinopiskelu.messaging.jms;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.messaging.VersionedMessageType;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
-import org.springframework.jms.support.converter.MappingJackson2MessageConverter;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
+import org.springframework.jms.support.converter.JacksonJsonMessageConverter;
 import org.springframework.jms.support.converter.MessageConversionException;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
+import tools.jackson.databind.json.JsonMapper;
 
-import jakarta.jms.JMSException;
-import jakarta.jms.Message;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class RistiinopiskeluMessageConverter extends MappingJackson2MessageConverter {
+public class RistiinopiskeluMessageConverter extends JacksonJsonMessageConverter {
 
     private Map<String, Class<?>> typeIds;
 
-    public RistiinopiskeluMessageConverter(ObjectMapper objectMapper, VersionedMessageType[] messageTypeValues) {
-        Assert.notNull(objectMapper, "ObjectMapper cannot be null");
+    public RistiinopiskeluMessageConverter(JsonMapper jsonMapper, VersionedMessageType[] messageTypeValues) {
+        super(jsonMapper);
         Assert.notEmpty(messageTypeValues, "MessageType values cannot be empty");
 
         this.typeIds = Arrays.stream(messageTypeValues)
                 .collect(Collectors.toMap(VersionedMessageType::name, VersionedMessageType::getClazz));
 
-        setObjectMapper(objectMapper);
         setTypeIdPropertyName(MessageHeader.MESSAGE_TYPE);
         setTypeIdMappings(this.typeIds);
         setTargetType(org.springframework.jms.support.converter.MessageType.TEXT);

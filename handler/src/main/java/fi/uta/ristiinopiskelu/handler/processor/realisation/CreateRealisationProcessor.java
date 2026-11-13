@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.processor.realisation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
@@ -18,19 +18,13 @@ import fi.uta.ristiinopiskelu.messaging.message.current.RistiinopiskeluMessage;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
 import fi.uta.ristiinopiskelu.messaging.message.current.notification.CompositeIdentifiedEntityModifiedNotification;
 import fi.uta.ristiinopiskelu.messaging.message.current.realisation.CreateRealisationRequest;
-import io.github.springwolf.core.asyncapi.annotations.AsyncListener;
-import io.github.springwolf.core.asyncapi.annotations.AsyncMessage;
-import io.github.springwolf.core.asyncapi.annotations.AsyncOperation;
-import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher;
 import org.apache.camel.Exchange;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class CreateRealisationProcessor extends AbstractCompositeIdentifiedEntityProcessor<RealisationEntity> {
@@ -38,8 +32,7 @@ public class CreateRealisationProcessor extends AbstractCompositeIdentifiedEntit
 
     private RealisationService realisationService;
     private CreateRealisationValidator realisationValidator;
-    private ObjectMapper objectMapper;
-    private ModelMapper modelMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     public CreateRealisationProcessor(NetworkService networkService,
@@ -47,41 +40,24 @@ public class CreateRealisationProcessor extends AbstractCompositeIdentifiedEntit
                                       JmsMessageForwarder jmsMessageForwarder,
                                       RealisationService realisationService,
                                       CreateRealisationValidator realisationValidator,
-                                      ObjectMapper objectMapper,
-                                      ModelMapper modelMapper,
+                                      JsonMapper jsonMapper,
                                       MessageSchemaService messageSchemaService) {
         super(networkService, organisationService, jmsMessageForwarder, messageSchemaService);
         this.realisationValidator = realisationValidator;
         this.realisationService = realisationService;
-        this.objectMapper = objectMapper;
-        this.modelMapper = modelMapper;
+        this.jsonMapper = jsonMapper;
     }
-
-    @AsyncListener(operation = @AsyncOperation(
-            channelName = "handler",
-            description = "Creates a realisation",
-            servers = {"production", "staging"},
-            message = @AsyncMessage(
-                    description = "Creates a realisation"
-            ),
-            payloadType = CreateRealisationRequest.class
-    ))
-    @AsyncPublisher(operation = @AsyncOperation(
-            channelName = "<ORGANISATION_QUEUE>",
-            description = "Notification about changed elements",
-            servers = {"production", "staging"},
-            payloadType = CompositeIdentifiedEntityModifiedNotification.class
-    ))
     @Override
     public void process(Exchange exchange) throws Exception {
-        CreateRealisationRequest request = objectMapper.readValue(exchange.getIn().getBody(String.class), CreateRealisationRequest.class);
+        CreateRealisationRequest request = jsonMapper.readValue(exchange.getIn().getBody(String.class), CreateRealisationRequest.class);
         String organisationId = exchange.getIn().getHeader(MessageHeader.JMS_XUSERID, String.class);
 
         realisationValidator.validateRequest(request, organisationId);
 
         List<RealisationWriteDTO> realisations = request.getRealisations();
-        List<RealisationEntity> realisationEntities = realisations.stream().map(cur -> modelMapper.map(cur, RealisationEntity.class))
-                .collect(Collectors.toList());
+        List<RealisationEntity> realisationEntities = realisations.stream()
+            .map(RealisationEntity::from)
+            .toList();
 
         List<CompositeIdentifiedEntityModificationResult> modificationResults = realisationService.createAll(realisationEntities);
         super.notifyNetworkMembers(organisationId, MessageType.REALISATION_CREATED_NOTIFICATION, modificationResults);

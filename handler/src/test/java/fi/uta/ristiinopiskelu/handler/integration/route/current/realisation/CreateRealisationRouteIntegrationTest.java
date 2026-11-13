@@ -3,6 +3,7 @@ package fi.uta.ristiinopiskelu.handler.integration.route.current.realisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.*;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -26,7 +27,6 @@ import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +35,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -72,9 +71,6 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     private OrganisationService organisationService;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
     private CourseUnitRepository courseUnitRepository;
 
     @Autowired
@@ -92,20 +88,20 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         for(String organisationId : organisationIds) {
             if(!organisationService.findById(organisationId).isPresent()) {
                 OrganisationEntity organisation = EntityInitializer.getOrganisationEntity(organisationId, organisationId,
-                    new LocalisedString(organisationId, null, null), this.messageSchemaVersion);
-                organisationService.create(modelMapper.map(organisation, OrganisationEntity.class));
+                    new LocalisedStringEntity(organisationId, null, null), this.messageSchemaVersion);
+                organisationService.create(organisation);
             }
         }
     }
 
     @Test
-    public void testSendingCreateRealisationMessage_shouldSuccess() throws JMSException, IOException {
+    public void testSendingCreateRealisationMessage_shouldSuccess() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), null,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), null,
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
@@ -132,12 +128,12 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(createdRealisationEntity.getPersonReferences().stream().allMatch(pr -> pr.getPerson() != null));
         assertTrue(createdRealisationEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi@test.fi")));
         assertTrue(createdRealisationEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi2@test.fi")));
-        assertEquals(StudyStatus.ACTIVE, createdRealisationEntity.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, createdRealisationEntity.getStatus());
         assertEquals(BigDecimal.valueOf(5.0), createdRealisationEntity.getCreditsMin());
         assertEquals(BigDecimal.valueOf(15.0), createdRealisationEntity.getCreditsMax());
 
         // Verify cooperation network data was gathered from network index
-        CooperationNetwork realisationNetwork = createdRealisationEntity.getCooperationNetworks().get(0);
+        CooperationNetworkEntity realisationNetwork = createdRealisationEntity.getCooperationNetworks().get(0);
         assertEquals(networkEntity.getName().getValue("fi"), realisationNetwork.getName().getValue("fi"));
         assertEquals(networkEntity.getName().getValue("en"), realisationNetwork.getName().getValue("en"));
         assertEquals(networkEntity.getName().getValue("sv"), realisationNetwork.getName().getValue("sv"));
@@ -160,13 +156,13 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
-    public void testSendingCreateRealisationMessageWithInvalidLanguage_shouldFail() throws JMSException, IOException {
+    public void testSendingCreateRealisationMessageWithInvalidLanguage_shouldFail() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), null,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), null,
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
@@ -187,7 +183,7 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         OrganisationReference orgRef = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         RealisationWriteDTO realisation = DtoInitializer.getRealisation("REAL/11", "REALCODE/11", new LocalisedString("toteutus", null, null),
-            Collections.singletonList(studyElementReference), Arrays.asList(cooperationNetwork), Collections.singletonList(orgRef));
+            Collections.singletonList(studyElementReference), Arrays.asList(CooperationNetwork.from(cooperationNetwork)), Collections.singletonList(orgRef));
         realisation.setStatus(StudyStatus.ACTIVE);
         realisation.setTeachingLanguage(Collections.singletonList("foofoo"));
 
@@ -201,13 +197,13 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
-    public void testSendingCreateRealisationMessageV8WithInvalidLanguage_shouldSucceed() throws JMSException, IOException {
+    public void testSendingCreateRealisationMessageV8WithInvalidLanguage_shouldSucceed() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), null,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), null,
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
@@ -251,19 +247,19 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
-    public void testSendingCreateRealisationMessage_shouldSuccessHasForwardSlashes() throws JMSException, IOException {
+    public void testSendingCreateRealisationMessage_shouldSuccessHasForwardSlashes() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
         NetworkEntity networkEntity2 = persistNetworkEntity("CN-2",
-            new LocalisedString("Verkosto 2", "Verkosto 2 en", "Verkosto 2 sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 2", "Verkosto 2 en", "Verkosto 2 sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), null,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), null,
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
-        CooperationNetwork cooperationNetwork2 = DtoInitializer.getCooperationNetwork(networkEntity2.getId(), null,
+        CooperationNetworkEntity cooperationNetwork2 = EntityInitializer.getCooperationNetwork(networkEntity2.getId(), null,
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
@@ -277,7 +273,8 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
             courseUnitEntity.getStudyElementId(), organisingOrganisationId);
 
         RealisationWriteDTO realisation = DtoInitializer.getRealisation("REAL/11", "REALCODE/11", new LocalisedString("toteutus", null, null),
-            Collections.singletonList(studyElementReference), Arrays.asList(cooperationNetwork, cooperationNetwork2), Collections.singletonList(orgRef));
+            Collections.singletonList(studyElementReference), Arrays.asList(CooperationNetwork.from(cooperationNetwork),
+                CooperationNetwork.from(cooperationNetwork2)), Collections.singletonList(orgRef));
         realisation.setStatus(StudyStatus.ARCHIVED);
 
         CreateRealisationRequest realisationRequest = new CreateRealisationRequest();
@@ -296,7 +293,7 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(realisation.getRealisationIdentifierCode(), createdEntity.getRealisationIdentifierCode());
         assertEquals(createdEntity.getStudyElementReferences().size(), 1);
         assertTrue(createdEntity.getStudyElementReferences().stream().anyMatch(r -> r.getReferenceIdentifier().equals(courseUnitEntity.getStudyElementId())));
-        assertEquals(StudyStatus.ARCHIVED, createdEntity.getStatus());
+        assertEquals(StudyStatusEntity.ARCHIVED, createdEntity.getStatus());
 
         // Verify cooperation network data was gathered from network index
         assertTrue(createdEntity.getCooperationNetworks().stream().anyMatch(cn ->
@@ -313,13 +310,13 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
-    public void testCreateRealisationMessageWithMultipleCUReals_shouldSuccess() throws JMSException, IOException {
+    public void testCreateRealisationMessageWithMultipleCUReals_shouldSuccess() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
@@ -348,8 +345,7 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(createdEntity.getPersonReferences().stream().allMatch(pr -> pr.getPerson() != null));
         assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi@test.fi")));
         assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi2@test.fi")));
-        assertEquals(StudyStatus.ACTIVE, createdEntity.getStatus());
-
+        assertEquals(StudyStatusEntity.ACTIVE, createdEntity.getStatus());
 
         RealisationEntity createdEntity2 = realisationService.findByIdAndOrganizingOrganisationId(
             "129178", "TUNI").orElse(null);
@@ -365,7 +361,7 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(createdEntity2.getPersonReferences().stream().allMatch(pr -> pr.getPerson() != null));
         assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi@test.fi")));
         assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi2@test.fi")));
-        assertEquals(StudyStatus.ACTIVE, createdEntity2.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, createdEntity2.getStatus());
     }
 
     @Test
@@ -373,9 +369,9 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         AssessmentItemEntity assessmentItemEntity = EntityInitializer.getAssessmentItemEntity("AI-1", "CU-1");
@@ -392,7 +388,8 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         RealisationWriteDTO realisation = DtoInitializer.getRealisation("R-1", "RCODE-1", new LocalisedString("Toteutus", null, null),
-            Collections.singletonList(studyElementReference), Collections.singletonList(cooperationNetwork), Collections.singletonList(organisationReference));
+            Collections.singletonList(studyElementReference), Collections.singletonList(CooperationNetwork.from(cooperationNetwork)),
+            Collections.singletonList(organisationReference));
         realisation.setStatus(StudyStatus.CANCELLED);
 
         CreateRealisationRequest req = new CreateRealisationRequest();
@@ -411,12 +408,12 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertEquals(realisation.getRealisationId(), createdRealisation.getRealisationId());
         assertEquals(realisation.getRealisationIdentifierCode(), createdRealisation.getRealisationIdentifierCode());
         assertEquals(realisation.getStudyElementReferences().size(), createdRealisation.getStudyElementReferences().size());
-        assertEquals(StudyStatus.CANCELLED, createdRealisation.getStatus());
+        assertEquals(StudyStatusEntity.CANCELLED, createdRealisation.getStatus());
 
-        StudyElementReference createdRealisationStudyElementRef = createdRealisation.getStudyElementReferences().get(0);
+        StudyElementReferenceEntity createdRealisationStudyElementRef = createdRealisation.getStudyElementReferences().get(0);
         assertEquals(studyElementReference.getReferenceIdentifier(), createdRealisationStudyElementRef.getReferenceIdentifier());
         assertEquals(studyElementReference.getReferenceOrganizer(), createdRealisationStudyElementRef.getReferenceOrganizer());
-        assertEquals(studyElementReference.getReferenceType(), createdRealisationStudyElementRef.getReferenceType());
+        assertEquals(StudyElementTypeEntity.ASSESSMENT_ITEM, createdRealisationStudyElementRef.getReferenceType());
 
         // Verify created realisation data is denormalized to course unit
         CourseUnitEntity updatedCourseUnitEntity = courseUnitService.findByStudyElementIdAndOrganizingOrganisationId(
@@ -441,9 +438,9 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
@@ -481,11 +478,11 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
-    public void testSendingCreateRealisationMessage_shouldFailDuplicateCURealisationInMessage() throws JMSException, IOException {
+    public void testSendingCreateRealisationMessage_shouldFailDuplicateCURealisationInMessage() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
             "CU-1", "4CO19KBIOP", organisingOrganisationId, Collections.singletonList(cooperationNetwork), null);
@@ -502,11 +499,11 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
-    public void testSendingCreateRealisationMessage_shouldFailAlreadyExists() throws JMSException, IOException {
+    public void testSendingCreateRealisationMessage_shouldFailAlreadyExists() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
             "CU-1", "4CO19KBIOP", organisingOrganisationId, Collections.singletonList(cooperationNetwork), null);
@@ -525,7 +522,7 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
-    public void testSendingCreateRealisationMessage_shouldFailMissingRequiredFields() throws JMSException, IOException {
+    public void testSendingCreateRealisationMessage_shouldFailMissingRequiredFields() throws JMSException {
         RealisationWriteDTO realisation = DtoInitializer.getRealisation("ID", "CODE",
             new LocalisedString("fi", null, null), null, null, null);
 
@@ -548,11 +545,11 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
-    public void testSendingCreateRealisationMessage_shouldFailCourseUnitAndRealisationNetworksNotMatching() throws JMSException, IOException {
+    public void testSendingCreateRealisationMessage_shouldFailCourseUnitAndRealisationNetworksNotMatching() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
-            "CN-2", new LocalisedString("Verkosto 2", "Verkosto en", "Verkosto sv"), true,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
+            "CN-2", new LocalisedStringEntity("Verkosto 2", "Verkosto en", "Verkosto sv"), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity(
             "CU-1", "4CO19KBIOP", organisingOrganisationId, Collections.singletonList(cooperationNetwork), null);
@@ -572,8 +569,8 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     public void testSendingCreateRealisationMessageWithAssessmentItemRef_shouldFailNoCourseUnitFoundByAssessmentId() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         AssessmentItemEntity assessmentItemEntity = EntityInitializer.getAssessmentItemEntity("AI-1", "CU-1");
@@ -590,7 +587,7 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
 
         RealisationWriteDTO realisation = DtoInitializer.getRealisation("R-1", "RCODE-1", new LocalisedString("Toteutus", null, null),
-            Collections.singletonList(studyElementReference), Collections.singletonList(cooperationNetwork), Collections.singletonList(organisationReference));
+            Collections.singletonList(studyElementReference), Collections.singletonList(CooperationNetwork.from(cooperationNetwork)), Collections.singletonList(organisationReference));
 
         CreateRealisationRequest req = new CreateRealisationRequest();
         req.setRealisations(Collections.singletonList(realisation));
@@ -605,380 +602,386 @@ public class CreateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     private final String testRealisationJson =
-        "{\n" +
-            "    \"realisations\": [\n" +
-            "        {\n" +
-            "            \"status\": \"ACTIVE\",\n" +
-            "            \"realisationId\": \"129177\",\n" +
-            "            \"realisationIdentifierCode\": \"129177\",\n" +
-            "            \"selections\": null,\n" +
-            "            \"questionSets\": null,\n" +
-            "            \"enrollmentStartDateTime\": \"2018-09-30T21:00:00.000Z\",\n" +
-            "            \"enrollmentEndDateTime\": \"2018-12-04T22:00:00.000Z\",\n" +
-            "            \"startDate\": \"2019-01-06\",\n" +
-            "            \"endDate\": \"2019-05-30\",\n" +
-            "            \"creditsMin\": 5,\n" +
-            "            \"creditsMax\": 15,\n" +
-            "            \"minSeats\": 10,\n" +
-            "            \"maxSeats\": 400,\n" +
-            "            \"name\": {\n" +
-            "               \"values\": {\n" +
-            "                    \"fi\": \"nimi fi\",\n" +
-            "                    \"sv\": null,\n" +
-            "                    \"en\": null\n" +
-            "                }\n" +
-            "             },\n" +
-            "            \"personReferences\": [\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                },\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi2@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"studyElementReferences\": [\n" +
-            "               {\n" +
-            "                    \"referenceIdentifier\": \"CU-1\",\n" +
-            "                    \"referenceOrganizer\": \"TUNI\",\n" +
-            "                    \"referenceType\": \"COURSE_UNIT\"\n" +
-            "               }\n" +
-            "            ],\n" +
-            "           \"organisationReferences\": [\n" +
-            "               {\n" +
-            "                   \"organisationRole\": 1,\n" +
-            "                   \"target\": {\n" +
-            "                       \"organisationIdentifier\": \"TUNI\",\n" +
-            "                       \"organisationTkCode\": \"TUNI\"\n" +
-            "                   }\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"cooperationNetworks\": [\n" +
-            "               {\n" +
-            "                   \"id\": \"CN-1\",\n" +
-            "                   \"name\": {\n" +
-            "                       \"values\": {\n" +
-            "                           \"fi\": \"Verkosto 1\",\n" +
-            "                           \"en\": \"Network 1\",\n" +
-            "                           \"sv\": null\n" +
-            "                       }\n" +
-            "                   },\n" +
-            "                   \"enrollable\": true\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"teachingLanguage\": [\n" +
-            "               \"fi\"\n" +
-            "           ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+        """
+            {
+                "realisations": [
+                    {
+                        "status": "ACTIVE",
+                        "realisationId": "129177",
+                        "realisationIdentifierCode": "129177",
+                        "selections": null,
+                        "questionSets": null,
+                        "enrollmentStartDateTime": "2018-09-30T21:00:00.000Z",
+                        "enrollmentEndDateTime": "2018-12-04T22:00:00.000Z",
+                        "startDate": "2019-01-06",
+                        "endDate": "2019-05-30",
+                        "creditsMin": 5,
+                        "creditsMax": 15,
+                        "minSeats": 10,
+                        "maxSeats": 400,
+                        "name": {
+                           "values": {
+                                "fi": "nimi fi",
+                                "sv": null,
+                                "en": null
+                            }
+                         },
+                        "personReferences": [
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi@test.fi",
+                                    "surName": "Testinen"
+                                }
+                            },
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi2@test.fi",
+                                    "surName": "Testinen"
+                                }
+                            }
+                        ],
+                        "studyElementReferences": [
+                           {
+                                "referenceIdentifier": "CU-1",
+                                "referenceOrganizer": "TUNI",
+                                "referenceType": "COURSE_UNIT"
+                           }
+                        ],
+                       "organisationReferences": [
+                           {
+                               "organisationRole": 1,
+                               "target": {
+                                   "organisationIdentifier": "TUNI",
+                                   "organisationTkCode": "TUNI"
+                               }
+                           }
+                       ],
+                       "cooperationNetworks": [
+                           {
+                               "id": "CN-1",
+                               "name": {
+                                   "values": {
+                                       "fi": "Verkosto 1",
+                                       "en": "Network 1",
+                                       "sv": null
+                                   }
+                               },
+                               "enrollable": true
+                           }
+                       ],
+                       "teachingLanguage": [
+                           "fi"
+                       ]
+                    }
+                ]
+            }
+        """;
 
     private final String testTwoSameRealisationJson =
-        "{\n" +
-            "    \"realisations\": [\n" +
-            "        {\n" +
-            "            \"status\": \"ACTIVE\",\n" +
-            "            \"realisationId\": \"129177\",\n" +
-            "            \"realisationIdentifierCode\": \"129177\",\n" +
-            "            \"selections\": null,\n" +
-            "            \"questionSets\": null,\n" +
-            "            \"enrollmentStartDateTime\": \"2018-09-30T21:00:00.000Z\",\n" +
-            "            \"enrollmentEndDateTime\": \"2018-12-04T22:00:00.000Z\",\n" +
-            "            \"startDate\": \"2019-01-06\",\n" +
-            "            \"endDate\": \"2019-05-30\",\n" +
-            "            \"minSeats\": 10,\n" +
-            "            \"maxSeats\": 400,\n" +
-            "            \"name\": {\n" +
-            "               \"values\": {\n" +
-            "                    \"fi\": \"nimi 2 fi\",\n" +
-            "                    \"sv\": null,\n" +
-            "                    \"en\": null\n" +
-            "                }\n" +
-            "             },\n" +
-            "            \"personReferences\": [\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                },\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi2@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"studyElementReferences\": [\n" +
-            "               {\n" +
-            "                    \"referenceIdentifier\": \"CU-1\",\n" +
-            "                    \"referenceOrganizer\": \"TUNI\",\n" +
-            "                    \"referenceType\": \"COURSE_UNIT\"\n" +
-            "               }\n" +
-            "            ],\n" +
-            "           \"organisationReferences\": [\n" +
-            "               {\n" +
-            "                   \"organisationRole\": 1,\n" +
-            "                   \"target\": {\n" +
-            "                       \"organisationIdentifier\": \"TUNI\",\n" +
-            "                       \"organisationTkCode\": \"TUNI\"\n" +
-            "                   }\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"cooperationNetworks\": [\n" +
-            "               {\n" +
-            "                   \"id\": \"CN-1\",\n" +
-            "                   \"name\": {\n" +
-            "                       \"values\": {\n" +
-            "                           \"fi\": \"Verkosto 1\",\n" +
-            "                           \"en\": \"Network 1\",\n" +
-            "                           \"sv\": null\n" +
-            "                       }\n" +
-            "                   },\n" +
-            "                   \"enrollable\": true\n" +
-            "               }\n" +
-            "           ]\n" +
-            "        },\n" +
-            "        {\n" +
-            "            \"status\": \"ACTIVE\",\n" +
-            "            \"realisationId\": \"129177\",\n" +
-            "            \"realisationIdentifierCode\": \"129177\",\n" +
-            "            \"selections\": null,\n" +
-            "            \"questionSets\": null,\n" +
-            "            \"enrollmentStartDateTime\": \"2018-09-30T21:00:00.000Z\",\n" +
-            "            \"enrollmentEndDateTime\": \"2018-12-04T22:00:00.000Z\",\n" +
-            "            \"startDate\": \"2019-01-06\",\n" +
-            "            \"endDate\": \"2019-05-30\",\n" +
-            "            \"minSeats\": 10,\n" +
-            "            \"maxSeats\": 400,\n" +
-            "            \"name\": {\n" +
-            "               \"values\": {\n" +
-            "                    \"fi\": \"nimi 2 fi\",\n" +
-            "                    \"sv\": null,\n" +
-            "                    \"en\": null\n" +
-            "                }\n" +
-            "             },\n" +
-            "            \"personReferences\": [\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                },\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi2@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"studyElementReferences\": [\n" +
-            "               {\n" +
-            "                    \"referenceIdentifier\": \"CU-1\",\n" +
-            "                    \"referenceOrganizer\": \"TUNI\",\n" +
-            "                    \"referenceType\": \"COURSE_UNIT\"\n" +
-            "               }\n" +
-            "            ],\n" +
-            "           \"organisationReferences\": [\n" +
-            "               {\n" +
-            "                   \"organisationRole\": 1,\n" +
-            "                   \"target\": {\n" +
-            "                       \"organisationIdentifier\": \"TUNI\",\n" +
-            "                       \"organisationTkCode\": \"TUNI\"\n" +
-            "                   }\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"cooperationNetworks\": [\n" +
-            "               {\n" +
-            "                   \"id\": \"CN-1\",\n" +
-            "                   \"name\": {\n" +
-            "                       \"values\": {\n" +
-            "                           \"fi\": \"Verkosto 1\",\n" +
-            "                           \"en\": \"Network 1\",\n" +
-            "                           \"sv\": null\n" +
-            "                       }\n" +
-            "                   },\n" +
-            "                   \"enrollable\": true\n" +
-            "               }\n" +
-            "           ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+        """
+            {
+                "realisations": [
+                    {
+                        "status": "ACTIVE",
+                        "realisationId": "129177",
+                        "realisationIdentifierCode": "129177",
+                        "selections": null,
+                        "questionSets": null,
+                        "enrollmentStartDateTime": "2018-09-30T21:00:00.000Z",
+                        "enrollmentEndDateTime": "2018-12-04T22:00:00.000Z",
+                        "startDate": "2019-01-06",
+                        "endDate": "2019-05-30",
+                        "minSeats": 10,
+                        "maxSeats": 400,
+                        "name": {
+                           "values": {
+                                "fi": "nimi 2 fi",
+                                "sv": null,
+                                "en": null
+                            }
+                         },
+                        "personReferences": [
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi@test.fi",
+                                    "surName": "Testinen"
+                                }
+                            },
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi2@test.fi",
+                                    "surName": "Testinen"
+                                }
+                            }
+                        ],
+                        "studyElementReferences": [
+                           {
+                                "referenceIdentifier": "CU-1",
+                                "referenceOrganizer": "TUNI",
+                                "referenceType": "COURSE_UNIT"
+                           }
+                        ],
+                       "organisationReferences": [
+                           {
+                               "organisationRole": 1,
+                               "target": {
+                                   "organisationIdentifier": "TUNI",
+                                   "organisationTkCode": "TUNI"
+                               }
+                           }
+                       ],
+                       "cooperationNetworks": [
+                           {
+                               "id": "CN-1",
+                               "name": {
+                                   "values": {
+                                       "fi": "Verkosto 1",
+                                       "en": "Network 1",
+                                       "sv": null
+                                   }
+                               },
+                               "enrollable": true
+                           }
+                       ]
+                    },
+                    {
+                        "status": "ACTIVE",
+                        "realisationId": "129177",
+                        "realisationIdentifierCode": "129177",
+                        "selections": null,
+                        "questionSets": null,
+                        "enrollmentStartDateTime": "2018-09-30T21:00:00.000Z",
+                        "enrollmentEndDateTime": "2018-12-04T22:00:00.000Z",
+                        "startDate": "2019-01-06",
+                        "endDate": "2019-05-30",
+                        "minSeats": 10,
+                        "maxSeats": 400,
+                        "name": {
+                           "values": {
+                                "fi": "nimi 2 fi",
+                                "sv": null,
+                                "en": null
+                            }
+                         },
+                        "personReferences": [
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi@test.fi",
+                                    "surName": "Testinen"
+                                }
+                            },
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi2@test.fi",
+                                    "surName": "Testinen"
+                                }
+                            }
+                        ],
+                        "studyElementReferences": [
+                           {
+                                "referenceIdentifier": "CU-1",
+                                "referenceOrganizer": "TUNI",
+                                "referenceType": "COURSE_UNIT"
+                           }
+                        ],
+                       "organisationReferences": [
+                           {
+                               "organisationRole": 1,
+                               "target": {
+                                   "organisationIdentifier": "TUNI",
+                                   "organisationTkCode": "TUNI"
+                               }
+                           }
+                       ],
+                       "cooperationNetworks": [
+                           {
+                               "id": "CN-1",
+                               "name": {
+                                   "values": {
+                                       "fi": "Verkosto 1",
+                                       "en": "Network 1",
+                                       "sv": null
+                                   }
+                               },
+                               "enrollable": true
+                           }
+                       ]
+                    }
+                ]
+            }
+        """;
 
     private final String twoRealisationsJson =
-        "{\n" +
-            "    \"realisations\": [\n" +
-            "        {\n" +
-            "            \"status\": \"ACTIVE\",\n" +
-            "            \"realisationId\": \"129177\",\n" +
-            "            \"realisationIdentifierCode\": \"129177\",\n" +
-            "            \"selections\": null,\n" +
-            "            \"questionSets\": null,\n" +
-            "            \"enrollmentStartDateTime\": \"2018-09-30T21:00:00.000Z\",\n" +
-            "            \"enrollmentEndDateTime\": \"2018-12-04T22:00:00.000Z\",\n" +
-            "            \"startDate\": \"2019-01-06\",\n" +
-            "            \"endDate\": \"2019-05-30\",\n" +
-            "            \"minSeats\": 10,\n" +
-            "            \"maxSeats\": 400,\n" +
-            "            \"name\": {\n" +
-            "               \"values\": {\n" +
-            "                    \"fi\": \"nimi fi\",\n" +
-            "                    \"sv\": null,\n" +
-            "                    \"en\": null\n" +
-            "                }\n" +
-            "             },\n" +
-            "            \"personReferences\": [\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                },\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi2@test.fi\",\n" +
-            "                        \"surName\": \"Testinen2\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"studyElementReferences\": [\n" +
-            "               {\n" +
-            "                    \"referenceIdentifier\": \"CU-1\",\n" +
-            "                    \"referenceOrganizer\": \"TUNI\",\n" +
-            "                    \"referenceType\": \"COURSE_UNIT\"\n" +
-            "               }\n" +
-            "            ],\n" +
-            "           \"organisationReferences\": [\n" +
-            "               {\n" +
-            "                   \"organisationRole\": 1,\n" +
-            "                   \"target\": {\n" +
-            "                       \"organisationIdentifier\": \"TUNI\",\n" +
-            "                       \"organisationTkCode\": \"TUNI\"\n" +
-            "                   }\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"cooperationNetworks\": [\n" +
-            "               {\n" +
-            "                   \"id\": \"CN-1\",\n" +
-            "                   \"name\": {\n" +
-            "                       \"values\": {\n" +
-            "                           \"fi\": \"Verkosto 1\",\n" +
-            "                           \"en\": \"Network 1\",\n" +
-            "                           \"sv\": null\n" +
-            "                       }\n" +
-            "                   },\n" +
-            "                   \"enrollable\": true\n" +
-            "               }\n" +
-            "           ]\n" +
-            "        },\n" +
-            "        {\n" +
-            "            \"status\": \"ACTIVE\",\n" +
-            "            \"realisationId\": \"129178\",\n" +
-            "            \"realisationIdentifierCode\": \"129178\",\n" +
-            "            \"selections\": null,\n" +
-            "            \"questionSets\": null,\n" +
-            "            \"enrollmentStartDateTime\": \"2018-09-30T21:00:00.000Z\",\n" +
-            "            \"enrollmentEndDateTime\": \"2018-12-04T22:00:00.000Z\",\n" +
-            "            \"startDate\": \"2019-01-06\",\n" +
-            "            \"endDate\": \"2019-05-30\",\n" +
-            "            \"minSeats\": 10,\n" +
-            "            \"maxSeats\": 400,\n" +
-            "            \"name\": {\n" +
-            "               \"values\": {\n" +
-            "                    \"fi\": \"nimi 2 fi\",\n" +
-            "                    \"sv\": null,\n" +
-            "                    \"en\": null\n" +
-            "                }\n" +
-            "             },\n" +
-            "            \"personReferences\": [\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                },\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi2@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"studyElementReferences\": [\n" +
-            "               {\n" +
-            "                    \"referenceIdentifier\": \"CU-2\",\n" +
-            "                    \"referenceOrganizer\": \"TUNI\",\n" +
-            "                    \"referenceType\": \"COURSE_UNIT\"\n" +
-            "               }\n" +
-            "            ],\n" +
-            "           \"organisationReferences\": [\n" +
-            "               {\n" +
-            "                   \"organisationRole\": 1,\n" +
-            "                   \"target\": {\n" +
-            "                       \"organisationIdentifier\": \"TUNI\",\n" +
-            "                       \"organisationTkCode\": \"TUNI\"\n" +
-            "                   }\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"cooperationNetworks\": [\n" +
-            "               {\n" +
-            "                   \"id\": \"CN-1\",\n" +
-            "                   \"name\": {\n" +
-            "                       \"values\": {\n" +
-            "                           \"fi\": \"Verkosto 1\",\n" +
-            "                           \"en\": \"Network 1\",\n" +
-            "                           \"sv\": null\n" +
-            "                       }\n" +
-            "                   },\n" +
-            "                   \"enrollable\": true\n" +
-            "               }\n" +
-            "           ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+        """
+            {
+                "realisations": [
+                    {
+                        "status": "ACTIVE",
+                        "realisationId": "129177",
+                        "realisationIdentifierCode": "129177",
+                        "selections": null,
+                        "questionSets": null,
+                        "enrollmentStartDateTime": "2018-09-30T21:00:00.000Z",
+                        "enrollmentEndDateTime": "2018-12-04T22:00:00.000Z",
+                        "startDate": "2019-01-06",
+                        "endDate": "2019-05-30",
+                        "minSeats": 10,
+                        "maxSeats": 400,
+                        "name": {
+                           "values": {
+                                "fi": "nimi fi",
+                                "sv": null,
+                                "en": null
+                            }
+                         },
+                        "personReferences": [
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi@test.fi",
+                                    "surName": "Testinen"
+                                }
+                            },
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi2@test.fi",
+                                    "surName": "Testinen2"
+                                }
+                            }
+                        ],
+                        "studyElementReferences": [
+                           {
+                                "referenceIdentifier": "CU-1",
+                                "referenceOrganizer": "TUNI",
+                                "referenceType": "COURSE_UNIT"
+                           }
+                        ],
+                       "organisationReferences": [
+                           {
+                               "organisationRole": 1,
+                               "target": {
+                                   "organisationIdentifier": "TUNI",
+                                   "organisationTkCode": "TUNI"
+                               }
+                           }
+                       ],
+                       "cooperationNetworks": [
+                           {
+                               "id": "CN-1",
+                               "name": {
+                                   "values": {
+                                       "fi": "Verkosto 1",
+                                       "en": "Network 1",
+                                       "sv": null
+                                   }
+                               },
+                               "enrollable": true
+                           }
+                       ]
+                    },
+                    {
+                        "status": "ACTIVE",
+                        "realisationId": "129178",
+                        "realisationIdentifierCode": "129178",
+                        "selections": null,
+                        "questionSets": null,
+                        "enrollmentStartDateTime": "2018-09-30T21:00:00.000Z",
+                        "enrollmentEndDateTime": "2018-12-04T22:00:00.000Z",
+                        "startDate": "2019-01-06",
+                        "endDate": "2019-05-30",
+                        "minSeats": 10,
+                        "maxSeats": 400,
+                        "name": {
+                           "values": {
+                                "fi": "nimi 2 fi",
+                                "sv": null,
+                                "en": null
+                            }
+                         },
+                        "personReferences": [
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi@test.fi",
+                                    "surName": "Testinen"
+                                }
+                            },
+                            {
+                                "personRole": {
+                                    "key": "teacher",
+                                    "codeSetKey": "personRole"
+                                },
+                                "person": {
+                                    "homeEppn": "testi2@test.fi",
+                                    "surName": "Testinen"
+                                }
+                            }
+                        ],
+                        "studyElementReferences": [
+                           {
+                                "referenceIdentifier": "CU-2",
+                                "referenceOrganizer": "TUNI",
+                                "referenceType": "COURSE_UNIT"
+                           }
+                        ],
+                       "organisationReferences": [
+                           {
+                               "organisationRole": 1,
+                               "target": {
+                                   "organisationIdentifier": "TUNI",
+                                   "organisationTkCode": "TUNI"
+                               }
+                           }
+                       ],
+                       "cooperationNetworks": [
+                           {
+                               "id": "CN-1",
+                               "name": {
+                                   "values": {
+                                       "fi": "Verkosto 1",
+                                       "en": "Network 1",
+                                       "sv": null
+                                   }
+                               },
+                               "enrollable": true
+                           }
+                       ]
+                    }
+                ]
+            }
+        """;
 }

@@ -1,5 +1,6 @@
 package fi.uta.ristiinopiskelu.messaging.message.v8;
 
+import fi.uta.ristiinopiskelu.messaging.message.ErrorCode;
 import fi.uta.ristiinopiskelu.messaging.message.v8.AbstractResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.Status;
 
@@ -11,6 +12,11 @@ public class JsonValidationFailedResponse extends AbstractResponse {
 
     public JsonValidationFailedResponse(String message, List<String> errors) {
         super(Status.FAILED, message);
+        this.errors = errors;
+    }
+
+    public JsonValidationFailedResponse(String message, List<String> errors, ErrorCode errorCode) {
+        super(Status.FAILED, message, errorCode);
         this.errors = errors;
     }
 

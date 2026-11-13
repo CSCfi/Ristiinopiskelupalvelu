@@ -1,6 +1,9 @@
 package fi.uta.ristiinopiskelu.datamodel.dto.current.common.code;
 
+import fi.uta.ristiinopiskelu.datamodel.entity.common.code.CodeReferenceEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.List;
 
 /**
  * fi: Lähettäessä tarvitsee täytää vain avain-tieto, koska koodien arvot on
@@ -52,4 +55,19 @@ public class CodeReference {
         this.codeSetKey = codeSetKey;
     }
 
+    public static CodeReference from(CodeReferenceEntity source) {
+        if (source == null) {
+            return null;
+        }
+        return new CodeReference(source.getKey(), source.getCodeSetKey());
+    }
+
+    public static List<CodeReference> from(List<CodeReferenceEntity> source) {
+        if (source == null) {
+            return null;
+        }
+        return source.stream()
+            .map(CodeReference::from)
+            .toList();
+    }
 }

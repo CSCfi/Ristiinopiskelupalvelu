@@ -66,7 +66,7 @@ public class BaseRoute extends AbstractRoute {
             .doCatch(Exception.class)
                 .log(LoggingLevel.ERROR, "Message handling failed\nEXCEPTION: ${exception.stacktrace}")
                 .process(new AuthenticationFailedProcessor())
-                .marshal(getDataFormat(failMessageResponseType.getClazz()))
+                .process(this::marshalBody)
                 .log("Successfully sent '" + failMessageResponseType.name() + "' failed response message: ${body}")
             .end();
     }

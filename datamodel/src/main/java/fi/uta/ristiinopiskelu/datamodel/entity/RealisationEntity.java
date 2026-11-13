@@ -1,8 +1,13 @@
 package fi.uta.ristiinopiskelu.datamodel.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.MinEduGuidanceAreaEntity;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Document;
@@ -15,6 +20,10 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 @Document(indexName = "toteutukset", createIndex = false)
 public class RealisationEntity extends CompositeIdentifiedEntity implements Serializable {
 
@@ -26,10 +35,10 @@ public class RealisationEntity extends CompositeIdentifiedEntity implements Seri
 
     @Field(type = FieldType.Date, pattern = {"uuuu-MM-dd'T'HH:mm:ss.SSSXXX"})
     private OffsetDateTime updateTime;
-    
-    private List<StudyElementReference> studyElementReferences;
-    private List<Selection> selections = null;
-    private List<QuestionSet> questionSets = null;
+
+    private List<StudyElementReferenceEntity> studyElementReferences;
+    private List<SelectionEntity> selections;
+    private List<QuestionSetEntity> questionSets;
 
     @Field(type = FieldType.Date, pattern = {"uuuu-MM-dd'T'HH:mm:ss.SSSXXX"})
     private OffsetDateTime enrollmentStartDateTime;
@@ -38,309 +47,28 @@ public class RealisationEntity extends CompositeIdentifiedEntity implements Seri
     private OffsetDateTime enrollmentEndDateTime;
 
     @Field(type = FieldType.Date, format = DateFormat.date)
-    private LocalDate startDate = null;
+    private LocalDate startDate;
 
     @Field(type = FieldType.Date, format = DateFormat.date)
-    private LocalDate endDate = null;
+    private LocalDate endDate;
 
-    private List<PersonReference> personReferences = null;
-    private LocalisedString name = null;
+    private List<PersonReferenceEntity> personReferences;
+    private LocalisedStringEntity name;
     private Integer minSeats;
     private Integer maxSeats;
-    private Address location;
-    private List<Description> organisationSpecificDescriptions = null;
-    private List<OrganisationReference> organisationReferences;
+    private AddressEntity location;
+    private List<DescriptionEntity> organisationSpecificDescriptions;
+    private List<OrganisationReferenceEntity> organisationReferences;
     private String organizingOrganisationId;
-    private List<Selection> groupSelections = null;
-    private List<CooperationNetwork> cooperationNetworks;
-    private List<GroupQuota> groupQuotas;
-    private StudyStatus status;
+    private List<SelectionEntity> groupSelections;
+    private List<CooperationNetworkEntity> cooperationNetworks;
+    private List<GroupQuotaEntity> groupQuotas;
+    private StudyStatusEntity status;
     private BigDecimal creditsMin;
     private BigDecimal creditsMax;
     private List<String> teachingLanguage;
-    private List<MinEduGuidanceArea> minEduGuidanceArea;
-    
+    private List<MinEduGuidanceAreaEntity> minEduGuidanceArea;
     private boolean enrollmentClosed = false;
-
-    public String getRealisationId() {
-        return realisationId;
-    }
-
-    public void setRealisationId(String realisationId) {
-        this.realisationId = realisationId;
-    }
-
-    public String getRealisationIdentifierCode() {
-        return realisationIdentifierCode;
-    }
-
-    public void setRealisationIdentifierCode(String realisationIdentifierCode) {
-        this.realisationIdentifierCode = realisationIdentifierCode;
-    }
-
-    public LocalDate getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(LocalDate startDate) {
-        this.startDate = startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(LocalDate endDate) {
-        this.endDate = endDate;
-    }
-
-    /**
-     * @return List<Selection> return the selections
-     */
-    public List<Selection> getSelections() {
-        return selections;
-    }
-
-    /**
-     * @param selections the selections to set
-     */
-    public void setSelections(List<Selection> selections) {
-        this.selections = selections;
-    }
-
-    /**
-     * @return List<QuestionSet> return the questionSets
-     */
-    public List<QuestionSet> getQuestionSets() {
-        return questionSets;
-    }
-
-    /**
-     * @param questionSets the questionSets to set
-     */
-    public void setQuestionSets(List<QuestionSet> questionSets) {
-        this.questionSets = questionSets;
-    }
-
-    /**
-     * @return OffsetDateTime return the enrollmentStartDateTime
-     */
-    public OffsetDateTime getEnrollmentStartDateTime() {
-        return enrollmentStartDateTime;
-    }
-
-    /**
-     * @param enrollmentStartDateTime the enrollmentStartDateTime to set
-     */
-    public void setEnrollmentStartDateTime(OffsetDateTime enrollmentStartDateTime) {
-        this.enrollmentStartDateTime = enrollmentStartDateTime;
-    }
-
-    /**
-     * @return OffsetDateTime return the enrollmentEndDateTime
-     */
-    public OffsetDateTime getEnrollmentEndDateTime() {
-        return enrollmentEndDateTime;
-    }
-
-    /**
-     * @param enrollmentEndDateTime the enrollmentEndDateTime to set
-     */
-    public void setEnrollmentEndDateTime(OffsetDateTime enrollmentEndDateTime) {
-        this.enrollmentEndDateTime = enrollmentEndDateTime;
-    }
-
-    /**
-     * @return int return the minSeats
-     */
-    public Integer getMinSeats() {
-        return minSeats;
-    }
-
-    /**
-     * @param minSeats the minSeats to set
-     */
-    public void setMinSeats(Integer minSeats) {
-        this.minSeats = minSeats;
-    }
-
-    /**
-     * @return int return the maxSeats
-     */
-    public Integer getMaxSeats() {
-        return maxSeats;
-    }
-
-    /**
-     * @param maxSeats the maxSeats to set
-     */
-    public void setMaxSeats(Integer maxSeats) {
-        this.maxSeats = maxSeats;
-    }
-
-    /**
-     * @return List<PersonReference> return the personReferences
-     */
-    public List<PersonReference> getPersonReferences() {
-        return personReferences;
-    }
-
-    /**
-     * @param personReferences the personReferences to set
-     */
-    public void setPersonReferences(List<PersonReference> personReferences) {
-        this.personReferences = personReferences;
-    }
-
-    /**
-     * @return Address return the location
-     */
-    public Address getLocation() {
-        return location;
-    }
-
-    /**
-     * @param location the location to set
-     */
-    public void setLocation(Address location) {
-        this.location = location;
-    }
-
-    /**
-     * @return List<DescriptionField> return the organisationSpecificDescriptions
-     */
-    public List<Description> getOrganisationSpecificDescriptions() {
-        return organisationSpecificDescriptions;
-    }
-
-    /**
-     * @param organisationSpecificDescriptions the organisationSpecificDescriptions
-     *                                         to set
-     */
-    public void setOrganisationSpecificDescriptions(List<Description> organisationSpecificDescriptions) {
-        this.organisationSpecificDescriptions = organisationSpecificDescriptions;
-    }
-
-    public List<StudyElementReference> getStudyElementReferences() {
-        return studyElementReferences;
-    }
-
-    public void setStudyElementReferences(List<StudyElementReference> studyElementReferences) {
-        this.studyElementReferences = studyElementReferences;
-    }
-
-    public void setOrganisationReferences(List<OrganisationReference> organisationReferences) {
-        this.organisationReferences = organisationReferences;
-    }
-
-    public List<OrganisationReference> getOrganisationReferences() {
-        return organisationReferences;
-    }
-
-    @Override
-    public String getOrganizingOrganisationId() {
-        return organizingOrganisationId;
-    }
-
-    public void setOrganizingOrganisationId(String organizingOrganisationId) {
-        this.organizingOrganisationId = organizingOrganisationId;
-    }
-
-    public LocalisedString getName() {
-        return name;
-    }
-
-    public void setName(LocalisedString name) {
-        this.name = name;
-    }
-
-    public List<Selection> getGroupSelections() {
-        return groupSelections;
-    }
-
-    public void setGroupSelections(List<Selection> groupSelections) {
-        this.groupSelections = groupSelections;
-    }
-
-    public List<CooperationNetwork> getCooperationNetworks() {
-        return cooperationNetworks;
-    }
-
-    public void setCooperationNetworks(List<CooperationNetwork> cooperationNetworks) {
-        this.cooperationNetworks = cooperationNetworks;
-    }
-
-    public OffsetDateTime getCreatedTime() {
-        return createdTime;
-    }
-
-    public void setCreatedTime(OffsetDateTime createdTime) {
-        this.createdTime = createdTime;
-    }
-
-    public OffsetDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(OffsetDateTime updateTime) {
-        this.updateTime = updateTime;
-    }
-
-    public List<GroupQuota> getGroupQuotas() {
-        return groupQuotas;
-    }
-
-    public void setGroupQuotas(List<GroupQuota> groupQuotas) {
-        this.groupQuotas = groupQuotas;
-    }
-
-    public StudyStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(StudyStatus status) {
-        this.status = status;
-    }
-
-    public BigDecimal getCreditsMin() {
-        return creditsMin;
-    }
-
-    public void setCreditsMin(BigDecimal creditsMin) {
-        this.creditsMin = creditsMin;
-    }
-
-    public BigDecimal getCreditsMax() {
-        return creditsMax;
-    }
-
-    public void setCreditsMax(BigDecimal creditsMax) {
-        this.creditsMax = creditsMax;
-    }
-
-    public List<String> getTeachingLanguage() {
-        return teachingLanguage;
-    }
-
-    public void setTeachingLanguage(List<String> teachingLanguage) {
-        this.teachingLanguage = teachingLanguage;
-    }
-
-    public List<MinEduGuidanceArea> getMinEduGuidanceArea() {
-        return minEduGuidanceArea;
-    }
-
-    public void setMinEduGuidanceArea(List<MinEduGuidanceArea> minEduGuidanceArea) {
-        this.minEduGuidanceArea = minEduGuidanceArea;
-    }
-
-    public boolean isEnrollmentClosed() {
-        return enrollmentClosed;
-    }
-
-    public void setEnrollmentClosed(boolean enrollmentClosed) {
-        this.enrollmentClosed = enrollmentClosed;
-    }
 
     @JsonIgnore
     @Transient
@@ -352,7 +80,45 @@ public class RealisationEntity extends CompositeIdentifiedEntity implements Seri
     @JsonIgnore
     @Transient
     @Override
-    public CompositeIdentifiedEntityType getType() {
-        return CompositeIdentifiedEntityType.REALISATION;
+    public CompositeIdentifiedEntityTypeEntity getType() {
+        return CompositeIdentifiedEntityTypeEntity.REALISATION;
+    }
+
+    public static RealisationEntity from(RealisationWriteDTO source) {
+        if (source == null) {
+            return null;
+        }
+
+        RealisationEntity target = new RealisationEntity();
+        target.setRealisationId(source.getRealisationId());
+        target.setRealisationIdentifierCode(source.getRealisationIdentifierCode());
+        target.setSelections(SelectionEntity.from(source.getSelections()));
+        target.setQuestionSets(QuestionSetEntity.from(source.getQuestionSets()));
+        target.setEnrollmentStartDateTime(source.getEnrollmentStartDateTime());
+        target.setEnrollmentEndDateTime(source.getEnrollmentEndDateTime());
+        target.setStartDate(source.getStartDate());
+        target.setEndDate(source.getEndDate());
+        target.setPersonReferences(PersonReferenceEntity.from(source.getPersonReferences()));
+        target.setMinSeats(source.getMinSeats());
+        target.setMaxSeats(source.getMaxSeats());
+        target.setLocation(AddressEntity.from(source.getLocation()));
+        target.setOrganisationSpecificDescriptions(DescriptionEntity.from(source.getOrganisationSpecificDescriptions()));
+        target.setStudyElementReferences(StudyElementReferenceEntity.from(source.getStudyElementReferences()));
+        target.setName(LocalisedStringEntity.from(source.getName()));
+        target.setOrganisationReferences(OrganisationReferenceEntity.from(source.getOrganisationReferences()));
+        target.setGroupSelections(SelectionEntity.from(source.getGroupSelections()));
+        target.setCooperationNetworks(CooperationNetworkEntity.from(source.getCooperationNetworks()));
+        target.setCreatedTime(source.getCreatedTime());
+        target.setUpdateTime(source.getUpdateTime());
+        target.setGroupQuotas(GroupQuotaEntity.from(source.getGroupQuotas()));
+        target.setStatus(source.getStatus() == null ? null : StudyStatusEntity.valueOf(source.getStatus().name()));
+        target.setCreditsMin(source.getCreditsMin());
+        target.setCreditsMax(source.getCreditsMax());
+        target.setTeachingLanguage(source.getTeachingLanguage());
+        target.setMinEduGuidanceArea(source.getMinEduGuidanceArea() == null ? null
+            : source.getMinEduGuidanceArea().stream().map(value -> MinEduGuidanceAreaEntity.valueOf(value.name())).toList());
+        target.setEnrollmentClosed(source.isEnrollmentClosed());
+        target.setOrganizingOrganisationId(source.getOrganizingOrganisationId());
+        return target;
     }
 }

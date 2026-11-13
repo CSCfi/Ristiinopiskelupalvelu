@@ -2,6 +2,7 @@ package fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Person;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -191,5 +192,41 @@ public class CompletedCredit {
 
     public void setAssessmentDate(LocalDate assessmentDate) {
         this.assessmentDate = assessmentDate;
+    }
+
+    public static CompletedCredit from(CompletedCreditEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        CompletedCredit target = new CompletedCredit();
+        target.setEducationInstitution(source.getEducationInstitution());
+        target.setCompletedCreditIdentifier(source.getCompletedCreditIdentifier());
+        target.setCompletedCreditTarget(CompletedCreditTarget.from(source.getCompletedCreditTarget()));
+        target.setCompletedCreditAssociations(CompletedCreditAssociation.from(source.getCompletedCreditAssociations()));
+        target.setAssessmentItemRealisationsOfMethodOfCompletion(source.getAssessmentItemRealisationsOfMethodOfCompletion());
+        target.setCompletedCreditName(LocalisedString.from(source.getCompletedCreditName()));
+        target.setCompletedCreditObjective(LocalisedString.from(source.getCompletedCreditObjective()));
+        target.setCompletedCreditContent(LocalisedString.from(source.getCompletedCreditContent()));
+        target.setCompletedCreditStatus(source.getCompletedCreditStatus() == null ? null
+            : CompletedCreditStatus.valueOf(source.getCompletedCreditStatus().name()));
+        target.setScope(source.getScope());
+        target.setAssessment(CompletedCreditAssessment.from(source.getAssessment()));
+        target.setCompletionDate(source.getCompletionDate());
+        target.setLanguagesOfCompletion(source.getLanguagesOfCompletion());
+        target.setAcceptors(source.getAcceptors() == null ? null : source.getAcceptors().stream().map(Person::from).toList());
+        target.setOrganisationResponsibleForCompletion(StudyRecordOrganisation.from(source.getOrganisationResponsibleForCompletion()));
+        target.setTransaction(source.getTransaction() == null ? null : CompletedCreditTransaction.valueOf(source.getTransaction().name()));
+        target.setType(source.getType() == null ? null : CompletedCreditType.fromValue(source.getType().getCode()));
+        target.setMinEduGuidanceArea(source.getMinEduGuidanceArea() == null ? null : MinEduGuidanceArea.fromValue(source.getMinEduGuidanceArea().getCode()));
+        target.setAssessmentDate(source.getAssessmentDate());
+        return target;
+    }
+
+    public static List<CompletedCredit> from(List<CompletedCreditEntity> source) {
+        if (source == null) {
+            return null;
+        }
+        return source.stream().map(CompletedCredit::from).toList();
     }
 }

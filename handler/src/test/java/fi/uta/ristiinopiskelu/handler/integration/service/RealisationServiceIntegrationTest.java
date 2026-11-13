@@ -1,29 +1,22 @@
 package fi.uta.ristiinopiskelu.handler.integration.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CourseUnitReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchResults;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
-import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
@@ -47,12 +40,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.hasProperty;
-import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(EmbeddedElasticsearchInitializer.class)
 @SpringBootTest(classes = TestEsConfig.class)
@@ -75,9 +64,9 @@ public class RealisationServiceIntegrationTest {
     private OrganisationRepository organisationRepository;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
-    private List<StudyElementReference> courseUnitReferences;
+    private List<StudyElementReferenceEntity> courseUnitReferences;
     private List<RealisationEntity> allExistingRealisations;
     private List<RealisationEntity> validExistingRealisations;
     private List<RealisationEntity> similarNameRealisations;
@@ -89,31 +78,31 @@ public class RealisationServiceIntegrationTest {
 
     @BeforeEach
     public void beforeAll() {
-        List<NetworkOrganisation> orgs = new ArrayList<>();
+        List<NetworkOrganisationEntity> orgs = new ArrayList<>();
         List<String> orgIds = Arrays.asList("TUNI", "UEF", "HAAGAH", "METROP", "JYU");
         for(String orgId : orgIds) {
-            orgs.add(new NetworkOrganisation(orgId, false, new Validity(Validity.ContinuityEnum.FIXED,
+            orgs.add(new NetworkOrganisationEntity(orgId, false, EntityInitializer.getFixedValidity(
                     OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1))));
         }
 
         invalidValidityNetworks = new ArrayList<>();
 
         invalidValidityNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("INVALID-VALIDITY-PAST1", null, orgs,
-                new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusYears(1)), true)));
+                new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusYears(1)), true)));
         invalidValidityNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("INVALID-VALIDITY-FUTURE1", null, orgs,
-                new Validity(Validity.ContinuityEnum.INDEFINITELY, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().minusYears(1)), true)));
+                new ValidityEntity(ValidityEntity.ContinuityEntity.INDEFINITELY, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().minusYears(1)), true)));
         invalidValidityNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("INVALID-VALIDITY-FUTURE2", null, orgs,
-                new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2)), true)));
+                new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2)), true)));
         invalidValidityNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("INVALID-VALIDITY-STATUS-FALSE", null, orgs,
-                new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)), false)));
+                new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)), false)));
 
         validNetworks = new ArrayList<>();
 
-        validNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("CN1", new LocalisedString("Verkosto 1", null, null), orgs,
-                DtoInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)), true)));
+        validNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("CN1", new LocalisedStringEntity("Verkosto 1", null, null), orgs,
+                EntityInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)), true)));
 
-        validNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("CN2", new LocalisedString("Verkosto 2", null, null), orgs,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true)));
+        validNetworks.add(networkRepository.save(EntityInitializer.getNetworkEntity("CN2", new LocalisedStringEntity("Verkosto 2", null, null), orgs,
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true)));
 
         existingNetworks = new ArrayList<>();
         existingNetworks.addAll(invalidValidityNetworks);
@@ -121,28 +110,28 @@ public class RealisationServiceIntegrationTest {
 
         courseUnitReferences = new ArrayList<>();
         // 0-4 TUNI refs
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForAssessmentItem("CU-1",  "TUNI", "AI1"));
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForAssessmentItem("CU-2",  "TUNI", "AI2"));
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForCourseUnit("CU-7", "TUNI"));
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForAssessmentItem("CU-6", "TUNI", "AI6"));
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForCourseUnit("CU-12", "TUNI"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForAssessmentItem("CU-1",  "TUNI", "AI1"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForAssessmentItem("CU-2",  "TUNI", "AI2"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForCourseUnit("CU-7", "TUNI"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForAssessmentItem("CU-6", "TUNI", "AI6"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForCourseUnit("CU-12", "TUNI"));
 
         // 5-7 HAAGAH refs
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForAssessmentItem("CU-3", "HAAGAH", "AI3"));
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForCourseUnit("CU-9",   "HAAGAH"));
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForCourseUnit("CU-13",  "HAAGAH"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForAssessmentItem("CU-3", "HAAGAH", "AI3"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForCourseUnit("CU-9",   "HAAGAH"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForCourseUnit("CU-13",  "HAAGAH"));
 
         // 8-9 JYU refs
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForAssessmentItem("CU-4", "JYU", "AI4"));
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForCourseUnit("CU-10", "JYU"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForAssessmentItem("CU-4", "JYU", "AI4"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForCourseUnit("CU-10", "JYU"));
 
         // 10-12 METROP refs
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForAssessmentItem("CU-5", "METROP", "AI5"));
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForCourseUnit("CU-11", "METROP"));
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForCourseUnit("CU-14", "METROP"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForAssessmentItem("CU-5", "METROP", "AI5"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForCourseUnit("CU-11", "METROP"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForCourseUnit("CU-14", "METROP"));
 
         // 13 UEF ref
-        courseUnitReferences.add(DtoInitializer.getStudyElementReferenceForCourseUnit("CU-8",  "UEF"));
+        courseUnitReferences.add(EntityInitializer.getStudyElementReferenceForCourseUnit("CU-8",  "UEF"));
 
         createRealisations();
     }
@@ -255,7 +244,6 @@ public class RealisationServiceIntegrationTest {
         validInPastRealisations.addAll(Arrays.asList(validInPastRealisation, validInPastRealisation2));
         allExistingRealisations.addAll(validInPastRealisations);
     }
-
 
     @Test
     public void testSearchOrganisationFiltering_shouldReturnRealisationsOrganiserNotRequestingOrganisation() {
@@ -401,15 +389,15 @@ public class RealisationServiceIntegrationTest {
     public void testSearchNetworkFiltering_shouldNotReturnRealisationsInWhichNetworkOrganisationNotValid() {
         String organisationRunningQuery = "TUNI";
 
-        Validity futureValidity = new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2));
-        Validity pastValidity = new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().minusYears(2), OffsetDateTime.now().minusYears(1));
-        Validity futureValidity2 = new Validity(Validity.ContinuityEnum.INDEFINITELY, OffsetDateTime.now().plusYears(1), null);
+        ValidityEntity futureValidity = new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2));
+        ValidityEntity pastValidity = new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().minusYears(2), OffsetDateTime.now().minusYears(1));
+        ValidityEntity futureValidity2 = new ValidityEntity(ValidityEntity.ContinuityEntity.INDEFINITELY, OffsetDateTime.now().plusYears(1), null);
 
         // Test future validity
         NetworkEntity networkEntity = validNetworks.get(0);
         networkEntity.getOrganisations().removeIf(no -> no.getOrganisationTkCode().equals(organisationRunningQuery));
 
-        NetworkOrganisation networkOrganisation = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode(organisationRunningQuery);
         networkOrganisation.setValidityInNetwork(futureValidity);
         networkEntity.getOrganisations().add(networkOrganisation);
@@ -430,7 +418,7 @@ public class RealisationServiceIntegrationTest {
         // Test past validity
         networkEntity.getOrganisations().removeIf(no -> no.getOrganisationTkCode().equals(organisationRunningQuery));
 
-        networkOrganisation = new NetworkOrganisation();
+        networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode(organisationRunningQuery);
         networkOrganisation.setValidityInNetwork(pastValidity);
         networkEntity.getOrganisations().add(networkOrganisation);
@@ -444,7 +432,7 @@ public class RealisationServiceIntegrationTest {
         // Test other future validity
         networkEntity.getOrganisations().removeIf(no -> no.getOrganisationTkCode().equals(organisationRunningQuery));
 
-        networkOrganisation = new NetworkOrganisation();
+        networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode(organisationRunningQuery);
         networkOrganisation.setValidityInNetwork(futureValidity2);
         networkEntity.getOrganisations().add(networkOrganisation);
@@ -503,7 +491,7 @@ public class RealisationServiceIntegrationTest {
         assertEquals(shouldFindRealisation.getRealisationId(), result.getResults().get(0).getRealisationId());
         assertEquals(shouldFindRealisation.getRealisationIdentifierCode(), result.getResults().get(0).getRealisationIdentifierCode());
         assertTrue(result.getResults().get(0).getOrganisationReferences().stream().anyMatch(
-                or -> or.getOrganisation().getOrganisationTkCode().equals(shouldFindRealisation.getOrganizingOrganisationId())
+                or -> or.getTarget().getOrganisationTkCode().equals(shouldFindRealisation.getOrganizingOrganisationId())
                     && or.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER));
     }
 
@@ -515,13 +503,13 @@ public class RealisationServiceIntegrationTest {
                 .filter(r -> r.getOrganizingOrganisationId().equals("JYU")).findFirst().get();
 
         RealisationSearchResults result = realisationService.searchByIds(requestingOrganisation,
-                shouldFindRealisation.getRealisationId(), shouldFindRealisation.getOrganizingOrganisationId(), null, Pageable.unpaged());
+                shouldFindRealisation.getRealisationId(), shouldFindRealisation.getOrganizingOrganisationId(), null, false, Pageable.unpaged());
 
         assertEquals(1, result.getResults().size());
         assertEquals(shouldFindRealisation.getRealisationId(), result.getResults().get(0).getRealisationId());
         assertEquals(shouldFindRealisation.getRealisationIdentifierCode(), result.getResults().get(0).getRealisationIdentifierCode());
         assertTrue(result.getResults().get(0).getOrganisationReferences().stream().anyMatch(
-                or -> or.getOrganisation().getOrganisationTkCode().equals(shouldFindRealisation.getOrganizingOrganisationId())
+                or -> or.getTarget().getOrganisationTkCode().equals(shouldFindRealisation.getOrganizingOrganisationId())
                         && or.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER));
     }
 
@@ -534,13 +522,13 @@ public class RealisationServiceIntegrationTest {
                         LocalDate.now().minusMonths(1), LocalDate.now().plusYears(1));
 
         RealisationSearchResults result = realisationService.searchByIds(requestingOrganisation,
-                realisationEntity.getRealisationId(), realisationEntity.getOrganizingOrganisationId(), null, Pageable.unpaged());
+                realisationEntity.getRealisationId(), realisationEntity.getOrganizingOrganisationId(), null, false, Pageable.unpaged());
 
         assertEquals(1, result.getResults().size());
         assertEquals(realisationEntity.getRealisationId(), result.getResults().get(0).getRealisationId());
         assertEquals(realisationEntity.getRealisationIdentifierCode(), result.getResults().get(0).getRealisationIdentifierCode());
         assertTrue(result.getResults().get(0).getOrganisationReferences().stream().anyMatch(
-                or -> or.getOrganisation().getOrganisationTkCode().equals(realisationEntity.getOrganizingOrganisationId())
+                or -> or.getTarget().getOrganisationTkCode().equals(realisationEntity.getOrganizingOrganisationId())
                         && or.getOrganisationRole() == OrganisationRole.ROLE_MAIN_ORGANIZER));
     }
 
@@ -550,17 +538,17 @@ public class RealisationServiceIntegrationTest {
         String parameterNetworkId = "feb71594-0297-41ac-aae6-fcb8b20383d5";
         String wrongNetworkId = "7d816732-1c9c-49f6-b221-92a9ff3831ac";
 
-        NetworkOrganisation orgTuni = new NetworkOrganisation("NEW_ORGANISATION", false, new Validity(Validity.ContinuityEnum.INDEFINITELY,
+        NetworkOrganisationEntity orgTuni = new NetworkOrganisationEntity("NEW_ORGANISATION", false, new ValidityEntity(ValidityEntity.ContinuityEntity.INDEFINITELY,
                 OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)));
 
-        NetworkOrganisation orgUef = new NetworkOrganisation("UEF", false, new Validity(Validity.ContinuityEnum.INDEFINITELY,
+        NetworkOrganisationEntity orgUef = new NetworkOrganisationEntity("UEF", false, new ValidityEntity(ValidityEntity.ContinuityEntity.INDEFINITELY,
                 OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusYears(1)));
 
-        networkRepository.save(EntityInitializer.getNetworkEntity(parameterNetworkId, new LocalisedString("Verkosto 1", null, null), Arrays.asList(orgTuni, orgUef),
-                DtoInitializer.getFixedValidity(OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(1)), false));
+        networkRepository.save(EntityInitializer.getNetworkEntity(parameterNetworkId, new LocalisedStringEntity("Verkosto 1", null, null), Arrays.asList(orgTuni, orgUef),
+                EntityInitializer.getFixedValidity(OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(1)), false));
 
-        networkRepository.save(EntityInitializer.getNetworkEntity(wrongNetworkId, new LocalisedString("Verkosto 2", null, null), Arrays.asList(orgTuni, orgUef),
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true));
+        networkRepository.save(EntityInitializer.getNetworkEntity(wrongNetworkId, new LocalisedStringEntity("Verkosto 2", null, null), Arrays.asList(orgTuni, orgUef),
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true));
 
         RealisationSearchParameters searchParameters = new RealisationSearchParameters();
         searchParameters.setIncludeInactive(false);
@@ -614,21 +602,21 @@ public class RealisationServiceIntegrationTest {
     }
 
     @Test
-    public void testDenormalisation_removeDenormalizedRealisationsFromCourseUnit_shouldSucceed() throws JsonProcessingException {
+    public void testDenormalisation_removeDenormalizedRealisationsFromCourseUnit_shouldSucceed() throws JacksonException {
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("CU1", "UEF",
-                null, new LocalisedString("test", null, null));
+                null, new LocalisedStringEntity("test", null, null));
         courseUnitRepository.create(courseUnitEntity);
 
-        StudyElementReference cuReference = new StudyElementReference(courseUnitEntity.getStudyElementId(),
-                courseUnitEntity.getOrganizingOrganisationId(), StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity cuReference = new StudyElementReferenceEntity(courseUnitEntity.getStudyElementId(),
+                courseUnitEntity.getOrganizingOrganisationId(), StudyElementTypeEntity.COURSE_UNIT);
 
         OrganisationEntity organisationEntity = EntityInitializer.getOrganisationEntity("UEF", "uef-queue",
-                new LocalisedString("uef", null, null), 8);
+                new LocalisedStringEntity("uef", null, null), 8);
         organisationRepository.create(organisationEntity);
 
-        Organisation organisation = DtoInitializer.getOrganisation("UEF", "UEF");
-        OrganisationReference organisationReference = DtoInitializer.getOrganisationReference(organisation, OrganisationRole.ROLE_MAIN_ORGANIZER);
+        OrganisationDataEntity organisation = EntityInitializer.getOrganisation("UEF", "UEF");
+        OrganisationReferenceEntity organisationReference = EntityInitializer.getOrganisationReference(organisation, OrganisationRoleEntity.ROLE_MAIN_ORGANIZER);
 
         RealisationEntity realisation = EntityInitializer.getRealisationEntity("REAL1", "UEF",
                 Collections.singletonList(cuReference), null);
@@ -653,14 +641,16 @@ public class RealisationServiceIntegrationTest {
         ));
 
         String updateMessage =
-                "{\n" +
-                        "    \"realisation\": {\n" +
-                        "        \"realisationId\": \"REAL1\",\n" +
-                        "        \"studyElementReferences\": []\n" +
-                        "   }\n" +
-                        "}";
+                """
+                    {
+                        "realisation": {
+                            "realisationId": "REAL1",
+                            "studyElementReferences": []
+                       }
+                    }
+                """;
 
-        JsonNode updateJsonNode = objectMapper.readTree(updateMessage);
+        JsonNode updateJsonNode = jsonMapper.readTree(updateMessage);
 
         realisation = (RealisationEntity) realisationService.update(updateJsonNode.get("realisation"), "UEF").get(0).getCurrent();
 
@@ -677,27 +667,27 @@ public class RealisationServiceIntegrationTest {
     private RealisationEntity generateRealisation(String networkId, LocalDate networkStartDate, LocalDate networkEndDate,
                                                   String id, String code, String organizingOrganisationId,
                                                   String nameFi, String nameEn, String nameSv,
-                                                  List<StudyElementReference> references,
+                                                  List<StudyElementReferenceEntity> references,
                                                   OffsetDateTime enrollmentStart, OffsetDateTime enrollmentEnd,
                                                   LocalDate startDate, LocalDate endDate) {
-        CooperationNetwork network = null;
+        CooperationNetworkEntity network = null;
         if(networkId != null) {
-            network = DtoInitializer.getCooperationNetwork(networkId, new LocalisedString("Verkosto", null, null),
+            network = EntityInitializer.getCooperationNetwork(networkId, new LocalisedStringEntity("Verkosto", null, null),
                     true, networkStartDate, networkEndDate);
         }
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity(
                 id, code, organizingOrganisationId, references, Collections.singletonList(network));
-        realisationEntity.setName(new LocalisedString(nameFi, nameEn, nameSv));
+        realisationEntity.setName(new LocalisedStringEntity(nameFi, nameEn, nameSv));
 
-        Organisation organisation = DtoInitializer.getOrganisation(organizingOrganisationId, organizingOrganisationId);
-        OrganisationReference organisationReference = new OrganisationReference();
-        organisationReference.setOrganisationRole(OrganisationRole.ROLE_MAIN_ORGANIZER);
-        organisationReference.setOrganisation(organisation);
+        OrganisationDataEntity organisation = EntityInitializer.getOrganisation(organizingOrganisationId, organizingOrganisationId);
+        OrganisationReferenceEntity organisationReference = new OrganisationReferenceEntity();
+        organisationReference.setOrganisationRole(OrganisationRoleEntity.ROLE_MAIN_ORGANIZER);
+        organisationReference.setTarget(organisation);
 
         realisationEntity.setOrganisationReferences(Collections.singletonList(organisationReference));
 
-        realisationEntity.setStatus(StudyStatus.ACTIVE);
+        realisationEntity.setStatus(StudyStatusEntity.ACTIVE);
         realisationEntity.setEnrollmentStartDateTime(enrollmentStart);
         realisationEntity.setEnrollmentEndDateTime(enrollmentEnd);
         realisationEntity.setStartDate(startDate);

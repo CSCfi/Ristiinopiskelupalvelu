@@ -160,20 +160,24 @@ public class NetworkReadDTO {
         this.published = published;
     }
 
-    public static NetworkReadDTO fromEntity(NetworkEntity entity) {
+    public static NetworkReadDTO from(NetworkEntity entity) {
+        if(entity == null) {
+            return null;
+        }
+
         NetworkReadDTO network = new NetworkReadDTO();
-        network.id = entity.getId();
-        network.name = entity.getName();
-        network.abbreviation = entity.getAbbreviation();
-        network.networkType = entity.getNetworkType();
-        network.description = entity.getDescription();
-        network.targetGroups = entity.getTargetGroups();
-        network.organisations = entity.getOrganisations();
-        network.furtherInformation = entity.getFurtherInformation();
-        network.restrictions = entity.getRestrictions();
-        network.validity = entity.getValidity();
-        network.expenses = entity.getExpenses();
-        network.published = entity.isPublished();
+        network.setId(entity.getId());
+        network.setName(LocalisedString.from(entity.getName()));
+        network.setAbbreviation(entity.getAbbreviation());
+        network.setNetworkType(NetworkType.from(entity.getNetworkType()));
+        network.setDescription(LocalisedString.from(entity.getDescription()));
+        network.setTargetGroups(CodeReference.from(entity.getTargetGroups()));
+        network.setOrganisations(NetworkOrganisation.from(entity.getOrganisations()));
+        network.setFurtherInformation(LocalisedString.from(entity.getFurtherInformation()));
+        network.setRestrictions(CodeReference.from(entity.getRestrictions()));
+        network.setValidity(Validity.from(entity.getValidity()));
+        network.setExpenses(Expense.from(entity.getExpenses()));
+        network.setPublished(entity.isPublished());
         return network;
     }
 }

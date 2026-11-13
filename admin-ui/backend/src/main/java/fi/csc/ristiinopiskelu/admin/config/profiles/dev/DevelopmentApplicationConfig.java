@@ -1,17 +1,15 @@
 package fi.csc.ristiinopiskelu.admin.config.profiles.dev;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import fi.csc.ristiinopiskelu.admin.config.AdminUiMapperConfig;
 import fi.csc.ristiinopiskelu.admin.config.ApplicationConfig;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Role;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.entity.MessageSchemaEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.UserRoleEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.RoleEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.messaging.config.MessagingConfig;
 import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
 import fi.uta.ristiinopiskelu.persistence.repository.MessageSchemaRepository;
@@ -24,9 +22,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
-import org.springframework.data.elasticsearch.client.elc.ElasticsearchClients;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.data.elasticsearch.core.document.Document;
@@ -46,7 +46,7 @@ import java.util.UUID;
 
 @Profile("dev")
 @Configuration
-@Import({EsConfig.class, AdminUiMapperConfig.class, MessagingConfig.class})
+@Import({EsConfig.class, MessagingConfig.class})
 public class DevelopmentApplicationConfig extends ApplicationConfig implements ApplicationListener<ApplicationReadyEvent> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DevelopmentApplicationConfig.class);
@@ -62,9 +62,9 @@ public class DevelopmentApplicationConfig extends ApplicationConfig implements A
 
     @ConditionalOnExpression(EMBEDDED_ES_ENABLED_SPEL)
     @Bean(destroyMethod = "stop")
-    public ElasticsearchContainer embeddedElastic() throws Exception {
+    public ElasticsearchContainer embeddedElastic() {
         ElasticsearchContainer embeddedElastic = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch")
-            .withTag("8.19.5"));
+            .withTag("9.3.2"));
         embeddedElastic.addEnv("cluster.name", "ripa-cluster");
         embeddedElastic.addEnv("xpack.security.enabled", "false");
         embeddedElastic.addEnv("indices.id_field_data.enabled", "true");
@@ -73,13 +73,11 @@ public class DevelopmentApplicationConfig extends ApplicationConfig implements A
     }
 
     @ConditionalOnExpression(EMBEDDED_ES_ENABLED_SPEL)
-    @Primary
     @Bean
-    public ElasticsearchClient client(ElasticsearchContainer embeddedElastic) {
-        ClientConfiguration clientConfiguration = ClientConfiguration.builder()
-            .connectedTo("localhost:"+ embeddedElastic.getMappedPort(9200))
+    public ClientConfiguration clientConfiguration(ElasticsearchContainer embeddedElastic) {
+        return ClientConfiguration.builder()
+            .connectedTo("localhost:%s".formatted(embeddedElastic.getMappedPort(9200)))
             .build();
-        return ElasticsearchClients.createImperative(clientConfiguration);
     }
 
     @Override
@@ -108,7 +106,7 @@ public class DevelopmentApplicationConfig extends ApplicationConfig implements A
                                 UserRoleRepository userRoleRepository, NetworkRepository networkRepository) {
         OrganisationEntity organisationEntityTuni = new OrganisationEntity();
         organisationEntityTuni.setId("DEV10122");
-        organisationEntityTuni.setOrganisationName(new LocalisedString("Tampereen yliopisto", null, null));
+        organisationEntityTuni.setOrganisationName(new LocalisedStringEntity("Tampereen yliopisto", null, null));
         organisationEntityTuni.setAdministratorEmail("ripa@gofore.com");
         organisationEntityTuni.setQueue("queue:tuni");
         organisationEntityTuni.setSchemaVersion(9);
@@ -116,7 +114,7 @@ public class DevelopmentApplicationConfig extends ApplicationConfig implements A
 
         OrganisationEntity organisationEntityLapland = new OrganisationEntity();
         organisationEntityLapland.setId("DEV10108");
-        organisationEntityLapland.setOrganisationName(new LocalisedString("Lapin ammattikorkeakoulu", null, null));
+        organisationEntityLapland.setOrganisationName(new LocalisedStringEntity("Lapin ammattikorkeakoulu", null, null));
         organisationEntityLapland.setAdministratorEmail("ripa@gofore.com");
         organisationEntityLapland.setQueue("queue:lapinamk");
         organisationEntityLapland.setSchemaVersion(9);
@@ -124,7 +122,7 @@ public class DevelopmentApplicationConfig extends ApplicationConfig implements A
 
         OrganisationEntity organisationEntityTurku = new OrganisationEntity();
         organisationEntityTurku.setId("DEV02509");
-        organisationEntityTurku.setOrganisationName(new LocalisedString("Turun ammattikorkeakoulu", null, null));
+        organisationEntityTurku.setOrganisationName(new LocalisedStringEntity("Turun ammattikorkeakoulu", null, null));
         organisationEntityTurku.setAdministratorEmail("ripa@gofore.com");
         organisationEntityTurku.setQueue("queue:turkuamk");
         organisationEntityTurku.setSchemaVersion(9);
@@ -132,7 +130,7 @@ public class DevelopmentApplicationConfig extends ApplicationConfig implements A
 
         OrganisationEntity organisationEntityLaurea = new OrganisationEntity();
         organisationEntityLaurea.setId("DEV02629");
-        organisationEntityLaurea.setOrganisationName(new LocalisedString("Laurea-ammattikorkeakoulu", null, null));
+        organisationEntityLaurea.setOrganisationName(new LocalisedStringEntity("Laurea-ammattikorkeakoulu", null, null));
         organisationEntityLaurea.setAdministratorEmail("ripa@gofore.com");
         organisationEntityLaurea.setQueue("queue:laurea");
         organisationEntityLaurea.setSchemaVersion(9);
@@ -148,26 +146,26 @@ public class DevelopmentApplicationConfig extends ApplicationConfig implements A
 
         UserRoleEntity userRoleEntity = new UserRoleEntity();
         userRoleEntity.setEppn("oo99999@tuni.fi");
-        userRoleEntity.setRole(Role.SUPERUSER);
+        userRoleEntity.setRole(RoleEntity.SUPERUSER);
         userRoleEntity.setOrganisation("DEV10122"); // TUNI
         userRoleRepository.create(userRoleEntity);
 
         NetworkEntity networkEntity1 = new NetworkEntity();
         networkEntity1.setId(UUID.randomUUID().toString());
-        networkEntity1.setName(new LocalisedString("Verkosto 1", "First network", null));
+        networkEntity1.setName(new LocalisedStringEntity("Verkosto 1", "First network", null));
         networkEntity1.setAbbreviation("VERK1");
-        networkEntity1.setNetworkType(NetworkType.CURRICULUM_LEVEL);
-        networkEntity1.setDescription(new LocalisedString("Testiverkosto 1: Tampereen yliopisto ja Laurea-ammattikorkeakoulu", null, null));
+        networkEntity1.setNetworkType(NetworkTypeEntity.CURRICULUM_LEVEL);
+        networkEntity1.setDescription(new LocalisedStringEntity("Testiverkosto 1: Tampereen yliopisto ja Laurea-ammattikorkeakoulu", null, null));
         networkEntity1.setPublished(false);
-        Validity net1Validity = new Validity();
-        net1Validity.setContinuity(Validity.ContinuityEnum.INDEFINITELY);
+        ValidityEntity net1Validity = new ValidityEntity();
+        net1Validity.setContinuity(ValidityEntity.ContinuityEntity.INDEFINITELY);
         net1Validity.setStart(OffsetDateTime.now());
         networkEntity1.setValidity(net1Validity);
-        NetworkOrganisation net1OrgTuni = new NetworkOrganisation();
+        NetworkOrganisationEntity net1OrgTuni = new NetworkOrganisationEntity();
         net1OrgTuni.setIsCoordinator(true);
         net1OrgTuni.setOrganisationTkCode(organisationEntityTuni.getId());
         net1OrgTuni.setValidityInNetwork(net1Validity);
-        NetworkOrganisation net1OrgLaurea = new NetworkOrganisation();
+        NetworkOrganisationEntity net1OrgLaurea = new NetworkOrganisationEntity();
         net1OrgLaurea.setIsCoordinator(false);
         net1OrgLaurea.setOrganisationTkCode(organisationEntityLaurea.getId());
         net1OrgLaurea.setValidityInNetwork(net1Validity);
@@ -176,21 +174,21 @@ public class DevelopmentApplicationConfig extends ApplicationConfig implements A
 
         NetworkEntity networkEntity2 = new NetworkEntity();
         networkEntity2.setId(UUID.randomUUID().toString());
-        networkEntity2.setName(new LocalisedString("Verkosto 2", "Second network", null));
+        networkEntity2.setName(new LocalisedStringEntity("Verkosto 2", "Second network", null));
         networkEntity2.setAbbreviation("VERK2");
-        networkEntity2.setNetworkType(NetworkType.CURRICULUM_LEVEL);
-        networkEntity2.setDescription(new LocalisedString("Testiverkosto 2: Tampereen yliopisto ja Turun ammattikorkeakoulu", null, null));
+        networkEntity2.setNetworkType(NetworkTypeEntity.CURRICULUM_LEVEL);
+        networkEntity2.setDescription(new LocalisedStringEntity("Testiverkosto 2: Tampereen yliopisto ja Turun ammattikorkeakoulu", null, null));
         networkEntity2.setPublished(false);
-        Validity net2Validity = new Validity();
-        net2Validity.setContinuity(Validity.ContinuityEnum.FIXED);
+        ValidityEntity net2Validity = new ValidityEntity();
+        net2Validity.setContinuity(ValidityEntity.ContinuityEntity.FIXED);
         net2Validity.setStart(OffsetDateTime.now());
         net2Validity.setEnd(OffsetDateTime.now().plusMonths(6));
         networkEntity2.setValidity(net2Validity);
-        NetworkOrganisation net2OrgTuni = new NetworkOrganisation();
+        NetworkOrganisationEntity net2OrgTuni = new NetworkOrganisationEntity();
         net2OrgTuni.setIsCoordinator(true);
         net2OrgTuni.setOrganisationTkCode(organisationEntityTuni.getId());
         net2OrgTuni.setValidityInNetwork(net2Validity);
-        NetworkOrganisation net2OrgTurku = new NetworkOrganisation();
+        NetworkOrganisationEntity net2OrgTurku = new NetworkOrganisationEntity();
         net2OrgTurku.setIsCoordinator(false);
         net2OrgTurku.setOrganisationTkCode(organisationEntityTurku.getId());
         net2OrgTurku.setValidityInNetwork(net2Validity);

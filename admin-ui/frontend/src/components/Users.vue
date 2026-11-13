@@ -12,26 +12,19 @@
   </div>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      active: false
-    };
-  },
-  computed: {
-    // a computed getter
-    activeMessage: function() {
-      // `this` points to the vm instance
-      return this.active;
-    }
-  },
-  props: ['codesets', 'active'],
-  methods: {
-    onClickRow(event) {
-      this.$emit('rowClicked', event.srcElement.id);
-    }
+<script setup>
+const props = defineProps({
+  codesets: Array,
+  active: {
+    type: [Boolean, String, Number],
+    default: false
   }
+});
+
+const emit = defineEmits(['rowClicked']);
+
+const onClickRow = event => {
+  emit('rowClicked', event?.srcElement?.id);
 };
 </script>
 

@@ -64,6 +64,12 @@
         },
         "referenceType": {
           "type": "keyword"
+        },
+        "referenceAssessmentItemId": {
+          "type": "keyword"
+        },
+        "onlyEnrollableWithParent": {
+          "type": "boolean"
         }
       }
     },

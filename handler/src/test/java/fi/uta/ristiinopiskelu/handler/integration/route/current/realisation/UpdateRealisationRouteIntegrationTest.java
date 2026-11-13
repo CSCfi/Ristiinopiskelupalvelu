@@ -1,10 +1,17 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current.realisation;
 
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Organisation;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.OrganisationRole;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.MinEduGuidanceArea;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -20,6 +27,7 @@ import fi.uta.ristiinopiskelu.messaging.message.current.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.Status;
+import fi.uta.ristiinopiskelu.messaging.message.current.notification.CompositeIdentifiedEntityModifiedNotification;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.NetworkRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.RealisationRepository;
@@ -28,7 +36,6 @@ import jakarta.jms.Message;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +62,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(classes = TestEsConfig.class)
 @ActiveProfiles("integration")
 public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrationTest {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(UpdateRealisationRouteIntegrationTest.class);
 
     private JmsTemplate jmsTemplate;
@@ -79,9 +86,6 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     private OrganisationService organisationService;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
     private CourseUnitRepository courseUnitRepository;
 
     @Autowired
@@ -102,8 +106,8 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         for(String organisationId : organisationIds) {
             if(!organisationService.findById(organisationId).isPresent()) {
                 OrganisationEntity organisation = EntityInitializer.getOrganisationEntity(organisationId, organisationId,
-                    new LocalisedString(organisationId, null, null), this.messageSchemaVersion);
-                organisationService.create(modelMapper.map(organisation, OrganisationEntity.class));
+                    new LocalisedStringEntity(organisationId, null, null), this.messageSchemaVersion);
+                organisationService.create(organisation);
             }
         }
     }
@@ -112,8 +116,8 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     public void testSendingUpdateRealisationMessage_shouldSuccessHasForwardSlashes() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         Organisation organisation = DtoInitializer.getOrganisation(organisingOrganisationId, organisingOrganisationId);
@@ -129,24 +133,26 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         realisationRepository.create(realisationEntity);
 
         String updateMessage =
-            "{\n" +
-                "    \"realisation\": {\n" +
-                "        \"realisationId\": \"REAL/11\",\n" +
-                "        \"minSeats\": 20,\n" +
-                "        \"maxSeats\": 200,\n" +
-                "        \"status\": \"ARCHIVED\",\n" +
-                "        \"studyElementReferences\": [\n" +
-                "          {\n" +
-                "               \"referenceIdentifier\": \"CU/1\",\n" +
-                "               \"referenceOrganizer\": \"TUNI\",\n" +
-                "               \"referenceType\": \"COURSE_UNIT\"\n" +
-                "          }\n" +
-                "       ],\n" +
-                "        \"minEduGuidanceArea\": [\n" +
-                "           5\n" +
-                "       ]\n" +
-                "   }\n" +
-                "}";
+        """
+            {
+                "realisation": {
+                    "realisationId": "REAL/11",
+                    "minSeats": 20,
+                    "maxSeats": 200,
+                    "status": "ARCHIVED",
+                    "studyElementReferences": [
+                      {
+                           "referenceIdentifier": "CU/1",
+                           "referenceOrganizer": "TUNI",
+                           "referenceType": "COURSE_UNIT"
+                      }
+                   ],
+                    "minEduGuidanceArea": [
+                       5
+                   ]
+               }
+            }
+        """;
         Message updResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateMessage, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
         DefaultResponse updresp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updResponseMessage);
         assertTrue(updresp.getStatus() == Status.OK);
@@ -161,10 +167,10 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(updatedEntity.getStudyElementReferences().stream().anyMatch(r -> r.getReferenceIdentifier().equals(courseUnitEntity.getStudyElementId())));
         assertEquals(20, updatedEntity.getMinSeats());
         assertEquals(200, updatedEntity.getMaxSeats());
-        assertEquals(StudyStatus.ARCHIVED, updatedEntity.getStatus());
+        assertEquals(StudyStatusEntity.ARCHIVED, updatedEntity.getStatus());
         assertNotNull(updatedEntity.getMinEduGuidanceArea());
         assertEquals(1, updatedEntity.getMinEduGuidanceArea().size());
-        assertEquals(MinEduGuidanceArea.BUSINESS_ADMINIST_AND_LAW, updatedEntity.getMinEduGuidanceArea().get(0));
+        assertEquals(MinEduGuidanceArea.BUSINESS_ADMINIST_AND_LAW.name(), updatedEntity.getMinEduGuidanceArea().get(0).name());
     }
 
     @Test
@@ -172,9 +178,9 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("CU-1", "4CO19KBIOP", organisingOrganisationId,
@@ -228,13 +234,13 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     public void testSendingUpdateRealisationMessage_withExpiredCooperationNetwork_shouldSucceed() throws JMSException {
         String organisingOrganisationId = "TUNI";
 
-        Validity validity = new Validity(Validity.ContinuityEnum.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusDays(2));
-        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"),
-            Collections.singletonList(new NetworkOrganisation(organisingOrganisationId, true, validity)),
+        ValidityEntity validity = new ValidityEntity(ValidityEntity.ContinuityEntity.FIXED, OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusDays(2));
+        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"),
+            Collections.singletonList(new NetworkOrganisationEntity(organisingOrganisationId, true, validity)),
             validity, true);
         networkRepository.create(networkEntity);
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().minusDays(2));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("CU-1", "4CO19KBIOP", organisingOrganisationId,
@@ -265,38 +271,39 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(createdEntity.getPersonReferences().stream().anyMatch(pr -> pr.getPerson().getHomeEppn().equals("testi2@test.fi")));
 
         String updateRealisationJson = """
-                {
-                    "realisation": {
-                        "realisationId": "129177",
-                        "minSeats": 20,
-                        "maxSeats": 200,
-                        "personReferences": [
-                            {
-                                "personRole": {
-                                    "key": "teacher",
-                                    "codeSetKey": "personRole"
-                                },
-                                "person": {
-                                    "homeEppn": "testi2@test.fi",
-                                    "surName": "Testinen2"
-                                }
-                            }
-                        ],
-                        "cooperationNetworks": [
-                            {
-                                "id": "%s",
-                                "name": {
-                                    "values": {
-                                        "fi": "Verkosto",
-                                        "en": "Verkosto en",
-                                        "sv": "Verkosto sv"
-                                    }
-                                },
-                                "enrollable": true
-                            }
-                        ]
+            {
+              "realisation": {
+                "realisationId": "129177",
+                "minSeats": 20,
+                "maxSeats": 200,
+                "personReferences": [
+                  {
+                    "personRole": {
+                      "key": "teacher",
+                      "codeSetKey": "personRole"
+                    },
+                    "person": {
+                      "homeEppn": "testi2@test.fi",
+                      "surName": "Testinen2"
                     }
-                }""".formatted(networkEntity.getId());
+                  }
+                ],
+                "cooperationNetworks": [
+                  {
+                    "id": "%s",
+                    "name": {
+                      "values": {
+                        "fi": "Verkosto",
+                        "en": "Verkosto en",
+                        "sv": "Verkosto sv"
+                      }
+                    },
+                    "enrollable": true
+                  }
+                ]
+              }
+            }
+            """.formatted(networkEntity.getId());
 
         // Send update message for realisation to remove one teacher (identifier 7228) and update min seats to 20 and max seats to 200
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateRealisationJson, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
@@ -319,13 +326,100 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     @Test
+    public void testSendingUpdateRealisationMessage_networksChanged_shouldNotifyOriginalAndNewNetworkMembers() throws JMSException {
+        String organisingOrganisationId = "TUNI";
+        String removedOrganisationId = "REALISATION-REMOVED-ORG";
+        String addedOrganisationId = "REALISATION-ADDED-ORG";
+
+        OrganisationEntity removedOrganisation = EntityInitializer.getOrganisationEntity(removedOrganisationId, removedOrganisationId,
+            new LocalisedStringEntity(removedOrganisationId, null, null), messageSchemaVersion);
+        removedOrganisation.setNotificationsEnabled(true);
+        organisationService.create(removedOrganisation);
+
+        OrganisationEntity addedOrganisation = EntityInitializer.getOrganisationEntity(addedOrganisationId, addedOrganisationId,
+            new LocalisedStringEntity(addedOrganisationId, null, null), messageSchemaVersion);
+        addedOrganisation.setNotificationsEnabled(true);
+        organisationService.create(addedOrganisation);
+
+        NetworkEntity originalNetwork = persistNetworkEntity("CN-REALISATION-ORIGINAL",
+            new LocalisedStringEntity("Original network", null, null), Arrays.asList(organisingOrganisationId, removedOrganisationId));
+        NetworkEntity updatedNetwork = persistNetworkEntity("CN-REALISATION-UPDATED",
+            new LocalisedStringEntity("Updated network", null, null), Arrays.asList(organisingOrganisationId, addedOrganisationId));
+
+        CooperationNetworkEntity originalCooperationNetwork = EntityInitializer.getCooperationNetwork(originalNetwork.getId(), originalNetwork.getName(),
+            true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+        CooperationNetworkEntity updatedCooperationNetwork = EntityInitializer.getCooperationNetwork(updatedNetwork.getId(), updatedNetwork.getName(),
+            true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
+
+        CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("CU-REALISATION-NOTIFICATIONS", "CU-REALISATION-NOTIFICATIONS",
+            organisingOrganisationId, Arrays.asList(originalCooperationNetwork, updatedCooperationNetwork), null);
+        courseUnitRepository.create(courseUnitEntity);
+
+        StudyElementReferenceEntity studyElementReference = EntityInitializer.getStudyElementReferenceForCourseUnit(
+            courseUnitEntity.getStudyElementId(), courseUnitEntity.getOrganizingOrganisationId());
+        RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("REALISATION-NOTIFICATIONS", "REALISATION-NOTIFICATIONS",
+            organisingOrganisationId, Collections.singletonList(studyElementReference), Collections.singletonList(originalCooperationNetwork));
+        realisationRepository.create(realisationEntity);
+
+        String updateJson = """
+            {
+              "realisation": {
+                "realisationId": "REALISATION-NOTIFICATIONS",
+                "cooperationNetworks": [
+                  {
+                    "id": "CN-REALISATION-UPDATED"
+                  }
+                ]
+              }
+            }
+            """;
+
+        Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson,
+            MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
+
+        DefaultResponse updateResp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updateResponseMessage);
+        assertEquals(Status.OK, updateResp.getStatus());
+
+        RealisationEntity updatedRealisation = realisationRepository.findByRealisationIdAndOrganizingOrganisationId(
+            realisationEntity.getRealisationId(), organisingOrganisationId).orElse(null);
+        assertNotNull(updatedRealisation);
+        assertEquals(1, updatedRealisation.getCooperationNetworks().size());
+        assertEquals(updatedNetwork.getId(), updatedRealisation.getCooperationNetworks().getFirst().getId());
+
+        Message removedOrganisationMessage = JmsHelper.receiveObject(jmsTemplate, removedOrganisationId);
+        assertNotNull(removedOrganisationMessage);
+        CompositeIdentifiedEntityModifiedNotification removedOrganisationNotification =
+            (CompositeIdentifiedEntityModifiedNotification) jmsTemplate.getMessageConverter().fromMessage(removedOrganisationMessage);
+        assertEquals(1, removedOrganisationNotification.getDeleted().size());
+        assertTrue(removedOrganisationNotification.getCreated().isEmpty());
+        assertTrue(removedOrganisationNotification.getUpdated().isEmpty());
+        assertEquals(realisationEntity.getRealisationId(), removedOrganisationNotification.getDeleted().getFirst().getReferenceIdentifier());
+        assertEquals(organisingOrganisationId, removedOrganisationNotification.getDeleted().getFirst().getReferenceOrganizer());
+        assertEquals(CompositeIdentifiedEntityType.REALISATION, removedOrganisationNotification.getDeleted().getFirst().getType());
+
+        Message addedOrganisationMessage = JmsHelper.receiveObject(jmsTemplate, addedOrganisationId);
+        assertNotNull(addedOrganisationMessage);
+        CompositeIdentifiedEntityModifiedNotification addedOrganisationNotification =
+            (CompositeIdentifiedEntityModifiedNotification) jmsTemplate.getMessageConverter().fromMessage(addedOrganisationMessage);
+        assertEquals(1, addedOrganisationNotification.getCreated().size());
+        assertTrue(addedOrganisationNotification.getUpdated().isEmpty());
+        assertTrue(addedOrganisationNotification.getDeleted().isEmpty());
+        assertEquals(realisationEntity.getRealisationId(), addedOrganisationNotification.getCreated().getFirst().getReferenceIdentifier());
+        assertEquals(organisingOrganisationId, addedOrganisationNotification.getCreated().getFirst().getReferenceOrganizer());
+        assertEquals(CompositeIdentifiedEntityType.REALISATION, addedOrganisationNotification.getCreated().getFirst().getType());
+    }
+
+    @Test
     public void testSendingUpdateRealisationMessage_shouldFailMissingRequiredFields() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
-        String updateJson = "{\n" +
-            "    \"realisation\": {\n" +
-            "        \"minSeats\": 20\n" +
-            "   }\n" +
-            "}";
+        String updateJson =
+        """
+            {
+                "realisation": {
+                    "minSeats": 20
+               }
+            }
+        """;
         Message responseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
 
         Object resp = jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -341,9 +435,9 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("CU-1", "4CO19KBIOP", organisingOrganisationId, Collections.singletonList(cooperationNetwork), null);
@@ -355,14 +449,16 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         String updateJson =
-            "{\n" +
-                "    \"realisation\": {\n" +
-                "        \"realisationId\": \"129177\",\n" +
-                "        \"minSeats\": 20,\n" +
-                "        \"maxSeats\": 200,\n" +
-                "        \"thisdowsnotexist\": \"asdsdasdsad\"\n" +
-                "   }\n" +
-                "}";
+        """
+            {
+                "realisation": {
+                    "realisationId": "129177",
+                    "minSeats": 20,
+                    "maxSeats": 200,
+                    "thisdowsnotexist": "asdsdasdsad"
+               }
+            }
+        """;
         Message updateResponse = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
         Object updResponse = jmsTemplate.getMessageConverter().fromMessage(updateResponse);
 
@@ -376,9 +472,9 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("CU-1", "4CO19KBIOP", organisingOrganisationId, Collections.singletonList(cooperationNetwork), null);
@@ -390,15 +486,17 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertTrue(resp.getStatus() == Status.OK);
 
         String updateJson =
-            "{\n" +
-                "    \"realisation\": {\n" +
-                "        \"realisationId\": \"129177\",\n" +
-                "        \"minSeats\": 20,\n" +
-                "        \"maxSeats\": 200,\n" +
-                "        \"cooperationNetworks\": [\n" +
-                "        ]\n" +
-                "   }\n" +
-                "}";
+        """
+            {
+                "realisation": {
+                    "realisationId": "129177",
+                    "minSeats": 20,
+                    "maxSeats": 200,
+                    "cooperationNetworks": [
+                    ]
+               }
+            }
+        """;
         Message updateResponse = JmsHelper.sendAndReceiveJson(jmsTemplate, updateJson, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
         Object updResponse = jmsTemplate.getMessageConverter().fromMessage(updateResponse);
 
@@ -412,9 +510,9 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("CU-1", "4CO19KBIOP", organisingOrganisationId,
@@ -515,9 +613,9 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         String organisingOrganisationId = "TUNI";
 
         NetworkEntity networkEntity = persistNetworkEntity("CN-1",
-            new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
+            new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), Arrays.asList(organisingOrganisationId));
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(networkEntity.getId(), networkEntity.getName(),
             true, LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         CourseUnitEntity courseUnitEntity = EntityInitializer.getCourseUnitEntity("CU-1", "4CO19KBIOP", organisingOrganisationId, Collections.singletonList(cooperationNetwork), null);
@@ -531,7 +629,7 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         RealisationEntity createdEntity = realisationService.findByIdAndOrganizingOrganisationId(
             "129177", organisingOrganisationId).orElse(null);
         assertNotNull(createdEntity);
-        assertEquals(StudyStatus.ACTIVE, createdEntity.getStatus());
+        assertEquals(StudyStatusEntity.ACTIVE, createdEntity.getStatus());
 
         // Send update message for realisation to remove one teacher (identifier 7228) and update min seats to 20 and max seats to 200
         Message updateResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateRealisationStatusJson, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
@@ -544,20 +642,20 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         assertNotNull(updatedEntity);
         assertNotNull(updatedEntity.getUpdateTime());
         assertEquals(createdEntity.getCreatedTime(), updatedEntity.getCreatedTime());
-        assertEquals(StudyStatus.CANCELLED, updatedEntity.getStatus());
+        assertEquals(StudyStatusEntity.CANCELLED, updatedEntity.getStatus());
     }
 
     @Test
     public void testUpdateRealisationMessage_updatesCourseUnitReferences_shouldAddRemoveAndUpdateDenormalizedDataCorrectly() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("R1", "RCODE1", "TUNI",
             null, Collections.singletonList(cooperationNetwork), null);
-        realisationEntity.setName(new LocalisedString("Nimi 1", "Name 1", "Namn 1"));
+        realisationEntity.setName(new LocalisedStringEntity("Nimi 1", "Name 1", "Namn 1"));
         realisationEntity.setStartDate(LocalDate.now().minusMonths(1));
         realisationEntity.setEndDate(LocalDate.now().plusMonths(6));
         realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
@@ -570,18 +668,18 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         CourseUnitEntity courseUnitToRemoveDenormalizedDataFrom = EntityInitializer.getCourseUnitEntity(
             "CU2", "CODE2", organisingOrganisationId, Collections.singletonList(cooperationNetwork), null);
         courseUnitRepository.create(courseUnitToRemoveDenormalizedDataFrom);
-        courseUnitToRemoveDenormalizedDataFrom.setRealisations(Collections.singletonList(modelMapper.map(realisationEntity, CourseUnitRealisationEntity.class)));
+        courseUnitToRemoveDenormalizedDataFrom.setRealisations(Collections.singletonList(CourseUnitRealisationEntity.from(realisationEntity)));
 
         CourseUnitEntity courseUnitToUpdateDenormalizedData = EntityInitializer.getCourseUnitEntity(
             "CU3", "CODE3", organisingOrganisationId, Collections.singletonList(cooperationNetwork), null);
-        courseUnitToUpdateDenormalizedData.setRealisations(Collections.singletonList(modelMapper.map(realisationEntity, CourseUnitRealisationEntity.class)));
+        courseUnitToUpdateDenormalizedData.setRealisations(Collections.singletonList(CourseUnitRealisationEntity.from(realisationEntity)));
 
         courseUnitRepository.create(courseUnitToUpdateDenormalizedData);
 
-        StudyElementReference refToRemove = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity refToRemove = EntityInitializer.getStudyElementReferenceForCourseUnit(
             courseUnitToRemoveDenormalizedDataFrom.getStudyElementId(), organisingOrganisationId);
 
-        StudyElementReference refToUpdate = DtoInitializer.getStudyElementReferenceForCourseUnit(
+        StudyElementReferenceEntity refToUpdate = EntityInitializer.getStudyElementReferenceForCourseUnit(
             courseUnitToUpdateDenormalizedData.getStudyElementId(), organisingOrganisationId);
 
         realisationEntity.setStudyElementReferences(Arrays.asList(refToRemove, refToUpdate));
@@ -589,35 +687,37 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         realisationRepository.create(realisationEntity);
 
         String updateMessage =
-            "{\n" +
-                "    \"realisation\": {\n" +
-                "        \"realisationId\": \""+ realisationEntity.getRealisationId() +"\",\n" +
-                "        \"startDate\": \"2019-11-09\",\n" +
-                "        \"endDate\": \"2020-07-09\",\n" +
-                "        \"enrollmentStartDateTime\": \"2020-02-01T00:00:00.000+02:00\",\n" +
-                "        \"enrollmentEndDateTime\": \"2020-02-10T00:00:00.000+02:00\",\n" +
-                "        \"name\": {\n" +
-                "            \"values\": {\n" +
-                "                \"fi\": \"Nimi 2\",\n" +
-                "                \"sv\": \"Namn 2\",\n" +
-                "                \"en\": \"Name 2\"\n" +
-                "            }\n" +
-                "        },\n" +
-                "        \"realisationIdentifierCode\": \"NEWCODE1\"," +
-                "        \"studyElementReferences\": [\n" +
-                "          {\n" +
-                "               \"referenceIdentifier\": \"" + courseUnitToUpdateDenormalizedData.getStudyElementId() + "\",\n" +
-                "               \"referenceOrganizer\": \"" + courseUnitToUpdateDenormalizedData.getOrganizingOrganisationId() + "\",\n" +
-                "               \"referenceType\": \"COURSE_UNIT\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "               \"referenceIdentifier\": \"" + courseUnitToAddDenormalizedData.getStudyElementId() + "\",\n" +
-                "               \"referenceOrganizer\": \"" + courseUnitToAddDenormalizedData.getOrganizingOrganisationId() + "\",\n" +
-                "               \"referenceType\": \"COURSE_UNIT\"\n" +
-                "          }\n" +
-                "       ]\n" +
-                "   }\n" +
-                "}";
+        """
+            {
+                "realisation": {
+                    "realisationId": "%s",
+                    "startDate": "2019-11-09",
+                    "endDate": "2020-07-09",
+                    "enrollmentStartDateTime": "2020-02-01T00:00:00.000+02:00",
+                    "enrollmentEndDateTime": "2020-02-10T00:00:00.000+02:00",
+                    "name": {
+                        "values": {
+                            "fi": "Nimi 2",
+                            "sv": "Namn 2",
+                            "en": "Name 2"
+                        }
+                    },
+                    "realisationIdentifierCode": "NEWCODE1",
+                    "studyElementReferences": [
+                        {
+                            "referenceIdentifier": "%s",
+                            "referenceOrganizer": "%s",
+                            "referenceType": "COURSE_UNIT"
+                        },
+                        {
+                            "referenceIdentifier": "%s",
+                            "referenceOrganizer": "%s",
+                            "referenceType": "COURSE_UNIT"
+                        }
+                    ]
+                }
+            }
+        """.formatted(realisationEntity.getRealisationId(), courseUnitToUpdateDenormalizedData.getStudyElementId(), courseUnitToUpdateDenormalizedData.getOrganizingOrganisationId(), courseUnitToAddDenormalizedData.getStudyElementId(), courseUnitToAddDenormalizedData.getOrganizingOrganisationId());
 
         Message updResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateMessage, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
         DefaultResponse updresp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updResponseMessage);
@@ -674,13 +774,13 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     public void testUpdateRealisationMessage_updatesAssessmentItemReferences_shouldAddRemoveAndUpdateDenormalizedDataCorrectly() throws JMSException, IOException {
         String organisingOrganisationId = "TUNI";
 
-        CooperationNetwork cooperationNetwork = DtoInitializer.getCooperationNetwork(
-            "CN-1", new LocalisedString("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
+        CooperationNetworkEntity cooperationNetwork = EntityInitializer.getCooperationNetwork(
+            "CN-1", new LocalisedStringEntity("Verkosto 1", "Verkosto en", "Verkosto sv"), true,
             LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
 
         RealisationEntity realisationEntity = EntityInitializer.getRealisationEntity("R1", "RCODE1", "TUNI",
             null, Collections.singletonList(cooperationNetwork), null);
-        realisationEntity.setName(new LocalisedString("Nimi 1", "Name 1", "Namn 1"));
+        realisationEntity.setName(new LocalisedStringEntity("Nimi 1", "Name 1", "Namn 1"));
         realisationEntity.setStartDate(LocalDate.now().minusMonths(1));
         realisationEntity.setEndDate(LocalDate.now().plusMonths(6));
         realisationEntity.setEnrollmentStartDateTime(OffsetDateTime.now().minusMonths(1));
@@ -695,7 +795,7 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         courseUnitToAddDenormalizedData.setCompletionOptions(Collections.singletonList(completionOptionEntity));
         courseUnitRepository.create(courseUnitToAddDenormalizedData);
 
-        CourseUnitRealisationEntity courseUnitRealisationEntity = modelMapper.map(realisationEntity, CourseUnitRealisationEntity.class);
+        CourseUnitRealisationEntity courseUnitRealisationEntity = CourseUnitRealisationEntity.from(realisationEntity);
         AssessmentItemEntity assessmentItemEntity = EntityInitializer.getAssessmentItemEntity("AI3", "CU1");
         assessmentItemEntity.setRealisations(Collections.singletonList(courseUnitRealisationEntity));
         CompletionOptionEntity completionOptionEntity2 = EntityInitializer.getCompletionOptionEntity("CO2",
@@ -706,8 +806,7 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         courseUnitToRemoveDenormalizedDataFrom.setCompletionOptions(Collections.singletonList(completionOptionEntity2));
         courseUnitRepository.create(courseUnitToRemoveDenormalizedDataFrom);
 
-
-        CourseUnitRealisationEntity courseUnitRealisationEntity2 = modelMapper.map(realisationEntity, CourseUnitRealisationEntity.class);
+        CourseUnitRealisationEntity courseUnitRealisationEntity2 = CourseUnitRealisationEntity.from(realisationEntity);
         AssessmentItemEntity assessmentItemEntity2 = EntityInitializer.getAssessmentItemEntity("AI3", "CU1");
         assessmentItemEntity.setRealisations(Collections.singletonList(courseUnitRealisationEntity2));
         CompletionOptionEntity completionOptionEntity3 = EntityInitializer.getCompletionOptionEntity("CO3",
@@ -718,10 +817,10 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         courseUnitToUpdateDenormalizedData.setCompletionOptions(Collections.singletonList(completionOptionEntity3));
         courseUnitRepository.create(courseUnitToUpdateDenormalizedData);
 
-        StudyElementReference refToRemove = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity refToRemove = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             courseUnitToRemoveDenormalizedDataFrom.getStudyElementId(), organisingOrganisationId, assessmentItemEntity.getAssessmentItemId());
 
-        StudyElementReference refToUpdate = DtoInitializer.getStudyElementReferenceForAssessmentItem(
+        StudyElementReferenceEntity refToUpdate = EntityInitializer.getStudyElementReferenceForAssessmentItem(
             courseUnitToUpdateDenormalizedData.getStudyElementId(), organisingOrganisationId, assessmentItemEntity2.getAssessmentItemId());
 
         realisationEntity.setStudyElementReferences(Arrays.asList(refToRemove, refToUpdate));
@@ -729,37 +828,39 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
         realisationRepository.create(realisationEntity);
 
         String updateMessage =
-            "{\n" +
-                "    \"realisation\": {\n" +
-                "        \"realisationId\": \""+ realisationEntity.getRealisationId() +"\",\n" +
-                "        \"startDate\": \"2019-11-09\",\n" +
-                "        \"endDate\": \"2020-07-09\",\n" +
-                "        \"enrollmentStartDateTime\": \"2020-02-01T00:00:00.000+02:00\",\n" +
-                "        \"enrollmentEndDateTime\": \"2020-02-10T00:00:00.000+02:00\",\n" +
-                "        \"name\": {\n" +
-                "            \"values\": {\n" +
-                "                \"fi\": \"Nimi 2\",\n" +
-                "                \"sv\": \"Namn 2\",\n" +
-                "                \"en\": \"Name 2\"\n" +
-                "            }\n" +
-                "        },\n" +
-                "        \"realisationIdentifierCode\": \"NEWCODE1\"," +
-                "        \"studyElementReferences\": [\n" +
-                "          {\n" +
-                "               \"referenceIdentifier\": \"" + courseUnitToUpdateDenormalizedData.getStudyElementId() + "\",\n" +
-                "               \"referenceOrganizer\": \"" + courseUnitToUpdateDenormalizedData.getOrganizingOrganisationId() + "\",\n" +
-                "               \"referenceAssessmentItemId\": \"" + assessmentItemEntity2.getAssessmentItemId() + "\",\n" +
-                "               \"referenceType\": \"ASSESSMENT_ITEM\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "               \"referenceIdentifier\": \"" + courseUnitToAddDenormalizedData.getStudyElementId() + "\",\n" +
-                "               \"referenceOrganizer\": \"" + courseUnitToAddDenormalizedData.getOrganizingOrganisationId() + "\",\n" +
-                "               \"referenceAssessmentItemId\": \"AI1\",\n" +
-                "               \"referenceType\": \"ASSESSMENT_ITEM\"\n" +
-                "          }\n" +
-                "       ]\n" +
-                "   }\n" +
-                "}";
+        """
+            {
+                "realisation": {
+                    "realisationId": "%s",
+                    "startDate": "2019-11-09",
+                    "endDate": "2020-07-09",
+                    "enrollmentStartDateTime": "2020-02-01T00:00:00.000+02:00",
+                    "enrollmentEndDateTime": "2020-02-10T00:00:00.000+02:00",
+                    "name": {
+                        "values": {
+                            "fi": "Nimi 2",
+                            "sv": "Namn 2",
+                            "en": "Name 2"
+                        }
+                    },
+                    "realisationIdentifierCode": "NEWCODE1",
+                    "studyElementReferences": [
+                        {
+                            "referenceIdentifier": "%s",
+                            "referenceOrganizer": "%s",
+                            "referenceAssessmentItemId": "%s",
+                            "referenceType": "ASSESSMENT_ITEM"
+                        },
+                        {
+                            "referenceIdentifier": "%s",
+                            "referenceOrganizer": "%s",
+                            "referenceAssessmentItemId": "AI1",
+                            "referenceType": "ASSESSMENT_ITEM"
+                        }
+                    ]
+                }
+            }
+        """.formatted(realisationEntity.getRealisationId(), courseUnitToUpdateDenormalizedData.getStudyElementId(), courseUnitToUpdateDenormalizedData.getOrganizingOrganisationId(), assessmentItemEntity2.getAssessmentItemId(), courseUnitToAddDenormalizedData.getStudyElementId(), courseUnitToAddDenormalizedData.getOrganizingOrganisationId());
 
         Message updResponseMessage = JmsHelper.sendAndReceiveJson(jmsTemplate, updateMessage, MessageType.UPDATE_REALISATION_REQUEST.name(), organisingOrganisationId);
         DefaultResponse updresp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(updResponseMessage);
@@ -813,135 +914,143 @@ public class UpdateRealisationRouteIntegrationTest extends AbstractRouteIntegrat
     }
 
     private final String testRealisationJson =
-        "{\n" +
-            "    \"realisations\": [\n" +
-            "        {\n" +
-            "            \"status\": \"ACTIVE\",\n" +
-            "            \"realisationId\": \"129177\",\n" +
-            "            \"realisationIdentifierCode\": \"129177\",\n" +
-            "            \"selections\": null,\n" +
-            "            \"questionSets\": null,\n" +
-            "            \"enrollmentStartDateTime\": \"2018-09-30T21:00:00.000Z\",\n" +
-            "            \"enrollmentEndDateTime\": \"2018-12-04T22:00:00.000Z\",\n" +
-            "            \"startDate\": \"2019-01-06\",\n" +
-            "            \"endDate\": \"2019-05-30\",\n" +
-            "            \"creditsMin\": 5,\n" +
-            "            \"creditsMax\": 15,\n" +
-            "            \"minSeats\": 10,\n" +
-            "            \"maxSeats\": 400,\n" +
-            "            \"name\": {\n" +
-            "               \"values\": {\n" +
-            "                    \"fi\": \"nimi fi\",\n" +
-            "                    \"sv\": null,\n" +
-            "                    \"en\": null\n" +
-            "                }\n" +
-            "             },\n" +
-            "            \"personReferences\": [\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                },\n" +
-            "                {\n" +
-            "                    \"personRole\": {\n" +
-            "                        \"key\": \"teacher\",\n" +
-            "                        \"codeSetKey\": \"personRole\"\n" +
-            "                    },\n" +
-            "                    \"person\": {\n" +
-            "                        \"homeEppn\": \"testi2@test.fi\",\n" +
-            "                        \"surName\": \"Testinen\"\n" +
-            "                    }\n" +
-            "                }\n" +
-            "            ],\n" +
-            "            \"studyElementReferences\": [\n" +
-            "               {\n" +
-            "                    \"referenceIdentifier\": \"CU-1\",\n" +
-            "                    \"referenceOrganizer\": \"TUNI\",\n" +
-            "                    \"referenceType\": \"COURSE_UNIT\"\n" +
-            "               }\n" +
-            "            ],\n" +
-            "           \"organisationReferences\": [\n" +
-            "               {\n" +
-            "                   \"organisationRole\": 1,\n" +
-            "                   \"target\": {\n" +
-            "                       \"organisationIdentifier\": \"TUNI\",\n" +
-            "                       \"organisationTkCode\": \"TUNI\"\n" +
-            "                   }\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"cooperationNetworks\": [\n" +
-            "               {\n" +
-            "                   \"id\": \"CN-1\",\n" +
-            "                   \"name\": {\n" +
-            "                       \"values\": {\n" +
-            "                           \"fi\": \"Verkosto 1\",\n" +
-            "                           \"en\": \"Network 1\",\n" +
-            "                           \"sv\": null\n" +
-            "                       }\n" +
-            "                   },\n" +
-            "                   \"enrollable\": true\n" +
-            "               }\n" +
-            "           ],\n" +
-            "           \"teachingLanguage\": [\n" +
-            "               \"fi\"\n" +
-            "           ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+    """
+        {
+            "realisations": [
+                {
+                    "status": "ACTIVE",
+                    "realisationId": "129177",
+                    "realisationIdentifierCode": "129177",
+                    "selections": null,
+                    "questionSets": null,
+                    "enrollmentStartDateTime": "2018-09-30T21:00:00.000Z",
+                    "enrollmentEndDateTime": "2018-12-04T22:00:00.000Z",
+                    "startDate": "2019-01-06",
+                    "endDate": "2019-05-30",
+                    "creditsMin": 5,
+                    "creditsMax": 15,
+                    "minSeats": 10,
+                    "maxSeats": 400,
+                    "name": {
+                       "values": {
+                            "fi": "nimi fi",
+                            "sv": null,
+                            "en": null
+                        }
+                     },
+                    "personReferences": [
+                        {
+                            "personRole": {
+                                "key": "teacher",
+                                "codeSetKey": "personRole"
+                            },
+                            "person": {
+                                "homeEppn": "testi@test.fi",
+                                "surName": "Testinen"
+                            }
+                        },
+                        {
+                            "personRole": {
+                                "key": "teacher",
+                                "codeSetKey": "personRole"
+                            },
+                            "person": {
+                                "homeEppn": "testi2@test.fi",
+                                "surName": "Testinen"
+                            }
+                        }
+                    ],
+                    "studyElementReferences": [
+                       {
+                            "referenceIdentifier": "CU-1",
+                            "referenceOrganizer": "TUNI",
+                            "referenceType": "COURSE_UNIT"
+                       }
+                    ],
+                   "organisationReferences": [
+                       {
+                           "organisationRole": 1,
+                           "target": {
+                               "organisationIdentifier": "TUNI",
+                               "organisationTkCode": "TUNI"
+                           }
+                       }
+                   ],
+                   "cooperationNetworks": [
+                       {
+                           "id": "CN-1",
+                           "name": {
+                               "values": {
+                                   "fi": "Verkosto 1",
+                                   "en": "Network 1",
+                                   "sv": null
+                               }
+                           },
+                           "enrollable": true
+                       }
+                   ],
+                   "teachingLanguage": [
+                       "fi"
+                   ]
+                }
+            ]
+        }
+    """;
 
     private final String updateRealisationJson =
-        "{\n" +
-            "    \"realisation\": {\n" +
-            "        \"realisationId\": \"129177\",\n" +
-            "        \"minSeats\": 20,\n" +
-            "        \"maxSeats\": 200,\n" +
-            "        \"personReferences\": [\n" +
-            "           {\n" +
-            "               \"personRole\": {\n" +
-            "                   \"key\": \"teacher\",\n" +
-            "                   \"codeSetKey\": \"personRole\"\n" +
-            "               },\n" +
-            "               \"person\": {\n" +
-            "                   \"homeEppn\": \"testi2@test.fi\",\n" +
-            "                    \"surName\": \"Testinen2\"\n" +
-            "               }\n" +
-            "           }\n" +
-            "        ]\n" +
-            "   }\n" +
-            "}";
+    """
+        {
+            "realisation": {
+                "realisationId": "129177",
+                "minSeats": 20,
+                "maxSeats": 200,
+                "personReferences": [
+                   {
+                       "personRole": {
+                           "key": "teacher",
+                           "codeSetKey": "personRole"
+                       },
+                       "person": {
+                           "homeEppn": "testi2@test.fi",
+                            "surName": "Testinen2"
+                       }
+                   }
+                ]
+           }
+        }
+    """;
 
     private final String updateRealisationJson2 =
-        "{\n" +
-            "    \"realisation\": {\n" +
-            "        \"realisationId\": \"129177\",\n" +
-            "        \"minSeats\": 40,\n" +
-            "        \"maxSeats\": 400,\n" +
-            "        \"personReferences\": [\n" +
-            "           {\n" +
-            "               \"personRole\": {\n" +
-            "                   \"key\": \"teacher\",\n" +
-            "                   \"codeSetKey\": \"personRole\"\n" +
-            "               },\n" +
-            "               \"person\": {\n" +
-            "                   \"homeEppn\": \"testi3@test.fi\",\n" +
-            "                   \"surName\": \"Testinen3\"\n" +
-            "               }\n" +
-            "           }\n" +
-            "        ]\n" +
-            "   }\n" +
-            "}";
+    """
+        {
+            "realisation": {
+                "realisationId": "129177",
+                "minSeats": 40,
+                "maxSeats": 400,
+                "personReferences": [
+                   {
+                       "personRole": {
+                           "key": "teacher",
+                           "codeSetKey": "personRole"
+                       },
+                       "person": {
+                           "homeEppn": "testi3@test.fi",
+                           "surName": "Testinen3"
+                       }
+                   }
+                ]
+           }
+        }
+    """;
 
     private final String updateRealisationStatusJson =
-        "{\n" +
-            "    \"realisation\": {\n" +
-            "        \"realisationId\": \"129177\",\n" +
-            "        \"realisationIdentifierCode\": \"129177\",\n" +
-            "        \"status\": \"CANCELLED\"\n" +
-            "   }\n" +
-            "}";
+    """
+        {
+            "realisation": {
+                "realisationId": "129177",
+                "realisationIdentifierCode": "129177",
+                "status": "CANCELLED"
+           }
+        }
+    """;
 }

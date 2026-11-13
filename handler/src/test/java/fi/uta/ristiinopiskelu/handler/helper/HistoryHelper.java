@@ -1,11 +1,12 @@
 package fi.uta.ristiinopiskelu.handler.helper;
 
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHitsIterator;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 
 import java.util.List;
@@ -18,10 +19,12 @@ public class HistoryHelper {
 
         NativeQuery searchQuery = new NativeQueryBuilder()
                 .withQuery(q -> q.matchAll(ma -> ma))
-                .withPageable(Pageable.unpaged())
+                .withPageable(PageRequest.of(0, 1000))
                 .build();
 
-        return elasticsearchTemplate.search(searchQuery, type, IndexCoordinates.of(historyIndex))
-            .get().map(SearchHit::getContent).toList();
+        try (SearchHitsIterator<T> searchHits = elasticsearchTemplate.searchForStream(
+                searchQuery, type, IndexCoordinates.of(historyIndex))) {
+            return searchHits.stream().map(SearchHit::getContent).toList();
+        }
     }
 }

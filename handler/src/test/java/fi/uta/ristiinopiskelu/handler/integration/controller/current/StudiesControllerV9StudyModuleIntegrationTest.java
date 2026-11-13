@@ -1,31 +1,31 @@
 package fi.uta.ristiinopiskelu.handler.integration.controller.current;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CourseUnitReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.studymodule.StudyModuleReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitRealisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RealisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
+import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.persistence.repository.CourseUnitRepository;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyModuleRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class StudiesControllerV9StudyModuleIntegrationTest extends AbstractStudiesControllerV9IntegrationTest {
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private CourseUnitRepository courseUnitRepository;
@@ -58,26 +58,26 @@ public class StudiesControllerV9StudyModuleIntegrationTest extends AbstractStudi
         String url = "/api/v9/studies/studymodules";
 
         createNetworkWithOrganisations("CN-1", "UEF");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
 
         StudyModuleEntity activeStudyModuleEntity = createStudyModule("SM1", "Testi Metro", "UEF",
             "Raipatirai", coopNetwork);
 
         StudyModuleEntity cancelledStudyModuleEntity = createStudyModule("SM2", "Testi Metro", "UEF",
             "Raipatirai", coopNetwork);
-        cancelledStudyModuleEntity.setStatus(StudyStatus.CANCELLED);
+        cancelledStudyModuleEntity.setStatus(StudyStatusEntity.CANCELLED);
         studyModuleRepository.update(cancelledStudyModuleEntity);
 
         StudyModuleEntity archivedStudyModuleEntity = createStudyModule("SM3", "Testi Metro", "UEF",
             "Raipatirai", coopNetwork);
-        archivedStudyModuleEntity.setStatus(StudyStatus.ARCHIVED);
+        archivedStudyModuleEntity.setStatus(StudyStatusEntity.ARCHIVED);
         studyModuleRepository.update(archivedStudyModuleEntity);
 
         // just default values
         MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
         MvcResult result = getMvcResult(url, requestParams);
 
-        List<StudyModuleReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<StudyModuleReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(activeStudyModuleEntity.getStudyElementId(), actualResult.get(0).getStudyElementId());
@@ -86,7 +86,7 @@ public class StudiesControllerV9StudyModuleIntegrationTest extends AbstractStudi
         requestParams.add("statuses", "ARCHIVED");
         result = getMvcResult(url, requestParams);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(archivedStudyModuleEntity.getStudyElementId(), actualResult.get(0).getStudyElementId());
@@ -96,7 +96,7 @@ public class StudiesControllerV9StudyModuleIntegrationTest extends AbstractStudi
         requestParams.add("statuses", "CANCELLED");
         result = getMvcResult(url, requestParams);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(cancelledStudyModuleEntity.getStudyElementId(), actualResult.get(0).getStudyElementId());
@@ -106,7 +106,7 @@ public class StudiesControllerV9StudyModuleIntegrationTest extends AbstractStudi
         requestParams.add("statuses", "ACTIVE,CANCELLED,ARCHIVED");
         result = getMvcResult(url, requestParams);
 
-        actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(3, actualResult.size());
         assertThat(actualResult, containsInAnyOrder(
@@ -122,26 +122,26 @@ public class StudiesControllerV9StudyModuleIntegrationTest extends AbstractStudi
 
         createNetworkWithOrganisations("CN-1", "UEF");
         createNetworkWithOrganisations("CN-2", "TUNI");
-        CooperationNetwork coopNetwork = createCooperationNetwork("CN-1");
-        CooperationNetwork coopNetwork2 = createCooperationNetwork("CN-2");
+        CooperationNetworkEntity coopNetwork = createCooperationNetwork("CN-1");
+        CooperationNetworkEntity coopNetwork2 = createCooperationNetwork("CN-2");
 
         StudyModuleEntity activeStudyModuleEntity = createStudyModule("SM1", "Testi Metro", "UEF",
             "Raipatirai", coopNetwork);
 
-        StudyElementReference studyModuleReference = new StudyElementReference("SM1", "UEF", StudyElementType.STUDY_MODULE);
+        StudyElementReferenceEntity studyModuleReference = EntityInitializer.getStudyElementReferenceForStudyModule("SM1", "UEF");
 
         // denormalized realisation info
         CourseUnitRealisationEntity activeCourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         activeCourseUnitRealisationEntity.setOrganizingOrganisationId("UEF");
         activeCourseUnitRealisationEntity.setRealisationId("TOT-1");
         activeCourseUnitRealisationEntity.setCooperationNetworks(Collections.singletonList(coopNetwork));
-        activeCourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        activeCourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
 
         CourseUnitRealisationEntity organiserOutsideOfNetworkCourseUnitRealisationEntity = new CourseUnitRealisationEntity();
         organiserOutsideOfNetworkCourseUnitRealisationEntity.setOrganizingOrganisationId("TUNI");
         organiserOutsideOfNetworkCourseUnitRealisationEntity.setRealisationId("TOT-2");
         organiserOutsideOfNetworkCourseUnitRealisationEntity.setCooperationNetworks(Collections.singletonList(coopNetwork2));
-        organiserOutsideOfNetworkCourseUnitRealisationEntity.setStatus(StudyStatus.ACTIVE);
+        organiserOutsideOfNetworkCourseUnitRealisationEntity.setStatus(StudyStatusEntity.ACTIVE);
 
         // courseunit
         CourseUnitEntity courseUnitEntity = createCourseUnit("CU1", "Testi Metro", "UEF",
@@ -150,7 +150,7 @@ public class StudiesControllerV9StudyModuleIntegrationTest extends AbstractStudi
         courseUnitEntity.setRealisations(Arrays.asList(activeCourseUnitRealisationEntity, organiserOutsideOfNetworkCourseUnitRealisationEntity));
         courseUnitRepository.update(courseUnitEntity);
 
-        StudyElementReference courseUnitReference = new StudyElementReference("CU1", "UEF", StudyElementType.COURSE_UNIT);
+        StudyElementReferenceEntity courseUnitReference = EntityInitializer.getStudyElementReferenceForCourseUnit("CU1", "UEF");
 
         // actual realisations
         RealisationEntity activeRealisationEntity = createRealisation("TOT-1", "UEF",
@@ -162,7 +162,7 @@ public class StudiesControllerV9StudyModuleIntegrationTest extends AbstractStudi
         MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
         MvcResult result = getMvcResult(url, requestParams);
 
-        List<StudyModuleReadDTO> actualResult = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
+        List<StudyModuleReadDTO> actualResult = jsonMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>(){});
 
         assertEquals(1, actualResult.size());
         assertEquals(activeStudyModuleEntity.getStudyElementId(), actualResult.get(0).getStudyElementId());

@@ -13,4 +13,17 @@ public class StudentStudyRight extends StudyRight {
     public void setEligibleForNetworkStudies(Boolean eligibleForNetworkStudies) {
         this.eligibleForNetworkStudies = eligibleForNetworkStudies;
     }
+
+    public static StudentStudyRight from(StudyRight source) {
+        if (source == null) {
+            return null;
+        }
+
+        StudentStudyRight target = new StudentStudyRight();
+        target.setIdentifiers(source.getIdentifiers());
+        target.setStudyRightStatus(source.getStudyRightStatus());
+        target.setStudyRightType(source.getStudyRightType());
+        target.setKeywords(source.getKeywords());
+        return target;
+    }
 }

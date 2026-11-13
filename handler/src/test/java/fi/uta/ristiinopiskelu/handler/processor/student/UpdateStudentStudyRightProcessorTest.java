@@ -1,6 +1,5 @@
 package fi.uta.ristiinopiskelu.handler.processor.student;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyRight;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyRightIdentifier;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.StudyRightType;
@@ -21,15 +20,17 @@ import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.UpdateStudentStudyRightRequest;
 import fi.uta.ristiinopiskelu.messaging.util.Oid;
 import fi.uta.ristiinopiskelu.messaging.util.OidPersonNode;
+import fi.uta.ristiinopiskelu.persistence.config.EsConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.support.DefaultExchange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,27 +42,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class UpdateStudentStudyRightProcessorTest {
 
     private UpdateStudentStudyRightProcessor updateStudentStudyRightProcessor;
 
-    @MockBean
+    @MockitoBean
     private StudentService studentService;
 
-    @MockBean
+    @MockitoBean
     private RegistrationService registrationService;
 
-    @MockBean
+    @MockitoBean
     private JmsMessageForwarder jmsMessageForwarder;
 
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @BeforeEach
     public void before() {
-        objectMapper = new ObjectMapper();
+        jsonMapper = new EsConfig().jsonMapper(null);
         updateStudentStudyRightProcessor = mock(UpdateStudentStudyRightProcessor.class, withSettings()
-            .useConstructor(studentService, registrationService, objectMapper, new ModelMapper(), jmsMessageForwarder)
+            .useConstructor(studentService, registrationService, jsonMapper, jmsMessageForwarder)
             .defaultAnswer(CALLS_REAL_METHODS));
     }
 
@@ -103,7 +105,7 @@ public class UpdateStudentStudyRightProcessorTest {
         request.setHomeStudyRight(homeStudyRight);
 
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
-        exchange.getIn().setBody(objectMapper.writeValueAsString(request));
+        exchange.getIn().setBody(jsonMapper.writeValueAsString(request));
         exchange.getIn().setHeader(MessageHeader.JMS_XUSERID, identifier.getOrganisationTkCodeReference());
 
         when(registrationService.findAllRegistrationsWithValidStudyRightPerOrganisation(any(), any())).thenReturn(organisationsAndRegistrations);
@@ -117,7 +119,6 @@ public class UpdateStudentStudyRightProcessorTest {
         verify(studentService, times(1)).create(any());
         verify(jmsMessageForwarder, times(2)).forwardRequestToOrganisation(anyString(), any(), any(), any(), any(), any());
     }
-
 
     @Test
     public void testProcess_messageForwardingFails_shouldThrowMessageForwardingFailedException() throws Exception {
@@ -157,7 +158,7 @@ public class UpdateStudentStudyRightProcessorTest {
         request.setHomeStudyRight(homeStudyRight);
 
         Exchange exchange = new DefaultExchange(new DefaultCamelContext());
-        exchange.getIn().setBody(objectMapper.writeValueAsString(request));
+        exchange.getIn().setBody(jsonMapper.writeValueAsString(request));
         exchange.getIn().setHeader(MessageHeader.JMS_XUSERID, identifier.getOrganisationTkCodeReference());
 
         when(registrationService.findAllRegistrationsWithValidStudyRightPerOrganisation(any(), any())).thenReturn(organisationsAndRegistrations);

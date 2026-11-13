@@ -9,7 +9,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.TeachingLanguage;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchParameters;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.studyelement.studies.StudiesSearchRealisationQueries;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
@@ -162,10 +162,10 @@ public class StudiesSearchRequestBuilder {
     private Predicate<NetworkEntity> isValidNetworkDuringDatePeriod(SemesterDatePeriod datePeriod) {
         return network -> (network.isPublished() &&
             (network.getDeleted() == null || (network.getDeleted() != null && !network.getDeleted()))) &&
-            ((network.getValidity().getContinuity() == Validity.ContinuityEnum.INDEFINITELY &&
+            ((network.getValidity().getContinuity() == ValidityEntity.ContinuityEntity.INDEFINITELY &&
                 ((network.getValidity().getStart() == null && network.getValidity().getEnd() == null) ||
                     DateUtils.isBeforeOrEqual(network.getValidity().getStart(), datePeriod.getStartDateAsOffset()))) ||
-            (network.getValidity().getContinuity() == Validity.ContinuityEnum.FIXED &&
+            (network.getValidity().getContinuity() == ValidityEntity.ContinuityEntity.FIXED &&
                 (DateUtils.isBeforeOrEqual(network.getValidity().getStart(), datePeriod.getStartDateAsOffset()) &&
                     DateUtils.isAfterOrEqual(network.getValidity().getEnd(), datePeriod.getEndDateAsOffset()))));
     }

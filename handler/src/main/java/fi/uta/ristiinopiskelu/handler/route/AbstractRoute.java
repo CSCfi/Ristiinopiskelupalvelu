@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.route;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import fi.uta.ristiinopiskelu.handler.jms.JmsMessageTypeResolver;
 import fi.uta.ristiinopiskelu.handler.processor.AuditLoggingProcessor;
 import fi.uta.ristiinopiskelu.handler.processor.MessageSchemaVersionCompatabilityProcessor;
 import fi.uta.ristiinopiskelu.handler.processor.MessageSchemaVersionValidatorProcessor;
@@ -9,10 +9,11 @@ import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
 import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
+import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.jackson.JacksonDataFormat;
 import org.apache.camel.component.jsonvalidator.JsonValidationException;
+import org.apache.camel.component.jms.JmsConstants;
 import org.apache.camel.model.ChoiceDefinition;
 import org.apache.camel.model.ThreadsDefinition;
 import org.apache.camel.model.TryDefinition;
@@ -21,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
@@ -32,7 +34,7 @@ public abstract class AbstractRoute extends RouteBuilder {
     public static final int DEFAULT_MAX_THREADS = 1;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private AuditLoggingProcessor auditLoggingProcessor;
@@ -65,8 +67,10 @@ public abstract class AbstractRoute extends RouteBuilder {
         return getClass().getSimpleName();
     }
 
-    protected JacksonDataFormat getDataFormat(Class clazz) {
-        return new JacksonDataFormat(objectMapper, clazz);
+    protected void marshalBody(Exchange exchange) throws Exception {
+        exchange.getMessage().setBody(jsonMapper.writeValueAsString(exchange.getMessage().getBody()));
+        exchange.getMessage().setHeader(JmsConstants.JMS_MESSAGE_TYPE,
+            JmsMessageTypeResolver.resolveForReply(exchange.getMessage().getHeaders()));
     }
 
     @Override
@@ -121,17 +125,17 @@ public abstract class AbstractRoute extends RouteBuilder {
             .to(String.format("micrometer:timer:%s?action=start", getProcessorClassName(config)))
             .process(config.getRequestProcessor())
             .to(String.format("micrometer:timer:%s?action=stop", getProcessorClassName(config)))
-            .marshal(getDataFormat(config.getResponseType().getClazz()))
+            .process(this::marshalBody)
             .log("Successfully sent '" + config.getRequestType().name() + "' success response message: ${body}")
         .doCatch(JsonValidationException.class)
             .log(LoggingLevel.ERROR, config.getRequestType().name() + " -message handling failed\nEXCEPTION: ${exception.stacktrace}")
             .process(config.getJsonValidationExceptionProcessor())
-            .marshal(getDataFormat(JsonValidationFailedResponse.class))
+            .process(this::marshalBody)
             .log("Successfully sent '"  + config.getRequestType().name() + "' failed response message: ${body}")
         .doCatch(Exception.class)
             .log(LoggingLevel.ERROR, config.getRequestType().name() + " -message handling failed\nEXCEPTION: ${exception.stacktrace}")
             .process(config.getExceptionProcessor())
-            .marshal(getDataFormat(config.getResponseType().getClazz()))
+            .process(this::marshalBody)
             .log("Successfully sent '"  + config.getRequestType().name() + "' failed response message: ${body}")
         .end();
     }

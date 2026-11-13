@@ -13,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
-import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -76,9 +75,7 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
                 .withPageable(Pageable.unpaged())
                 .build();
 
-        return elasticsearchTemplate.search(builder, RegistrationEntity.class).get()
-                .map(SearchHit::getContent)
-                .toList();
+        return ElasticsearchQueryUtils.search(elasticsearchTemplate, builder, RegistrationEntity.class);
     }
 
     private Query getSelectionItemQuery(String path, String selectionItemId, String selectionItemType) {
@@ -127,11 +124,11 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
         }
 
         if(sendDateTimeStart != null) {
-            query.must(q -> q.range(rq -> rq.date(rq2 -> rq2.field("sendDateTime").from(sendDateTimeStart.toString()))));
+            query.must(q -> q.range(rq -> rq.date(rq2 -> rq2.field("sendDateTime").gte(sendDateTimeStart.toString()))));
         }
 
         if(sendDateTimeEnd != null) {
-            query.must(q -> q.range(rq -> rq.date(rq2 -> rq2.field("sendDateTime").to(sendDateTimeEnd.toString()))));
+            query.must(q -> q.range(rq -> rq.date(rq2 -> rq2.field("sendDateTime").lte(sendDateTimeEnd.toString()))));
         }
 
         if(status != null) {
@@ -140,12 +137,10 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
 
         NativeQuery builder = new NativeQueryBuilder()
                 .withQuery(query.build()._toQuery())
-                .withPageable(pageable)
+                .withPageable(pageable != null ? pageable : Pageable.unpaged())
                 .build();
 
-        return elasticsearchTemplate.search(builder, RegistrationEntity.class).get()
-                .map(SearchHit::getContent)
-                .toList();
+        return ElasticsearchQueryUtils.search(elasticsearchTemplate, builder, RegistrationEntity.class);
     }
 
     @Override
@@ -183,8 +178,6 @@ public class RegistrationRepositoryExtendedImpl implements RegistrationRepositor
             .withPageable(pageable)
             .build();
 
-        return elasticsearchTemplate.search(builder, RegistrationEntity.class).get()
-                .map(SearchHit::getContent)
-                .toList();
+        return ElasticsearchQueryUtils.search(elasticsearchTemplate, builder, RegistrationEntity.class);
     }
 }

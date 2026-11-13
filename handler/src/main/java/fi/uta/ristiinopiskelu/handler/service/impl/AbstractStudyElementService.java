@@ -1,12 +1,7 @@
 package fi.uta.ristiinopiskelu.handler.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementReference;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyElementType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.AbstractStudyElementReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.AssessmentItemReadDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.read.studyelement.courseunit.CompletionOptionReadDTO;
@@ -22,9 +17,18 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseuni
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.degree.DegreeWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.studymodule.StudyModuleWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.*;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.OrganisationReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementReferenceEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyElementTypeEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.StudyStatusEntity;
 import fi.uta.ristiinopiskelu.handler.exception.*;
+import fi.uta.ristiinopiskelu.handler.exception.validation.CourseUnitAlreadyExistsValidationException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.DegreeAlreadyExistsValidationException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.EntityAlreadyExistsValidationException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.exception.validation.StudyElementEntityNotFoundException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.StudyModuleAlreadyExistsValidationException;
+import fi.uta.ristiinopiskelu.handler.exception.validation.ValidationException;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.StudiesService;
 import fi.uta.ristiinopiskelu.handler.service.StudyElementService;
@@ -32,7 +36,6 @@ import fi.uta.ristiinopiskelu.handler.service.result.CompositeIdentifiedEntityMo
 import fi.uta.ristiinopiskelu.handler.service.result.ModificationOperationType;
 import fi.uta.ristiinopiskelu.persistence.querybuilder.StudiesQueryBuilder;
 import fi.uta.ristiinopiskelu.persistence.repository.StudyElementRepository;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -45,6 +48,10 @@ import org.springframework.data.repository.support.Repositories;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -61,10 +68,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
     private static final Logger logger = LoggerFactory.getLogger(AbstractStudyElementService.class);
 
     @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private ModelMapper modelMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private NetworkService networkService;
@@ -88,8 +92,8 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
     }
 
     @Override
-    protected ObjectMapper getObjectMapper() {
-        return objectMapper;
+    protected JsonMapper getJsonMapper() {
+        return jsonMapper;
     }
 
     protected abstract StudyElementRepository<T> getRepository();
@@ -123,14 +127,15 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
             Assert.isNull(entity.getId(), "Id should be null but was " + entity.getId());
         }
 
-        entity.setStatus(entity.getStatus() != null ? entity.getStatus() : StudyStatus.ACTIVE);
+        entity.setStatus(entity.getStatus() != null ? entity.getStatus() : StudyStatusEntity.ACTIVE);
         entity = super.setOrganizingOrganisationId(entity);
         entity = super.setCooperationNetworkData(entity);
         entity = super.fillMissingOrganisationInfo(entity);
 
         try {
             entity = (T) this.getRepositoryForEntityClass(entity.getClass()).create(entity, IndexQuery.OpType.CREATE);
-            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.CREATE, entity.getType(), null, entity));
+            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.CREATE,
+                CompositeIdentifiedEntityType.from(entity.getType()), null, entity));
         } catch(Exception e) {
             throw new CreateFailedException(getEntityClass(), e);
         }
@@ -186,7 +191,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
 
             this.getRepository().saveHistory(original, this.getEntityClass());
 
-            ObjectReader reader = objectMapper.readerForUpdating(updated);
+            ObjectReader reader = jsonMapper.readerForUpdating(updated);
             updated = reader.readValue(json);
 
             // reset organizing organisation id if it was updated
@@ -203,7 +208,8 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
 
             updated = this.getRepository().update(updated);
 
-            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE, original.getType(), original, updated));
+            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
+                CompositeIdentifiedEntityType.from(original.getType()), original, updated));
         } catch (Exception e) {
             throw new UpdateFailedException(getEntityClass(), id, e);
         }
@@ -218,7 +224,8 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
             T original = this.getRepository().findByStudyElementIdAndOrganizingOrganisationId(studyElementId, organizingOrganisationId)
                 .orElseThrow(() -> new EntityNotFoundException(this.getEntityClass(), studyElementId));
             getRepository().deleteById(original.getId());
-            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.DELETE, original.getType(), original, null));
+            return List.of(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.DELETE,
+                CompositeIdentifiedEntityType.from(original.getType()), original, null));
         } catch(Exception e) {
             throw new DeleteFailedException(getEntityClass(), e);
         }
@@ -328,7 +335,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
                         studyElement.getStudyElementId(), organisationId).orElse(null);
 
                 if(existing != null) {
-                    throw new IllegalStateException(existing.getClass().getSimpleName() + " already exists with id " + existing.getId());
+                    throw studyElementAlreadyExistsException(studyElement, organisationId);
                 }
 
                 if(!CollectionUtils.isEmpty(studyElement.getSubElements())) {
@@ -336,7 +343,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
                     modificationResults.addAll(createOrUpdateSubElements(studyElement, studyElement.getSubElements(), organisationId));
                 }
 
-                T entity = modelMapper.map(studyElement, getEntityClass());
+                T entity = (T) StudyElementEntity.from(studyElement);
                 modificationResults.addAll(this.create(entity));
 
                 logger.debug("Created {} with id {}", entity.getClass().getSimpleName(), entity.getId());
@@ -347,6 +354,18 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
         }
 
         return modificationResults;
+    }
+
+    private ValidationException studyElementAlreadyExistsException(D studyElement, String organisationId) {
+        String message = "%s already exists [studyElementId: %s, organizingOrganisationId: %s]"
+            .formatted(studyElementType, studyElement.getStudyElementId(), organisationId);
+
+        return switch (studyElementType) {
+            case COURSE_UNIT -> new CourseUnitAlreadyExistsValidationException(message);
+            case STUDY_MODULE -> new StudyModuleAlreadyExistsValidationException(message);
+            case DEGREE -> new DegreeAlreadyExistsValidationException(message);
+            default -> new EntityAlreadyExistsValidationException(message);
+        };
     }
 
     @Override
@@ -423,14 +442,14 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
             }
 
             List<AbstractStudyElementReadDTO> subElements = studiesService.findAllStudiesByParentReferences(studyElement.getStudyElementId(),
-                    super.getOrganizingOrganisationIdFromReferences(studyElement.getOrganisationReferences()))
+                    super.getOrganizingOrganisationIdFromReferences(OrganisationReferenceEntity.from(studyElement.getOrganisationReferences())))
                 .stream().map(se -> {
-                    if(se instanceof CourseUnitEntity) {
-                        return modelMapper.map(se, CourseUnitReadDTO.class);
-                    } else if(se instanceof StudyModuleEntity) {
-                        return modelMapper.map(se, StudyModuleReadDTO.class);
-                    } else if(se instanceof DegreeEntity) {
-                        return modelMapper.map(se, DegreeReadDTO.class);
+                    if(se instanceof CourseUnitEntity courseUnitEntity) {
+                        return CourseUnitReadDTO.from(courseUnitEntity);
+                    } else if(se instanceof StudyModuleEntity studyModuleEntity) {
+                        return StudyModuleReadDTO.from(studyModuleEntity);
+                    } else if(se instanceof DegreeEntity degreeEntity) {
+                        return DegreeReadDTO.from(degreeEntity);
                     } else {
                         throw new IllegalStateException("Unknown StudyElement type: " + se.getClass().getSimpleName());
                     }
@@ -490,7 +509,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
 
         if (!CollectionUtils.isEmpty(subElements)) {
             for (AbstractStudyElementWriteDTO subElement : subElements) {
-                StudyElementReference parentReference = getParentReference(parent.getStudyElementId(), organisationId, parent.getType(), subElement);
+                StudyElementReferenceEntity parentReference = getParentReference(parent.getStudyElementId(), organisationId, parent.getType(), subElement);
 
                 StudyElementEntity updated = getRepositoryForStudyElementWriteDTO(subElement).findByStudyElementIdAndOrganizingOrganisationId(
                         subElement.getStudyElementId(), organisationId).orElse(null);
@@ -501,17 +520,18 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
                     getRepositoryForStudyElementWriteDTO(subElement).saveHistory(updated, updated.getClass());
                     updated = checkReferences(updated, parentReference);
                     updated = getRepositoryForStudyElementWriteDTO(subElement).update(updated);
-                    modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE, original.getType(), original, updated));
+                    modificationResults.add(new CompositeIdentifiedEntityModificationResult(ModificationOperationType.UPDATE,
+                        CompositeIdentifiedEntityType.from(original.getType()), original, updated));
                     logger.debug("Updated existing subElement {} with id {}", updated.getClass().getSimpleName(), updated.getId());
                 } else {
                     StudyElementEntity entity;
 
-                    if(subElement instanceof CourseUnitWriteDTO) {
-                        entity = modelMapper.map(subElement, CourseUnitEntity.class);
-                    } else if(subElement instanceof StudyModuleWriteDTO) {
-                        entity = modelMapper.map(subElement, StudyModuleEntity.class);
-                    } else if(subElement instanceof DegreeWriteDTO) {
-                        entity = modelMapper.map(subElement, DegreeEntity.class);
+                    if(subElement instanceof CourseUnitWriteDTO courseUnitWriteDTO) {
+                        entity = CourseUnitEntity.from(courseUnitWriteDTO);
+                    } else if(subElement instanceof StudyModuleWriteDTO studyModuleWriteDTO) {
+                        entity = StudyModuleEntity.from(studyModuleWriteDTO);
+                    } else if(subElement instanceof DegreeWriteDTO degreeWriteDTO) {
+                        entity = DegreeEntity.from(degreeWriteDTO);
                     } else {
                         throw new IllegalStateException("Unidentified subElement type: " + subElement.getClass().getSimpleName());
                     }
@@ -528,16 +548,17 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
         return modificationResults;
     }
 
-    protected StudyElementReference getParentReference(String parentId, String parentOrganisationId, StudyElementType parentType,
-                                                       AbstractStudyElementWriteDTO subElement) {
+    protected StudyElementReferenceEntity getParentReference(String parentId, String parentOrganisationId, StudyElementType parentType,
+                                                             AbstractStudyElementWriteDTO subElement) {
         Boolean onlyEnrollableWithParent = null;
         if(subElement instanceof CourseUnitWriteDTO) {
             onlyEnrollableWithParent = ((CourseUnitWriteDTO) subElement).getOnlyEnrollableWithParent();
         }
-        return new StudyElementReference(parentId, parentOrganisationId, parentType, onlyEnrollableWithParent);
+        return new StudyElementReferenceEntity(parentId, parentOrganisationId, StudyElementTypeEntity.from(parentType),
+            onlyEnrollableWithParent);
     }
 
-    private StudyElementEntity checkReferences(StudyElementEntity entity, StudyElementReference reference) {
+    private StudyElementEntity checkReferences(StudyElementEntity entity, StudyElementReferenceEntity reference) {
         if (!CollectionUtils.isEmpty(entity.getParents())) {
             if (!entity.getParents().contains(reference)) {
                 entity.getParents().add(reference);
@@ -573,7 +594,7 @@ public abstract class AbstractStudyElementService<D extends AbstractStudyElement
 
             try {
                 // note: this returns references other than the one that matches
-                List<StudyElementReference> validReferences = updated.getParents().stream().filter(sre -> {
+                List<StudyElementReferenceEntity> validReferences = updated.getParents().stream().filter(sre -> {
                     StudyElementEntity referenced = getRepositoryForEntityClass(updated.getClass()).findByStudyElementIdAndOrganizingOrganisationId(
                             sre.getReferenceIdentifier(), sre.getReferenceOrganizer()).orElse(null);
                     return referenced == null;

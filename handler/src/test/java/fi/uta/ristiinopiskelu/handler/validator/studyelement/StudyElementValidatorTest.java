@@ -1,26 +1,24 @@
 package fi.uta.ristiinopiskelu.handler.validator.studyelement;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.*;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.Validity;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.courseunit.CourseUnitWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyModuleEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.ValidityEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.*;
 import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
 import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
 import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.impl.AbstractStudyElementService;
 import fi.uta.ristiinopiskelu.handler.utils.KeyHelper;
-import fi.uta.ristiinopiskelu.handler.validator.studyelement.studymodule.CreateStudyModuleValidatorTest;
 import jakarta.validation.Validator;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.time.LocalDate;
@@ -32,21 +30,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class StudyElementValidatorTest {
 
-    @MockBean
+    @MockitoBean
     private AbstractStudyElementService abstractStudyElementService;
 
-    @MockBean
+    @MockitoBean
     private NetworkService networkService;
 
-    @MockBean
+    @MockitoBean
     private Validator beanValidator;
 
     private AbstractStudyElementValidator validator;
-
-    private static final Logger logger = LoggerFactory.getLogger(CreateStudyModuleValidatorTest.class);
 
     @BeforeEach
     public void before() {
@@ -153,24 +150,24 @@ public class StudyElementValidatorTest {
     public void testValidateGivenNetworks_shouldSuccess() throws Exception {
         String organizingOrganisationId = "TUNI";
 
-        Validity validity = DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusMonths(1));
+        ValidityEntity validity = EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusMonths(1));
 
-        NetworkOrganisation networkOrganisation = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode(organizingOrganisationId);
         networkOrganisation.setValidityInNetwork(validity);
         networkOrganisation.setIsCoordinator(true);
 
-        NetworkOrganisation networkOrganisation2 = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation2 = new NetworkOrganisationEntity();
         networkOrganisation2.setOrganisationTkCode("JYU");
         networkOrganisation2.setValidityInNetwork(validity);
         networkOrganisation2.setIsCoordinator(false);
 
-        List<NetworkOrganisation> orgs = new ArrayList<>();
+        List<NetworkOrganisationEntity> orgs = new ArrayList<>();
         orgs.add(networkOrganisation);
         orgs.add(networkOrganisation2);
 
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", null, orgs,
-                DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
+                EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
 
         CooperationNetwork coopNetwork = DtoInitializer.getCooperationNetwork("CN-1", null, true,
                 LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -217,23 +214,23 @@ public class StudyElementValidatorTest {
     public void testValidateGivenNetworks_shouldThrowNotMemberOfCooperationNetworkValidationException() throws Exception {
         String organizingOrganisationId = "TUNI";
 
-        Validity validity = DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusMonths(1));
+        ValidityEntity validity = EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusMonths(1));
 
-        NetworkOrganisation networkOrganisation = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode("NOT_TUNI");
         networkOrganisation.setValidityInNetwork(validity);
         networkOrganisation.setIsCoordinator(true);
 
-        NetworkOrganisation networkOrganisation2 = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation2 = new NetworkOrganisationEntity();
         networkOrganisation2.setOrganisationTkCode("NOT_TUNI2");
         networkOrganisation2.setValidityInNetwork(validity);
         networkOrganisation2.setIsCoordinator(false);
 
-        List<NetworkOrganisation> orgs = new ArrayList<>();
+        List<NetworkOrganisationEntity> orgs = new ArrayList<>();
         orgs.add(networkOrganisation);
         orgs.add(networkOrganisation2);
 
-        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", null, orgs, DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
+        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", null, orgs, EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
 
         CooperationNetwork coopNetwork = DtoInitializer.getCooperationNetwork("CN-1", null, true,
                 LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -256,23 +253,23 @@ public class StudyElementValidatorTest {
     public void testValidateGivenNetworks_shouldThrowNotMemberOfCooperationNetworkValidationExceptionOrgNotValidByValidityTime() throws Exception {
         String organizingOrganisationId = "TUNI";
 
-        Validity validity = DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusMonths(1));
+        ValidityEntity validity = EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusMonths(1));
 
-        NetworkOrganisation networkOrganisation = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation = new NetworkOrganisationEntity();
         networkOrganisation.setOrganisationTkCode(organizingOrganisationId);
-        networkOrganisation.setValidityInNetwork(DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().plusMonths(1)));
+        networkOrganisation.setValidityInNetwork(EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().plusMonths(1)));
         networkOrganisation.setIsCoordinator(true);
 
-        NetworkOrganisation networkOrganisation2 = new NetworkOrganisation();
+        NetworkOrganisationEntity networkOrganisation2 = new NetworkOrganisationEntity();
         networkOrganisation2.setOrganisationTkCode("NOT_TUNI2");
         networkOrganisation2.setValidityInNetwork(validity);
         networkOrganisation2.setIsCoordinator(false);
 
-        List<NetworkOrganisation> orgs = new ArrayList<>();
+        List<NetworkOrganisationEntity> orgs = new ArrayList<>();
         orgs.add(networkOrganisation);
         orgs.add(networkOrganisation2);
 
-        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", null, orgs, DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
+        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("CN-1", null, orgs, EntityInitializer.getIndefinitelyValidity(OffsetDateTime.now().minusYears(1)), true);
 
         CooperationNetwork coopNetwork = DtoInitializer.getCooperationNetwork("CN-1", null, true,
                 LocalDate.now().minusYears(1), LocalDate.now().plusYears(1));
@@ -288,19 +285,19 @@ public class StudyElementValidatorTest {
         assertDoesNotThrow(() -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
 
         // Setup with fixed timestamp (membership expired), should still succeed
-        networkEntity.getOrganisations().get(0).setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusMonths(1)));
+        networkEntity.getOrganisations().get(0).setValidityInNetwork(EntityInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().minusMonths(1)));
         when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
         assertDoesNotThrow(() -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
 
         // Setup with fixed timestamp (membership in the future), should still succeed
-        networkEntity.getOrganisations().get(0).setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2)));
+        networkEntity.getOrganisations().get(0).setValidityInNetwork(EntityInitializer.getFixedValidity(OffsetDateTime.now().plusYears(1), OffsetDateTime.now().plusYears(2)));
         when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
         assertDoesNotThrow(() -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));
 
         // Setup with fixed timestamp (membership valid), should succeed
-        networkEntity.getOrganisations().get(0).setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusMonths(1)));
+        networkEntity.getOrganisations().get(0).setValidityInNetwork(EntityInitializer.getFixedValidity(OffsetDateTime.now().minusYears(1), OffsetDateTime.now().plusMonths(1)));
         when(networkService.findNetworkById(any())).thenReturn(Optional.of(networkEntity));
 
         assertDoesNotThrow(() -> validator.validateGivenNetworks(studyElement, organizingOrganisationId, StudyElementType.COURSE_UNIT, true));

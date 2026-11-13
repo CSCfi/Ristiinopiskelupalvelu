@@ -1,6 +1,6 @@
 package fi.uta.ristiinopiskelu.handler.processor;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.handler.exception.validation.InvalidPersonIdException;
 import fi.uta.ristiinopiskelu.handler.validator.person.PersonIdentifierValidationResult;
 import fi.uta.ristiinopiskelu.handler.validator.person.PersonIdentifierValidator;
@@ -26,7 +26,7 @@ import java.util.stream.Stream;
 public class PersonIdValidatorProcessor implements Processor {
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Getter
     @Setter
@@ -44,7 +44,7 @@ public class PersonIdValidatorProcessor implements Processor {
         String messageBody = exchange.getIn().getBody(String.class);
 
         if(AbstractPersonIdentifiableRequest.class.isAssignableFrom(messageType.getClazz())) {
-            AbstractPersonIdentifiableRequest request = (AbstractPersonIdentifiableRequest) objectMapper.readValue(
+            AbstractPersonIdentifiableRequest request = (AbstractPersonIdentifiableRequest) jsonMapper.readValue(
                 messageBody, messageType.getClazz());
 
             PersonSsnValidationResult personIdResult = PersonIdentifierValidator.validateSsn(request.getPersonId());

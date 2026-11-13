@@ -1,7 +1,7 @@
 package fi.uta.ristiinopiskelu.messaging.schema.converter;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import fi.uta.ristiinopiskelu.messaging.exception.ObjectConversionException;
 import fi.uta.ristiinopiskelu.messaging.schema.JsonPatcherUtilFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +13,7 @@ public abstract class AbstractJsonPatchObjectConverter<S, T> implements ObjectCo
     private JsonPatcherUtilFactory jsonPatcherUtilFactory;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Override
     public abstract Class<S> getSourceType();
@@ -26,9 +26,9 @@ public abstract class AbstractJsonPatchObjectConverter<S, T> implements ObjectCo
         Assert.notNull(object, "Object to be converted cannot be null");
 
         try {
-            JsonNode jsonNode = objectMapper.valueToTree(object);
+            JsonNode jsonNode = jsonMapper.valueToTree(object);
             JsonNode converted = this.convertJson(jsonNode);
-            return objectMapper.reader().treeToValue(converted, getTargetType());
+            return jsonMapper.reader().treeToValue(converted, getTargetType());
         } catch (Exception e) {
             throw new ObjectConversionException("Unable to convert object", e);
         }

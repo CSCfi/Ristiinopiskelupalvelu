@@ -1,6 +1,7 @@
 package fi.uta.ristiinopiskelu.messaging.message.current.registration;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.student.ExtendedStudent;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
@@ -10,7 +11,6 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ForwardedRegistrationReplyRequest extends ForwardedCreateRegistrationRequest {
-    
     private RegistrationStatus status;
     private LocalisedString rejectionReason;
 
@@ -27,8 +27,8 @@ public class ForwardedRegistrationReplyRequest extends ForwardedCreateRegistrati
         this.setStudent(ExtendedStudent.from(entity.getStudent()));
         //Remove personId from reply message
         this.getStudent().setPersonId(null);
-        this.setSelections(entity.getSelectionsReplies());
-        this.setStatus(entity.getStatus());
-        this.setRejectionReason(entity.getRejectionReason());
+        this.setSelections(CreateRegistrationSelection.fromReplyEntity(entity.getSelectionsReplies()));
+        this.setStatus(RegistrationStatus.from(entity.getStatus()));
+        this.setRejectionReason(LocalisedString.from(entity.getRejectionReason()));
     }
 }

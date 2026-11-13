@@ -1,8 +1,5 @@
 package fi.uta.ristiinopiskelu.handler.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CourseUnitReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.search.realisation.RealisationSearchParameters;
@@ -16,16 +13,20 @@ import fi.uta.ristiinopiskelu.handler.service.StudiesService;
 import fi.uta.ristiinopiskelu.handler.service.StudyModuleService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,26 +37,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class StudiesControllerTest {
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private CourseUnitService courseUnitService;
 
-    @MockBean
+    @MockitoBean
     private StudyModuleService studyModuleService;
 
-    @MockBean
+    @MockitoBean
     private RealisationService realisationService;
 
-    @MockBean
+    @MockitoBean
     private StudiesService studiesService;
 
     @Test
     public void testGETfindRealisations_realisationIdGiven_shouldReturn200() throws Exception {
-        when(realisationService.searchByIds(any(), any(), any(), any(), any())).thenReturn(new RealisationSearchResults());
+        when(realisationService.searchByIds(any(), any(), any(), any(), eq(true), any())).thenReturn(new RealisationSearchResults());
         this.mockMvc.perform(
                 get("/api/v9/studies/realisations")
                         .header("eppn", "testailija@testailija.fi")
@@ -83,7 +84,7 @@ public class StudiesControllerTest {
         this.mockMvc.perform(
                 post("/api/v9/studies/realisations/search")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(params))
+                        .content(jsonMapper.writeValueAsString(params))
                         .header("eppn", "testailija@testailija.fi")
                         .header("SSL_CLIENT_S_DN_O", "UEF"))
                 .andDo(print())
@@ -107,7 +108,7 @@ public class StudiesControllerTest {
         this.mockMvc.perform(
             post("/api/v9/studies/search")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(params))
+                .content(jsonMapper.writeValueAsString(params))
                 .header("eppn", "testailija@testailija.fi")
                 .header("SSL_CLIENT_S_DN_O", "UEF"))
             .andDo(print())
@@ -132,7 +133,7 @@ public class StudiesControllerTest {
         this.mockMvc.perform(
                 post("/api/v9/studies/search")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(params))
+                        .content(jsonMapper.writeValueAsString(params))
                         .header("eppn", "testailija@testailija.fi")
                         .header("SSL_CLIENT_S_DN_O", "UEF"))
                 .andDo(print())
@@ -143,7 +144,7 @@ public class StudiesControllerTest {
     public void testPOSTsearch_allParametersGivenAsJsonNode_shouldSuccessInParsingParametersAndReturn200() throws Exception {
         when(studiesService.search(any(), any())).thenReturn(new InternalStudiesSearchResults());
 
-        JsonNode node = objectMapper.createObjectNode();
+        JsonNode node = jsonMapper.createObjectNode();
         ((ObjectNode)node).put("query", "TEST");
         ((ObjectNode)node).putArray("networkIdentifiers").add("CN1");
         ((ObjectNode)node).putArray("organizingOrganisationIdentifiers").add("ORG1");
@@ -156,7 +157,7 @@ public class StudiesControllerTest {
         this.mockMvc.perform(
             post("/api/v9/studies/search")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(node))
+                .content(jsonMapper.writeValueAsString(node))
                 .header("eppn", "testailija@testailija.fi")
                 .header("SSL_CLIENT_S_DN_O", "UEF"))
             .andDo(print())

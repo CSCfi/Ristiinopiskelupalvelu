@@ -1,11 +1,11 @@
 package fi.uta.ristiinopiskelu.handler;
 
 import co.elastic.clients.elasticsearch.core.DeleteByQueryRequest;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.data.elasticsearch.core.document.Document;
@@ -23,25 +23,11 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class EmbeddedElasticsearchInitializer implements AfterEachCallback, BeforeAllCallback, ExtensionContext.Store.CloseableResource {
-
-    private static final Logger logger = LoggerFactory.getLogger(EmbeddedElasticsearchInitializer.class);
+@Slf4j
+public class EmbeddedElasticsearchInitializer implements BeforeAllCallback, AfterEachCallback, ExtensionContext.Store.CloseableResource {
 
     private static ElasticsearchContainer embeddedElastic = null;
-
     private final List<IndexHelper> indices = new ArrayList<>();
-
-    public class IndexHelper {
-        public String indexName;
-        public String aliasName;
-        public String typeName;
-
-        public IndexHelper(String indexName, String typeName, String aliasName) {
-            this.indexName = indexName;
-            this.aliasName = aliasName;
-            this.typeName = typeName;
-        }
-    }
 
     public EmbeddedElasticsearchInitializer() {
         indices.add(new IndexHelper("opintokokonaisuudet_test","opintokokonaisuus", "opintokokonaisuudet"));
@@ -60,12 +46,11 @@ public class EmbeddedElasticsearchInitializer implements AfterEachCallback, Befo
     }
 
     @Override
-    public void beforeAll(ExtensionContext extensionContext) throws Exception {
+    public void beforeAll(ExtensionContext extensionContext) {
         if(embeddedElastic == null) {
-            embeddedElastic = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch").withTag("8.19.5"));
+            embeddedElastic = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch").withTag("9.3.2"));
             embeddedElastic.addEnv("cluster.name", "ripa-cluster");
             embeddedElastic.addEnv("xpack.security.enabled", "false");
-            embeddedElastic.addEnv("indices.id_field_data.enabled", "true");
             embeddedElastic.start();
 
             ElasticsearchTemplate template = SpringExtension.getApplicationContext(extensionContext).getBean(ElasticsearchTemplate.class);
@@ -74,48 +59,20 @@ public class EmbeddedElasticsearchInitializer implements AfterEachCallback, Befo
     }
 
     @Override
-    public void close() throws Throwable {
-        embeddedElastic.stop();
+    public void afterEach(ExtensionContext context) {
+        ElasticsearchTemplate template = SpringExtension.getApplicationContext(context).getBean(ElasticsearchTemplate.class);
+        deleteAllAndRefresh(template);
     }
 
     @Override
-    public void afterEach(ExtensionContext context) throws Exception {
-        ElasticsearchTemplate template = SpringExtension.getApplicationContext(context).getBean(ElasticsearchTemplate.class);
-
-        for(IndexHelper indexHelper : indices) {
-            deleteAllAndRefresh(template, indexHelper);
-        }
+    public void close() {
+        embeddedElastic.stop();
     }
 
     private void createIndices(ElasticsearchTemplate template) {
         for(IndexHelper indexHelper : indices) {
             IndexOperations indexOperations = template.indexOps(IndexCoordinates.of(indexHelper.indexName));
-
-            Settings parsedSettings = null;
-            Document parsedMapper = null;
-
-            try(InputStream settings = this.getClass().getResourceAsStream(String.format("/settings/%s.json", indexHelper.aliasName));
-                InputStream mapper = this.getClass().getResourceAsStream(String.format("/mappers/%s.json", indexHelper.aliasName))) {
-                if (settings != null && settings.available() > 0) {
-                    parsedSettings = Settings.parse(new String(settings.readAllBytes()));
-                }
-
-                if (mapper != null && mapper.available() > 0) {
-                    parsedMapper = Document.parse(new String(mapper.readAllBytes()));
-                }
-            } catch (IOException e) {
-                throw new IllegalStateException("Unable to read settings/mapper files for index " + indexHelper.aliasName, e);
-            }
-
-            if(parsedMapper == null) {
-                throw new IllegalStateException("No mapper file parsed for index " + indexHelper.aliasName);
-            }
-
-            if(parsedSettings == null) {
-                parsedSettings = new Settings();
-            }
-
-            indexOperations.create(parsedSettings, parsedMapper);
+            indexOperations.create(indexHelper.getSettings(), indexHelper.getMapper());
             indexOperations.alias(
                 new AliasActions(
                     new AliasAction.Add(AliasActionParameters.builder().withIndices(indexHelper.indexName).withAliases(indexHelper.aliasName).build()
@@ -125,20 +82,76 @@ public class EmbeddedElasticsearchInitializer implements AfterEachCallback, Befo
         }
     }
 
+    private void deleteAllAndRefresh(ElasticsearchTemplate template) {
+        for(IndexHelper indexHelper : indices) {
+            DeleteByQueryRequest.Builder deleteByQueryRequest = new DeleteByQueryRequest.Builder()
+                .index(indexHelper.indexName)
+                .query(q -> q.matchAll(ma -> ma))
+                .waitForCompletion(true)
+                .refresh(true);
+
+            template.execute(client -> client.deleteByQuery(deleteByQueryRequest.build()));
+
+            IndexOperations indexOperations = template.indexOps(IndexCoordinates.of(indexHelper.indexName));
+            indexOperations.refresh();
+        }
+    }
+
     static String getElasticHostAddress() {
         return embeddedElastic.getHttpHostAddress();
     }
 
-    private void deleteAllAndRefresh(ElasticsearchTemplate template, IndexHelper indexHelper) {
-        DeleteByQueryRequest.Builder deleteByQueryRequest = new DeleteByQueryRequest.Builder()
-            .index(indexHelper.indexName)
-            .query(q -> q.matchAll(ma -> ma))
-            .waitForCompletion(true)
-            .refresh(true);
+    @Data
+    private static class IndexHelper {
+        private final String indexName;
+        private final String aliasName;
+        private final String typeName;
+        private final Settings settings;
+        private final Document mapper;
 
-        template.execute(client -> client.deleteByQuery(deleteByQueryRequest.build()));
+        public IndexHelper(String indexName, String typeName, String aliasName) {
+            this.indexName = indexName;
+            this.aliasName = aliasName;
+            this.typeName = typeName;
 
-        IndexOperations indexOperations = template.indexOps(IndexCoordinates.of(indexHelper.indexName));
-        indexOperations.refresh();
+            this.settings = parseSettings(aliasName);
+            this.mapper = parseMapper(aliasName);
+        }
+
+        private Settings parseSettings(String aliasName) {
+            Settings parsedSettings = null;
+
+            try(InputStream settings = this.getClass().getResourceAsStream(String.format("/settings/%s.json", aliasName))) {
+                if (settings != null && settings.available() > 0) {
+                    parsedSettings = Settings.parse(new String(settings.readAllBytes()));
+                }
+            } catch (IOException e) {
+                throw new IllegalStateException("Unable to read settings files for index %s".formatted(aliasName), e);
+            }
+
+            if(parsedSettings == null) {
+                parsedSettings = new Settings();
+            }
+
+            return parsedSettings;
+        }
+
+        private Document parseMapper(String aliasName) {
+            Document parsedMapper = null;
+
+            try(InputStream mapper = this.getClass().getResourceAsStream(String.format("/mappers/%s.json", aliasName))) {
+                if (mapper != null && mapper.available() > 0) {
+                    parsedMapper = Document.parse(new String(mapper.readAllBytes()));
+                }
+            } catch (IOException e) {
+                throw new IllegalStateException("Unable to read mapper files for index %s".formatted(aliasName), e);
+            }
+
+            if(parsedMapper == null) {
+                throw new IllegalStateException("No mapper file parsed for index %s".formatted(aliasName));
+            }
+
+            return parsedMapper;
+        }
     }
 }

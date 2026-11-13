@@ -1,45 +1,50 @@
 <template>
   <v-card>
-    <v-container fluid grid-list-md>
-      <v-layout row wrap>
-        <v-flex xs4>
+    <v-container fluid>
+      <v-row>
+        <v-col cols="12" md="4">
           <v-card>
-            <v-toolbar>
-              <v-toolbar-title>{{ $t('organisation.toolbarTitle') }}</v-toolbar-title>
+            <v-card-title class="d-flex align-center">
+              <span>{{ $t('organisation.toolbarTitle') }}</span>
               <v-spacer></v-spacer>
-              <v-toolbar-items v-if="isSuperUser">
-                <v-btn
-                  flat
-                  :title="$t('organisation.addNewOrganisationTitle')"
-                  @click="addNewOrganisation"
-                >
-                  <v-icon>add</v-icon>
-                </v-btn>
-              </v-toolbar-items>
-            </v-toolbar>
-            <v-list>
-              <v-list-tile
-                v-model="organisations"
-                v-for="org in organisations"
-                :key="org.id"
-                active-class="highlighted"
-                :class="['list-tile', isSelected(org.id) ? 'highlighted' : '']"
+              <v-btn
+                v-if="isSuperUser"
+                variant="text"
+                icon
+                :title="$t('organisation.addNewOrganisationTitle')"
+                @click="addNewOrganisation"
               >
-                <v-list-tile-action
-                  v-if="isSuperUser"
-                  :title="$t('organisation.deleteBtnTitle')"
-                  @click="showRemoveDialog(org)"
+                <v-icon icon="mdi-plus"></v-icon>
+              </v-btn>
+            </v-card-title>
+            <v-card-text>
+              <v-list>
+                <v-list-item
+                  v-for="org in organisations"
+                  :key="org.id"
+                  active-class="highlighted"
+                  :class="['list-tile', isSelected(org.id) ? 'highlighted' : '']"
+                  @click="selectOrganisation(org)"
                 >
-                  <v-icon color="red">delete</v-icon>
-                </v-list-tile-action>
-                <v-list-tile-content @click="selectOrganisation(org)">
-                  <v-list-tile-title
+                  <template #append>
+                    <v-btn
+                      v-if="isSuperUser"
+                      variant="text"
+                      color="red"
+                      icon
+                      :title="$t('organisation.deleteBtnTitle')"
+                      @click.stop="showRemoveDialog(org)"
+                    >
+                      <v-icon icon="mdi-delete"></v-icon>
+                    </v-btn>
+                  </template>
+                  <v-list-item-title
                     v-text="getLocalisedOrganisationName(org)"
                     :id="org.id"
-                  ></v-list-tile-title>
-                </v-list-tile-content>
-              </v-list-tile>
-            </v-list>
+                  ></v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
           </v-card>
           <v-dialog v-model="dialog" width="600px">
             <v-card>
@@ -51,124 +56,115 @@
               </v-card-text>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn color="green darken-1" flat="flat" @click="closeRemoveDialog()">
+                <v-btn color="green" variant="text" @click="closeRemoveDialog()">
                   {{ $t('cancel') }}
                 </v-btn>
-                <v-btn
-                  color="green darken-1"
-                  flat="flat"
-                  @click="deleteOrganisation(organisationToRemove.id)"
-                >
+                <v-btn color="green" variant="text" @click="deleteOrganisation(organisationToRemove.id)">
                   {{ $t('yes') }}
                 </v-btn>
               </v-card-actions>
             </v-card>
           </v-dialog>
-        </v-flex>
-        <v-flex xs8>
+        </v-col>
+        <v-col cols="12" md="8">
           <v-card height="100%">
             <OrganisationEditor
-              :locale="this.$i18n.locale"
+              :locale="$i18n.locale"
               :selectedOrganisation="selectedOrganisation"
               :newOrganisation="newOrganisation"
               :isSuperUser="isSuperUser"
               @savedOrganisation="savedOrganisation"
             />
           </v-card>
-        </v-flex>
-      </v-layout>
+        </v-col>
+      </v-row>
     </v-container>
   </v-card>
 </template>
 
-<script>
+<script setup>
+import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import _ from 'lodash';
-import axios from 'axios';
-import OrganisationEditor from '../components/organisation/OrganisationEditor';
+import OrganisationEditor from '../components/organisation/OrganisationEditor.vue';
 import languageUtils from '../utils/languageUtils';
+import { useOrganisationStore } from '../stores/organisations';
+import { storeToRefs } from 'pinia';
 
-export default {
-  props: {
-    user: Object,
-    selectedTab: null,
-    tabKey: null
-  },
-  components: {
-    OrganisationEditor
-  },
-  computed: {
-    isSuperUser: function() {
-      return _.includes(this.user?.roles, 'SUPERUSER');
-    }
-  },
-  watch: {
-    selectedTab(newTab) {
-      if (newTab === this.tabKey) {
-        this.getOrganisations();
-      }
-    }
-  },
-  data() {
-    return {
-      dialog: false,
-      organisations: [1, 2, 3, 4],
-      selectedOrganisation: null,
-      newOrganisation: false,
-      organisationToRemove: null
-    };
-  },
-  methods: {
-    showRemoveDialog(organisation) {
-      this.organisationToRemove = organisation;
-      this.dialog = true;
-    },
+const props = defineProps({
+  user: Object,
+  selectedTab: null,
+  tabKey: null
+});
 
-    closeRemoveDialog() {
-      this.dialog = false;
-      this.organisationToRemove = null;
-    },
+const { locale } = useI18n();
 
-    isSelected(id) {
-      return id === this.selectedOrganisation?.id;
-    },
+const dialog = ref(false);
+const organisationStore = useOrganisationStore();
+const { organisations } = storeToRefs(organisationStore);
+const selectedOrganisation = ref(null);
+const newOrganisation = ref(false);
+const organisationToRemove = ref(null);
 
-    selectOrganisation(organisation) {
-      this.selectedOrganisation = organisation;
-      this.newOrganisation = false;
-    },
+const isSuperUser = computed(() => _.includes(props.user?.roles, 'SUPERUSER'));
 
-    addNewOrganisation() {
-      this.selectedOrganisation = {};
-      this.newOrganisation = true;
-    },
+const showRemoveDialog = organisation => {
+  organisationToRemove.value = organisation;
+  dialog.value = true;
+};
 
-    savedOrganisation(savedOrganisation) {
-      this.getOrganisations();
-      this.selectedOrganisation = savedOrganisation;
-      this.newOrganisation = false;
-    },
+const closeRemoveDialog = () => {
+  dialog.value = false;
+  organisationToRemove.value = null;
+};
 
-    getLocalisedOrganisationName(organisation) {
-      return languageUtils.resolveText(this.$i18n.locale, organisation?.organisationName?.values);
-    },
+const isSelected = id => id === selectedOrganisation.value?.id;
 
-    getOrganisations() {
-      axios.get('/admin-ui/api/organisations/').then(response => {
-        this.organisations = _.sortBy(response.data, o =>
-          this.getLocalisedOrganisationName(o).toLowerCase()
-        );
-      });
-    },
+const selectOrganisation = organisation => {
+  selectedOrganisation.value = organisation;
+  newOrganisation.value = false;
+};
 
-    deleteOrganisation(id) {
-      axios.delete('/admin-ui/api/organisations/' + id).then(() => {
-        this.getOrganisations();
-        this.selectedOrganisation = null;
-        this.closeRemoveDialog();
-      });
+const addNewOrganisation = () => {
+  selectedOrganisation.value = {};
+  newOrganisation.value = true;
+};
+
+const savedOrganisation = savedOrg => {
+  getOrganisations();
+  selectedOrganisation.value = savedOrg;
+  newOrganisation.value = false;
+};
+
+const getLocalisedOrganisationName = organisation =>
+  languageUtils.resolveText(locale.value, organisation?.organisationName?.values);
+
+const getOrganisations = () => {
+  organisationStore.fetchOrganisations().then(list => {
+    organisations.value = _.sortBy(list, o => getLocalisedOrganisationName(o).toLowerCase());
+  });
+};
+
+const deleteOrganisation = id => {
+  organisationStore.deleteOrganisation(id).then(() => {
+    getOrganisations();
+    selectedOrganisation.value = null;
+    closeRemoveDialog();
+  });
+};
+
+watch(
+  () => props.selectedTab,
+  newTab => {
+    if (newTab === props.tabKey) {
+      getOrganisations();
     }
   }
-};
+);
+
+onMounted(() => {
+  getOrganisations();
+});
 </script>
 
 <style lang="css" scoped>
@@ -178,16 +174,16 @@ export default {
 .v-icon.material-icons.theme--light.red--text:hover {
   font-size: 1.7em;
 }
-.v-list__tile__content {
+.v-list-item__content {
   cursor: pointer;
 }
 .list-tile:hover {
   background: rgba(0, 0, 0, 0.1);
 }
-.v-list__tile__action {
+.v-list-item__append {
   cursor: pointer;
 }
-.v-list__tile {
+.v-list-item {
   padding: 0 0 0 16px;
 }
 </style>

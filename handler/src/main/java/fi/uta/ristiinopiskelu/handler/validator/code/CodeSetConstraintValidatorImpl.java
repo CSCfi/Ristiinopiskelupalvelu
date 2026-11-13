@@ -7,12 +7,11 @@ import fi.uta.ristiinopiskelu.datamodel.entity.CodeEntity;
 import fi.uta.ristiinopiskelu.persistence.repository.CodeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import jakarta.validation.ConstraintValidatorContext;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.stream.Stream;
 
 @Component
 public class CodeSetConstraintValidatorImpl implements CodeSetConstraintValidator {
@@ -49,11 +48,12 @@ public class CodeSetConstraintValidatorImpl implements CodeSetConstraintValidato
             return false;
         }
 
-        List<CodeEntity> codes = codeRepository.findAllByKeyAndCodeSetKeyOrderByCodeUri(value.getKey(), value.getCodeSetKey());
-
         LocalDate now = LocalDate.now();
-        return !CollectionUtils.isEmpty(codes) && codes.stream()
-                .anyMatch(code -> ((code.getValidityStartDate().isBefore(now) || code.getValidityStartDate().isEqual(now))
-                        && (code.getValidityEndDate().isAfter(now) || code.getValidityEndDate().isEqual(now))));
+        try (Stream<CodeEntity> codes = codeRepository.findAllByKeyAndCodeSetKeyOrderByCodeUri(
+                value.getKey(), value.getCodeSetKey())) {
+            return codes.anyMatch(code ->
+                (code.getValidityStartDate().isBefore(now) || code.getValidityStartDate().isEqual(now))
+                    && (code.getValidityEndDate().isAfter(now) || code.getValidityEndDate().isEqual(now)));
+        }
     }
 }

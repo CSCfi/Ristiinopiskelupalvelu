@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -26,7 +26,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -37,7 +37,7 @@ import java.io.IOException;
 @Profile("!dev")
 @Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
 public class WebSecurityConfig {
 
     @Value("${ristiinopiskelupalvelu.hakaLogoutUrl}")
@@ -76,7 +76,7 @@ public class WebSecurityConfig {
         requestAttributeAuthenticationFilter.setAuthenticationManager(authenticationManager);
         requestAttributeAuthenticationFilter.setPrincipalEnvironmentVariable(ShibbolethAttribute.EPPN.getValue());
         requestAttributeAuthenticationFilter.setAuthenticationDetailsSource(shibbolethAuthenticationDetailsSource);
-        requestAttributeAuthenticationFilter.setRequiresAuthenticationRequestMatcher(new AntPathRequestMatcher("/login"));
+        requestAttributeAuthenticationFilter.setRequiresAuthenticationRequestMatcher(PathPatternRequestMatcher.pathPattern("/login"));
         requestAttributeAuthenticationFilter.setAuthenticationSuccessHandler(new ShibbolethAuthenticationSuccessHandler());
         requestAttributeAuthenticationFilter.setAuthenticationFailureHandler(new ShibbolethAuthenticationFailureHandler());
         return new FilterRegistrationBean<>(requestAttributeAuthenticationFilter);

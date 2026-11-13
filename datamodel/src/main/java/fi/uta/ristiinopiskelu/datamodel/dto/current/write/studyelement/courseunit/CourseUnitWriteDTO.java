@@ -5,6 +5,7 @@ import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.ScaleValue;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.realisation.RealisationWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.studyelement.AbstractStudyElementWriteDTO;
+import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.annotation.Transient;
 import org.springframework.util.CollectionUtils;
@@ -95,5 +96,41 @@ public class CourseUnitWriteDTO extends AbstractStudyElementWriteDTO {
             }
         }
         return assessmentItemEntities;
+    }
+
+    public static CourseUnitWriteDTO from(CourseUnitEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        CourseUnitWriteDTO target = new CourseUnitWriteDTO();
+        target.setMissing(source.getMissing());
+        target.setSendingTime(source.getSendingTime());
+        target.setCreatedTime(source.getCreatedTime());
+        target.setUpdateTime(source.getUpdateTime());
+        target.setValidityStartDate(source.getValidityStartDate());
+        target.setValidityEndDate(source.getValidityEndDate());
+        target.setStudyElementId(source.getStudyElementId());
+        target.setStudyElementPermanentId(source.getStudyElementPermanentId());
+        target.setStudyElementIdentifierCode(source.getStudyElementIdentifierCode());
+        target.setAbbreviation(source.getAbbreviation());
+        target.setName(LocalisedString.from(source.getName()));
+        target.setDescription(LocalisedString.from(source.getDescription()));
+        target.setCreditsMin(source.getCreditsMin());
+        target.setCreditsMax(source.getCreditsMax());
+        target.setCreditsDescription(LocalisedString.from(source.getCreditsDescription()));
+        target.setTeachingLanguage(source.getTeachingLanguage());
+        target.setLanguagesOfCompletion(source.getLanguagesOfCompletion());
+        target.setFurtherInformation(LocalisedString.from(source.getFurtherInformation()));
+        target.setObjective(LocalisedString.from(source.getObjective()));
+        target.setContent(LocalisedString.from(source.getContent()));
+        target.setStatus(source.getStatus() == null ? null
+            : fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyStatus.valueOf(source.getStatus().name()));
+        target.setAssessmentScale(source.getAssessmentScale() == null ? null : ScaleValue.valueOf(source.getAssessmentScale().name()));
+        target.setLearningMaterials(source.getLearningMaterials() == null ? null
+            : source.getLearningMaterials().stream().map(LocalisedString::from).toList());
+        target.setExamBookEnquiry(source.getExamBookEnquiry());
+        target.setGroupSize(source.getGroupSize());
+        return target;
     }
 }

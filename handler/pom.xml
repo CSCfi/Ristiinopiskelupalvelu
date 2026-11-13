@@ -5,7 +5,7 @@
 
 	<groupId>fi.uta.ristiinopiskelu</groupId>
 	<artifactId>handler</artifactId>
-	<version>9.0.28</version>
+	<version>9.0.35</version>
 	<packaging>jar</packaging>
 
 	<name>handler</name>
@@ -14,8 +14,8 @@
 	<parent>
 		<groupId>fi.uta.ristiinopiskelu</groupId>
 		<artifactId>parent</artifactId>
-		<version>9.0.28</version>
-		<relativePath>../</relativePath> <!-- lookup parent from repository -->
+		<version>9.0.35</version>
+		<relativePath>../pom.xml</relativePath> <!-- lookup parent from repository -->
 	</parent>
 
 	<properties>
@@ -56,7 +56,7 @@
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 
 		<dependency>
@@ -77,11 +77,6 @@
 		<dependency>
 			<groupId>org.apache.camel.springboot</groupId>
 			<artifactId>camel-micrometer-starter</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.camel.springboot</groupId>
-			<artifactId>camel-jackson-starter</artifactId>
 		</dependency>
 
 		<dependency>
@@ -153,7 +148,7 @@
         <!-- TEST -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 
@@ -163,9 +158,15 @@
 			<scope>test</scope>
 		</dependency>
 
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+
 		<dependency>
 			<groupId>org.testcontainers</groupId>
-			<artifactId>elasticsearch</artifactId>
+			<artifactId>testcontainers-elasticsearch</artifactId>
 			<scope>test</scope>
 		</dependency>
 
@@ -176,7 +177,7 @@
 		</dependency>
 
 		<dependency>
-			<groupId>com.fasterxml.jackson.module</groupId>
+			<groupId>tools.jackson.module</groupId>
 			<artifactId>jackson-module-jsonSchema</artifactId>
 			<scope>test</scope>
 		</dependency>
@@ -228,7 +229,7 @@
 				<version>${swagger-maven-plugin.version}</version>
 				<configuration>
 					<enabledObjectMapperFeatures>
-						<feature>com.fasterxml.jackson.databind.SerializationFeature.WRITE_ENUMS_USING_TO_STRING</feature>
+						<feature>tools.jackson.databind.SerializationFeature.WRITE_ENUMS_USING_TO_STRING</feature>
 					</enabledObjectMapperFeatures>
 					<apiSources>
 						<apiSource>

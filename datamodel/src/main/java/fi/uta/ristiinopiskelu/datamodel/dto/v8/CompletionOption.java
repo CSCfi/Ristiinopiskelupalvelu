@@ -21,7 +21,8 @@ public class CompletionOption {
 
     @JsonProperty("description")
     private String description = null;
-    
+
+    private LocalisedString descriptionLocalised;
     private LocalisedString name;
 
     /**
@@ -48,6 +49,15 @@ public class CompletionOption {
 
     public void setDescription(String description) {
       this.description = description;
+    }
+
+    @Schema(description = "M2 table 4 1.4")
+    public LocalisedString getDescriptionLocalised() {
+        return descriptionLocalised;
+    }
+
+    public void setDescriptionLocalised(LocalisedString descriptionLocalised) {
+        this.descriptionLocalised = descriptionLocalised;
     }
 
     /**

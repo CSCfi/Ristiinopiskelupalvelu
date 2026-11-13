@@ -20,7 +20,7 @@ public abstract class GenericEntity {
     @Version
     private Long version;
 
-    // Language fields for searching
+    // LanguageEntity fields for searching
     @JsonIgnore
     private String search_fi;
 

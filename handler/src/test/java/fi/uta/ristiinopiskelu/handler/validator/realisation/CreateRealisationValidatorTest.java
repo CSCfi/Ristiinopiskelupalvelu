@@ -11,16 +11,14 @@ import fi.uta.ristiinopiskelu.handler.service.NetworkService;
 import fi.uta.ristiinopiskelu.handler.service.RealisationService;
 import fi.uta.ristiinopiskelu.handler.utils.KeyHelper;
 import fi.uta.ristiinopiskelu.messaging.message.current.realisation.CreateRealisationRequest;
+import jakarta.validation.Validator;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import jakarta.validation.Validator;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -30,31 +28,27 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(SpringExtension.class)
 public class CreateRealisationValidatorTest {
 
-    private ModelMapper modelMapper;
-
-    @MockBean
+    @MockitoBean
     private CourseUnitService courseUnitService;
 
-    @MockBean
+    @MockitoBean
     private NetworkService networkService;
 
-    @MockBean
+    @MockitoBean
     private RealisationService realisationService;
 
-    @MockBean
+    @MockitoBean
     private Validator beanValidator;
 
     private CreateRealisationValidator validator;
 
-    private static final Logger logger = LoggerFactory.getLogger(CreateRealisationValidatorTest.class);
-
     @BeforeEach
     public void before() {
-        modelMapper = new ModelMapper();
-        validator = spy(new CreateRealisationValidator(modelMapper, realisationService, courseUnitService, networkService, beanValidator));
+        validator = spy(new CreateRealisationValidator(realisationService, courseUnitService, networkService, beanValidator));
     }
 
     @Test

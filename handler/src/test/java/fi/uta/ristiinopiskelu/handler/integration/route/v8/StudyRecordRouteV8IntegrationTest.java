@@ -1,7 +1,9 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.v8;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.github.mpolla.HetuUtil;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.CreateRegistrationSelection;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationReplySelection;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.Person;
 import fi.uta.ristiinopiskelu.datamodel.dto.v8.studyrecord.*;
@@ -9,10 +11,20 @@ import fi.uta.ristiinopiskelu.datamodel.entity.CourseUnitEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.CreateRegistrationSelectionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationReplySelectionEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationSelectionItemStatusEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.registration.RegistrationStatusEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.StudyRecordStatusEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
-import fi.uta.ristiinopiskelu.handler.helper.*;
+import fi.uta.ristiinopiskelu.handler.helper.DtoInitializer;
+import fi.uta.ristiinopiskelu.handler.helper.DtoInitializerV8;
+import fi.uta.ristiinopiskelu.handler.helper.EntityInitializer;
+import fi.uta.ristiinopiskelu.handler.helper.JmsHelper;
+import fi.uta.ristiinopiskelu.handler.helper.MessageTemplateInitializerV8;
 import fi.uta.ristiinopiskelu.messaging.message.v8.DefaultResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.JsonValidationFailedResponse;
 import fi.uta.ristiinopiskelu.messaging.message.v8.Status;
@@ -29,7 +41,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.commons.util.StringUtils;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,7 +75,7 @@ public class StudyRecordRouteV8IntegrationTest {
     }
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Autowired
     private StudyRecordRepository studyRecordRepository;
@@ -77,9 +88,6 @@ public class StudyRecordRouteV8IntegrationTest {
 
     @Autowired
     private CourseUnitRepository courseUnitRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
 
     private int messageSchemaVersion = 8;
 
@@ -99,24 +107,26 @@ public class StudyRecordRouteV8IntegrationTest {
 
         studentHomeOrganization = EntityInitializer.getOrganisationEntity(
             "TESTORG1", "testiorganisaatio1",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
+            new LocalisedStringEntity("Lähettävä testiorganisaatio", null, null), this.messageSchemaVersion);
 
         courseUnitOrganizerOrganization = EntityInitializer.getOrganisationEntity(
             "TESTORG2", "testiorganisaatio2",
-            new fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
+            new LocalisedStringEntity("Vastaanottava testiorganisaatio", null, null), this.messageSchemaVersion);
 
         organisationRepository.create(studentHomeOrganization);
         organisationRepository.create(courseUnitOrganizerOrganization);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection selection = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.PENDING);
+        CreateRegistrationSelectionEntity selection = EntityInitializer.getRegistrationSelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.PENDING);
 
-        fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelection selectionReply = DtoInitializer.getRegistrationSelectionCourseUnit(
-            courseUnitEntity.getStudyElementId(), fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationSelectionItemStatus.ACCEPTED);
+        RegistrationReplySelectionEntity selectionReply = EntityInitializer.getRegistrationReplySelectionCourseUnit(
+            courseUnitEntity.getStudyElementId(), RegistrationSelectionItemStatusEntity.ACCEPTED);
 
         registration = EntityInitializer.getRegistrationEntity(
-            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(), Collections.singletonList(selection),
-            Collections.singletonList(selectionReply), fi.uta.ristiinopiskelu.datamodel.dto.current.common.registration.RegistrationStatus.REGISTERED, null);
+            studentHomeOrganization.getId(), courseUnitOrganizerOrganization.getId(),
+            Collections.singletonList(selection),
+            Collections.singletonList(selectionReply),
+            RegistrationStatusEntity.REGISTERED, null);
 
         registrationRepository.create(registration);
 
@@ -183,7 +193,7 @@ public class StudyRecordRouteV8IntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInOrganizingOrganization = jmsTemplate.receive(courseUnitOrganizerOrganization.getQueue());
@@ -249,7 +259,7 @@ public class StudyRecordRouteV8IntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInstudentHomeOrganization = jmsTemplate.receive(studentHomeOrganization.getQueue());
@@ -311,7 +321,7 @@ public class StudyRecordRouteV8IntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInstudentHomeOrganization = jmsTemplate.receive(studentHomeOrganization.getQueue());
@@ -438,7 +448,7 @@ public class StudyRecordRouteV8IntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus.RECORDED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORDED, studyRecords.get(0).getStatus());
 
         //Read the forwarded study record reply as the course unit's organizing school and check the data
         Message replyReceivedInCourseUnitOrganizerOrganisation = jmsTemplate.receive(courseUnitOrganizerOrganization.getQueue());
@@ -503,7 +513,7 @@ public class StudyRecordRouteV8IntegrationTest {
         // now we should have one study record with RECORDED status in the repository
         List<StudyRecordEntity> studyRecords = StreamSupport.stream(studyRecordRepository.findAll().spliterator(), false).collect(Collectors.toList());
         assertEquals(1, studyRecords.size());
-        assertEquals(fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStatus.RECORD_REJECTED, studyRecords.get(0).getStatus());
+        assertEquals(StudyRecordStatusEntity.RECORD_REJECTED, studyRecords.get(0).getStatus());
         assertEquals(replyRequest.getRejectionReason().getValue("fi"), studyRecords.get(0).getRejectionReason().getValue("fi"));
         assertEquals(replyRequest.getRejectionReason().getValue("en"), studyRecords.get(0).getRejectionReason().getValue("en"));
         assertEquals(replyRequest.getRejectionReason().getValue("sv"), studyRecords.get(0).getRejectionReason().getValue("sv"));

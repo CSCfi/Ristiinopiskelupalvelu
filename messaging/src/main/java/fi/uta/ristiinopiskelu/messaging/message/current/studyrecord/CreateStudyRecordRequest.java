@@ -4,6 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.CompletedCredit;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.RoutingType;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.studyrecord.StudyRecordStudent;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.StudyRecordStudentEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.CompletedCreditEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.studyrecord.RoutingTypeEntity;
 import fi.uta.ristiinopiskelu.messaging.message.current.AbstractPersonIdentifiableRequest;
 
 import java.time.OffsetDateTime;
@@ -85,5 +89,21 @@ public class CreateStudyRecordRequest extends AbstractPersonIdentifiableRequest 
     @Override
     public String getPersonOid() {
         return getStudent() != null ? getStudent().getOid() : null;
+    }
+
+    public static StudyRecordEntity toStudyRecordEntity(CreateStudyRecordRequest source) {
+        if (source == null) {
+            return null;
+        }
+
+        StudyRecordEntity target = new StudyRecordEntity();
+        target.setSendingOrganisation(source.getSendingOrganisation());
+        target.setReceivingOrganisation(source.getReceivingOrganisation());
+        target.setNetworkIdentifier(source.getNetworkIdentifier());
+        target.setStudent(StudyRecordStudentEntity.from(source.getStudent()));
+        target.setCompletedCredits(CompletedCreditEntity.from(source.getCompletedCredits()));
+        target.setSendingTime(source.getSendingTime());
+        target.setRoutingType(RoutingTypeEntity.from(source.getRoutingType()));
+        return target;
     }
 }

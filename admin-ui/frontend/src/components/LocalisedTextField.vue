@@ -6,84 +6,56 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue';
 import _ from 'lodash';
-export default {
-  props: {
-    value: Object,
-    rules: {
-      default() {
-        return [];
-      },
-      type: Array
-    }
-  },
-  computed: {
-    fi: {
-      get: function() {
-        return this.value?.values?.fi;
-      },
-      set: function(newValue) {
-        let localisedObject = this.getUpdatedValue(newValue, this.fi_key);
-        this.$emit('input', localisedObject);
-      }
-    },
-    en: {
-      get: function() {
-        return this.value?.values?.en;
-      },
-      set: function(newValue) {
-        let localisedObject = this.getUpdatedValue(newValue, this.en_key);
-        this.$emit('input', localisedObject);
-      }
-    },
-    sv: {
-      get: function() {
-        return this.value?.values?.sv;
-      },
-      set: function(newValue) {
-        let localisedObject = this.getUpdatedValue(newValue, this.sv_key);
-        this.$emit('input', localisedObject);
-      }
-    }
-  },
-  methods: {
-    getUpdatedValue(newValue, lang) {
-      let localisedObject = {
-        values: {
-          [lang]: !newValue ? null : newValue
-        }
-      };
 
-      _.filter(this.languages, langKey => langKey !== lang).forEach(langKey => {
-        localisedObject.values[langKey] = !this.value?.values?.[langKey]
-          ? null
-          : this.value.values[langKey];
-      });
-
-      if (!newValue) {
-        if (this.isEmptyObject(localisedObject.values)) {
-          return null;
-        }
-      }
-      return localisedObject;
-    },
-    isEmptyObject(values) {
-      return _.keys(values).every(lang => {
-        return !values[lang];
-      });
-    }
-  },
-  data() {
-    return {
-      fi_key: 'fi',
-      en_key: 'en',
-      sv_key: 'sv',
-      languages: []
-    };
-  },
-  created() {
-    this.languages = [this.fi_key, this.en_key, this.sv_key];
+const props = defineProps({
+  modelValue: Object,
+  rules: {
+    type: Array,
+    default: () => []
   }
+});
+
+const emit = defineEmits(['update:modelValue']);
+
+const languages = ['fi', 'en', 'sv'];
+
+const getUpdatedValue = (newValue, lang) => {
+  const localisedObject = {
+    values: {
+      ...(props.modelValue?.values || {}),
+      [lang]: newValue || null
+    }
+  };
+  return localisedObject;
 };
+
+const fi = computed({
+  get() {
+    return props.modelValue?.values?.fi;
+  },
+  set(newValue) {
+    emit('update:modelValue', getUpdatedValue(newValue, 'fi'));
+  }
+});
+
+const en = computed({
+  get() {
+    return props.modelValue?.values?.en;
+  },
+  set(newValue) {
+    emit('update:modelValue', getUpdatedValue(newValue, 'en'));
+  }
+});
+
+const sv = computed({
+  get() {
+    return props.modelValue?.values?.sv;
+  },
+  set(newValue) {
+    emit('update:modelValue', getUpdatedValue(newValue, 'sv'));
+  }
+});
 </script>

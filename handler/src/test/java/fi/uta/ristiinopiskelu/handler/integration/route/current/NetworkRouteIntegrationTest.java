@@ -1,12 +1,14 @@
 package fi.uta.ristiinopiskelu.handler.integration.route.current;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.Language;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.LocalisedString;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.code.CodeReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.network.NetworkOrganisation;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.write.network.NetworkWriteDTO;
 import fi.uta.ristiinopiskelu.datamodel.entity.NetworkEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.LocalisedStringEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.network.NetworkOrganisationEntity;
 import fi.uta.ristiinopiskelu.handler.EmbeddedActiveMQInitializer;
 import fi.uta.ristiinopiskelu.handler.EmbeddedElasticsearchInitializer;
 import fi.uta.ristiinopiskelu.handler.TestEsConfig;
@@ -35,6 +37,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.util.Assert;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -72,7 +75,7 @@ public class NetworkRouteIntegrationTest {
     }
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Value("${spring.artemis.admin-ui-user}")
     private String adminUiUser;
@@ -137,6 +140,62 @@ public class NetworkRouteIntegrationTest {
     }
 
     @Test
+    public void testSendingCreateNetworkMessage_htmlSanitizedAndUnencoded_shouldSucceed() throws JMSException {
+        List<String> organisationIds = Arrays.asList("ORG1", "ORG2");
+        createOrganisations(organisationIds, this.messageSchemaVersion);
+
+        List<NetworkOrganisation> networkOrganisations = new ArrayList<>();
+        for(String orgId : organisationIds) {
+            NetworkOrganisation networkOrg = new NetworkOrganisation();
+            networkOrg.setOrganisationTkCode(orgId);
+            networkOrg.setIsCoordinator(true);
+            networkOrg.setValidityInNetwork(DtoInitializer.getFixedValidity(OffsetDateTime.now(), OffsetDateTime.now().plusYears(1)));
+            networkOrganisations.add(networkOrg);
+        }
+
+        NetworkWriteDTO network = DtoInitializer.getNetwork("TESTIVERKOSTO", new LocalisedString("verkosto & enkoodaus",
+                "verkosto en & encoding", "verkosto sv & enkood"),
+            DtoInitializer.getIndefinitelyValidity(OffsetDateTime.now()), networkOrganisations);
+        network.setDescription(new LocalisedString("<script>alert('häly');</script>Joku <p><strong>TOSI ISO kuvaus\\ <xc</strong></p>", null, null));
+
+        CreateNetworkRequest req = new CreateNetworkRequest();
+        req.setNetwork(network);
+
+        Message responseMessage = JmsHelper.sendAndReceiveObjectWithUserId(jmsTemplate, req, adminUiUser);
+        Object received = jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        if(!(received instanceof DefaultResponse)) {
+            fail("Response message should be DefaultResponse. Got:" + received.getClass());
+        }
+
+        DefaultResponse response = (DefaultResponse) received;
+        assertEquals(Status.OK, response.getStatus());
+        assertNotNull(response.getMessage());
+
+        Message m1 = jmsTemplate.receive("org_network_queue_1");
+        assertEquals(m1.getStringProperty("messageType"), MessageType.NETWORK_CREATED_NOTIFICATION.name());
+
+        NetworkCreatedNotification resp2 = (NetworkCreatedNotification) jmsTemplate.getMessageConverter().fromMessage(m1);
+        assertEquals(resp2.getNetwork().getId(), "TESTIVERKOSTO");
+
+        Message m2 = jmsTemplate.receive("org_network_queue_2");
+        assertEquals(m2.getStringProperty("messageType"), MessageType.NETWORK_CREATED_NOTIFICATION.name());
+
+        NetworkCreatedNotification resp3 = (NetworkCreatedNotification) jmsTemplate.getMessageConverter().fromMessage(m2);
+        assertEquals(resp3.getNetwork().getId(), "TESTIVERKOSTO");
+
+        List<NetworkEntity> savedNetworks = StreamSupport.stream(networkRepository.findAll().spliterator(), false)
+            .toList();
+        assertNotNull(savedNetworks);
+        assertEquals(1, savedNetworks.size());
+
+        NetworkEntity result = savedNetworks.getFirst();
+        assertEquals("TESTIVERKOSTO", result.getId());
+        assertEquals("verkosto & enkoodaus", result.getName().getValue(Language.FI));
+        assertEquals("Joku <p>TOSI ISO kuvaus\\ </p>", result.getDescription().getValue(Language.FI));
+        assertTrue(result.isPublished());
+    }
+
+    @Test
     public void testSendingCreateNetworkMessage_notificationsShouldNotBeSentIfNetworkIsNotPublished_shouldSucceed() throws JMSException, IOException {
         List<String> organisationIds = Arrays.asList("ORG1", "ORG2");
         createOrganisations(organisationIds, this.messageSchemaVersion);
@@ -181,7 +240,6 @@ public class NetworkRouteIntegrationTest {
         assertEquals("TESTIVERKOSTO", result.getId());
         assertFalse(result.isPublished());
     }
-
 
     @Test
     public void testSendingCreateNetworkMessageReceivingOrganisationHasOlderVersion_shouldSucceed() throws JMSException, IOException {
@@ -236,7 +294,6 @@ public class NetworkRouteIntegrationTest {
         NetworkEntity result = savedNetworks.get(0);
         assertEquals("TESTIVERKOSTO", result.getId());
     }
-
 
     @Test
     public void testSendingCreateNetworkMessageWithMissingCodeSet_shouldFail() throws JMSException, IOException {
@@ -429,13 +486,13 @@ public class NetworkRouteIntegrationTest {
         List<String> organisationIds = Arrays.asList("ORG1", "ORG2");
         createOrganisations(organisationIds, this.messageSchemaVersion);
 
-        LocalisedString originalName = new LocalisedString("testiverkostonimi", null, null);
+        LocalisedStringEntity originalName = new LocalisedStringEntity("testiverkostonimi", null, null);
 
         NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("TESTIVERKOSTO", originalName, null, null, true);
 
-        List<NetworkOrganisation> networkOrganisations = new ArrayList<>();
+        List<NetworkOrganisationEntity> networkOrganisations = new ArrayList<>();
         for(String orgId : organisationIds) {
-            NetworkOrganisation networkOrg = new NetworkOrganisation();
+            NetworkOrganisationEntity networkOrg = new NetworkOrganisationEntity();
             networkOrg.setOrganisationTkCode(orgId);
             networkOrganisations.add(networkOrg);
         }
@@ -444,20 +501,21 @@ public class NetworkRouteIntegrationTest {
 
         networkRepository.create(networkEntity);
 
-        String updateJson = """
-            {
-                "network": { 
-                    "id": "TESTIVERKOSTO", 
-                    "name": { 
-                        "values": { 
-                            "fi": "Uusi verkosto nimi", 
-                            "en": "Network name 2", 
-                            "sv": "Network namn 2" 
-                        } 
-                    } 
-                } 
-            }
-        """;
+        String updateJson =
+            """
+                {
+                    "network": {
+                        "id": "TESTIVERKOSTO",
+                        "name": {
+                            "values": {
+                                "fi": "Uusi verkosto nimi",
+                                "en": "Network name 2",
+                                "sv": "Network namn 2"
+                            }
+                        }
+                    }
+                }
+            """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJsonWithUserId(jmsTemplate, updateJson, MessageType.UPDATE_NETWORK_REQUEST.name(), adminUiUser);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -495,6 +553,91 @@ public class NetworkRouteIntegrationTest {
     }
 
     @Test
+    public void testSendingUpdateNetworkMessage_organisationRemoved_shouldNotifyOriginalAndNewOrganisations() throws JMSException {
+        List<String> organisationIds = Arrays.asList("ORG1", "ORG2", "ORG3");
+        createOrganisations(organisationIds, this.messageSchemaVersion);
+
+        NetworkEntity networkEntity = EntityInitializer.getNetworkEntity("TESTIVERKOSTO", new LocalisedStringEntity("testiverkostonimi", null, null),
+            Arrays.asList(
+                new NetworkOrganisationEntity("ORG1", true, null),
+                new NetworkOrganisationEntity("ORG2", false, null)),
+            null, true);
+        networkRepository.create(networkEntity);
+
+        String updateJson =
+            """
+                {
+                    "network": {
+                        "id": "TESTIVERKOSTO",
+                        "name": {
+                            "values": {
+                                "fi": "Uusi verkosto nimi"
+                            }
+                        },
+                        "organisations": [
+                            {
+                                "organisationTkCode": "ORG1",
+                                "isCoordinator": true,
+                                "validityInNetwork": {
+                                    "continuity": "INDEFINITELY",
+                                    "start": "2019-05-03T15:33:52.587+03:00",
+                                    "end": null
+                                }
+                            },
+                            {
+                                "organisationTkCode": "ORG3",
+                                "isCoordinator": false,
+                                "validityInNetwork": {
+                                    "continuity": "INDEFINITELY",
+                                    "start": "2019-05-03T15:33:52.587+03:00",
+                                    "end": null
+                                }
+                            }
+                        ]
+                    }
+                }
+            """;
+
+        Message responseMessage = JmsHelper.sendAndReceiveJsonWithUserId(jmsTemplate, updateJson, MessageType.UPDATE_NETWORK_REQUEST.name(), adminUiUser);
+        DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
+        assertEquals(Status.OK, resp.getStatus());
+
+        NetworkEntity updatedNetwork = networkRepository.findById("TESTIVERKOSTO").orElse(null);
+        assertNotNull(updatedNetwork);
+        assertEquals(2, updatedNetwork.getOrganisations().size());
+
+        List<String> updatedOrganisationIds = updatedNetwork.getOrganisations().stream()
+            .map(NetworkOrganisationEntity::getOrganisationTkCode)
+            .toList();
+        assertTrue(updatedOrganisationIds.contains("ORG1"));
+        assertTrue(updatedOrganisationIds.contains("ORG3"));
+        assertFalse(updatedOrganisationIds.contains("ORG2"));
+
+        Message org1Message = jmsTemplate.receive("org_network_queue_1");
+        assertNotNull(org1Message);
+        assertEquals(MessageType.NETWORK_UPDATED_NOTIFICATION.name(), org1Message.getStringProperty("messageType"));
+
+        Message removedOrganisationMessage = jmsTemplate.receive("org_network_queue_2");
+        assertNotNull(removedOrganisationMessage);
+        assertEquals(MessageType.NETWORK_UPDATED_NOTIFICATION.name(), removedOrganisationMessage.getStringProperty("messageType"));
+
+        NetworkUpdatedNotification removedOrganisationNotification =
+            (NetworkUpdatedNotification) jmsTemplate.getMessageConverter().fromMessage(removedOrganisationMessage);
+        assertEquals("TESTIVERKOSTO", removedOrganisationNotification.getNetwork().getId());
+
+        List<String> notificationOrganisationIds = removedOrganisationNotification.getNetwork().getOrganisations().stream()
+            .map(NetworkOrganisation::getOrganisationTkCode)
+            .toList();
+        assertTrue(notificationOrganisationIds.contains("ORG1"));
+        assertTrue(notificationOrganisationIds.contains("ORG3"));
+        assertFalse(notificationOrganisationIds.contains("ORG2"));
+
+        Message addedOrganisationMessage = jmsTemplate.receive("org_network_queue_3");
+        assertNotNull(addedOrganisationMessage);
+        assertEquals(MessageType.NETWORK_UPDATED_NOTIFICATION.name(), addedOrganisationMessage.getStringProperty("messageType"));
+    }
+
+    @Test
     public void testSendingUpdateNetworkMessage_networkCreatedNotificationShouldBeSentWhenPublishing_shouldSucceed() throws JMSException, IOException {
         List<String> organisationIds = Arrays.asList("ORG1", "ORG2");
         createOrganisations(organisationIds, this.messageSchemaVersion);
@@ -525,21 +668,22 @@ public class NetworkRouteIntegrationTest {
         assertEquals(Status.OK, response.getStatus());
         assertNotNull(response.getMessage());
 
-        String updateJson = """
-            {
-                "network": {
-                    "id": "TESTIVERKOSTO",
-                    "name": {
-                        "values": {
-                            "fi": "Uusi verkosto nimi",
-                            "en": "Network name 2",
-                            "sv": "Network namn 2"
-                        }
-                    },
-                    "published": true
+        String updateJson =
+            """
+                {
+                    "network": {
+                        "id": "TESTIVERKOSTO",
+                        "name": {
+                            "values": {
+                                "fi": "Uusi verkosto nimi",
+                                "en": "Network name 2",
+                                "sv": "Network namn 2"
+                            }
+                        },
+                        "published": true
+                    }
                 }
-            }
-        """;
+            """;
 
         responseMessage = JmsHelper.sendAndReceiveJsonWithUserId(jmsTemplate, updateJson, MessageType.UPDATE_NETWORK_REQUEST.name(), adminUiUser);
         DefaultResponse resp = (DefaultResponse) jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -580,18 +724,20 @@ public class NetworkRouteIntegrationTest {
     @Test
     public void testSendingCreateNetwork_shouldFailMissingRequiredFields() throws JMSException {
         String createJson =
-                "{\n" +
-                "\t\"network\": {\n" +
-                "\t\t\"id\": \"TESTIVERKOSTO\",\n" +
-                "\t\t\"name\": {\n" +
-                "\t\t\t\"values\": {\n" +
-                "\t\t\t\t\"fi\": \"Uusi verkosto nimi\",\n" +
-                "\t\t\t\t\"en\": \"Network name 2\",\n" +
-                "\t\t\t\t\"sv\": \"Network namn 2\"\n" +
-                "\t\t  }\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+        """
+            {
+            	"network": {
+            		"id": "TESTIVERKOSTO",
+            		"name": {
+            			"values": {
+            				"fi": "Uusi verkosto nimi",
+            				"en": "Network name 2",
+            				"sv": "Network namn 2"
+            		    }
+            		}
+            	}
+            }
+        """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJsonWithUserId(jmsTemplate, createJson, MessageType.CREATE_NETWORK_REQUEST.name(), adminUiUser);
         Object resp = jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -605,17 +751,19 @@ public class NetworkRouteIntegrationTest {
     @Test
     public void testSendingUpdateNetwork_shouldFailMissingRequiredFields() throws JMSException {
         String updateJson =
-                "{\n" +
-                "\t\"network\": {\n" +
-                "\t\t\"name\": {\n" +
-                "\t\t\t\"values\": {\n" +
-                "\t\t\t\t\"fi\": \"Uusi verkosto nimi\",\n" +
-                "\t\t\t\t\"en\": \"Network name 2\",\n" +
-                "\t\t\t\t\"sv\": \"Network namn 2\"\n" +
-                "\t\t  }\n" +
-                "\t\t}\n" +
-                "\t}\n" +
-                "}";
+        """
+            {
+            	"network": {
+            		"name": {
+            			"values": {
+            				"fi": "Uusi verkosto nimi",
+            				"en": "Network name 2",
+            				"sv": "Network namn 2"
+            		  }
+            		}
+            	}
+            }
+        """;
 
         Message responseMessage = JmsHelper.sendAndReceiveJsonWithUserId(jmsTemplate, updateJson, MessageType.UPDATE_NETWORK_REQUEST.name(), adminUiUser);
         Object resp = jmsTemplate.getMessageConverter().fromMessage(responseMessage);
@@ -634,96 +782,98 @@ public class NetworkRouteIntegrationTest {
     }
 
     private final String createNetworkJson =
-            "{\n" +
-            "  \"network\": {\n" +
-            "   \"id\": \"CN-1\",\n" +
-            "   \"name\": {\n" +
-            "     \"values\": {\n" +
-            "       \"fi\": \"Verkosto 1\",\n" +
-            "       \"en\": \"Network 1\",\n" +
-            "       \"sv\": null\n" +
-            "     }\n" +
-            "   },\n" +
-            "   \"published\": true,\n" +
-            "   \"abbreviation\": \"V1\",\n" +
-            "   \"networkType\": \"CURRICULUM_LEVEL\",\n" +
-            "   \"organisations\": [\n" +
-            "     {\n" +
-            "       \"organisationTkCode\": \"UEF\",\n" +
-            "       \"isCoordinator\": true,\n" +
-            "       \"validityInNetwork\": {\n" +
-            "         \"continuity\": \"INDEFINITELY\",\n" +
-            "         \"start\": \"2019-05-03T15:33:52.587+03:00\",\n" +
-            "         \"end\": null\n" +
-            "       }\n" +
-            "     },\n" +
-            "     {\n" +
-            "       \"organisationTkCode\": \"HAAGAH\",\n" +
-            "       \"isCoordinator\": true,\n" +
-            "       \"validityInNetwork\": {\n" +
-            "         \"continuity\": \"INDEFINITELY\",\n" +
-            "         \"start\": \"2019-05-03T15:33:52.589+03:00\",\n" +
-            "         \"end\": null\n" +
-            "       }\n" +
-            "     },\n" +
-            "     {\n" +
-            "       \"organisationTkCode\": \"JUY\",\n" +
-            "       \"isCoordinator\": true,\n" +
-            "       \"validityInNetwork\": {\n" +
-            "         \"continuity\": \"INDEFINITELY\",\n" +
-            "         \"start\": \"2019-05-03T15:33:52.590+03:00\",\n" +
-            "         \"end\": null\n" +
-            "       }\n" +
-            "     },\n" +
-            "     {\n" +
-            "       \"organisationTkCode\": \"LAUREA\",\n" +
-            "       \"isCoordinator\": true,\n" +
-            "       \"validityInNetwork\": {\n" +
-            "         \"continuity\": \"INDEFINITELY\",\n" +
-            "         \"start\": \"2019-05-03T15:33:52.590+03:00\",\n" +
-            "         \"end\": null\n" +
-            "       }\n" +
-            "     },\n" +
-            "     {\n" +
-            "       \"organisationTkCode\": \"METROP\",\n" +
-            "       \"isCoordinator\": true,\n" +
-            "       \"validityInNetwork\": {\n" +
-            "         \"continuity\": \"INDEFINITELY\",\n" +
-            "         \"start\": \"2019-05-03T15:33:52.590+03:00\",\n" +
-            "         \"end\": null\n" +
-            "       }\n" +
-            "     },\n" +
-            "     {\n" +
-            "       \"organisationTkCode\": \"SAV\",\n" +
-            "       \"isCoordinator\": true,\n" +
-            "       \"validityInNetwork\": {\n" +
-            "         \"continuity\": \"INDEFINITELY\",\n" +
-            "         \"start\": \"2019-05-03T15:33:52.590+03:00\",\n" +
-            "         \"end\": null\n" +
-            "       }\n" +
-            "     },\n" +
-            "     {\n" +
-            "       \"organisationTkCode\": \"TUNI\",\n" +
-            "       \"isCoordinator\": true,\n" +
-            "       \"validityInNetwork\": {\n" +
-            "         \"continuity\": \"INDEFINITELY\",\n" +
-            "         \"start\": \"2019-05-03T15:33:52.590+03:00\",\n" +
-            "         \"end\": null\n" +
-            "       }\n" +
-            "     }\n" +
-            "   ],\n" +
-            "   \"validity\": {\n" +
-            "     \"continuity\": \"INDEFINITELY\",\n" +
-            "     \"start\": \"2019-01-01T00:00:00.000+03:00\",\n" +
-            "     \"end\": null\n" +
-            "   },\n" +
-            "   \"description\": {\n" +
-            "     \"values\": {\n" +
-            "       \"fi\": \"Verkosto, joka sisältää kaikki organisaatiot. Kaikki organisaatiot ovat organisoijia.\",\n" +
-            "       \"en\": \"Network that contains all organisations. All organisations are coordinators.\",\n" +
-            "       \"sv\": null\n" +
-            "     }\n" +
-            "   }\n" +
-            " }\n" +
-            "}";
+        """
+            {
+                "network": {
+                    "id": "CN-1",
+                    "name": {
+                        "values": {
+                            "fi": "Verkosto 1",
+                            "en": "Network 1",
+                            "sv": null
+                        }
+                    },
+                    "published": true,
+                    "abbreviation": "V1",
+                    "networkType": "CURRICULUM_LEVEL",
+                    "organisations": [
+                        {
+                            "organisationTkCode": "UEF",
+                            "isCoordinator": true,
+                            "validityInNetwork": {
+                                "continuity": "INDEFINITELY",
+                                "start": "2019-05-03T15:33:52.587+03:00",
+                                "end": null
+                            }
+                        },
+                        {
+                            "organisationTkCode": "HAAGAH",
+                            "isCoordinator": true,
+                            "validityInNetwork": {
+                                "continuity": "INDEFINITELY",
+                                "start": "2019-05-03T15:33:52.589+03:00",
+                                "end": null
+                            }
+                        },
+                        {
+                            "organisationTkCode": "JUY",
+                            "isCoordinator": true,
+                            "validityInNetwork": {
+                                "continuity": "INDEFINITELY",
+                                "start": "2019-05-03T15:33:52.590+03:00",
+                                "end": null
+                            }
+                        },
+                        {
+                            "organisationTkCode": "LAUREA",
+                            "isCoordinator": true,
+                            "validityInNetwork": {
+                                "continuity": "INDEFINITELY",
+                                "start": "2019-05-03T15:33:52.590+03:00",
+                                "end": null
+                            }
+                        },
+                        {
+                            "organisationTkCode": "METROP",
+                            "isCoordinator": true,
+                            "validityInNetwork": {
+                                "continuity": "INDEFINITELY",
+                                "start": "2019-05-03T15:33:52.590+03:00",
+                                "end": null
+                            }
+                        },
+                        {
+                            "organisationTkCode": "SAV",
+                            "isCoordinator": true,
+                            "validityInNetwork": {
+                                "continuity": "INDEFINITELY",
+                                "start": "2019-05-03T15:33:52.590+03:00",
+                                "end": null
+                            }
+                        },
+                        {
+                            "organisationTkCode": "TUNI",
+                            "isCoordinator": true,
+                            "validityInNetwork": {
+                                "continuity": "INDEFINITELY",
+                                "start": "2019-05-03T15:33:52.590+03:00",
+                                "end": null
+                            }
+                        }
+                    ],
+                    "validity": {
+                        "continuity": "INDEFINITELY",
+                        "start": "2019-01-01T00:00:00.000+03:00",
+                        "end": null
+                    },
+                    "description": {
+                        "values": {
+                            "fi": "Verkosto, joka sisÃ¤ltÃ¤Ã¤ kaikki organisaatiot. Kaikki organisaatiot ovat organisoijia.",
+                            "en": "Network that contains all organisations. All organisations are coordinators.",
+                            "sv": null
+                        }
+                    }
+                }
+            }
+        """;
 }

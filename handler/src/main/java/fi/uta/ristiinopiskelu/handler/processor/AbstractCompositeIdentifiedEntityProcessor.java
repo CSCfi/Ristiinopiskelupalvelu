@@ -2,9 +2,9 @@ package fi.uta.ristiinopiskelu.handler.processor;
 
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityReference;
 import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CompositeIdentifiedEntityType;
-import fi.uta.ristiinopiskelu.datamodel.dto.current.common.CooperationNetwork;
 import fi.uta.ristiinopiskelu.datamodel.entity.CompositeIdentifiedEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
+import fi.uta.ristiinopiskelu.datamodel.entity.common.CooperationNetworkEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.EntityNotFoundException;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
 import fi.uta.ristiinopiskelu.handler.service.MessageSchemaService;
@@ -70,15 +70,15 @@ public abstract class AbstractCompositeIdentifiedEntityProcessor<T extends Compo
             CompositeIdentifiedEntity current = result.getCurrent();
 
             if(result.getOperationType() == ModificationOperationType.UPDATE) {
-                final List<CooperationNetwork> originalNetworks = !CollectionUtils.isEmpty(previous.getCooperationNetworks()) ? previous.getCooperationNetworks() : new ArrayList<>();
-                final List<CooperationNetwork> updatedNetworks = !CollectionUtils.isEmpty(current.getCooperationNetworks()) ? current.getCooperationNetworks() : new ArrayList<>();
+                final List<CooperationNetworkEntity> originalNetworks = !CollectionUtils.isEmpty(previous.getCooperationNetworks()) ? previous.getCooperationNetworks() : new ArrayList<>();
+                final List<CooperationNetworkEntity> updatedNetworks = !CollectionUtils.isEmpty(current.getCooperationNetworks()) ? current.getCooperationNetworks() : new ArrayList<>();
 
-                List<String> originalNetworkOrganisations = networkService.findOrganisationIdsFromNetworks(originalNetworks.stream().map(CooperationNetwork::getId).toList());
-                List<String> updatedNetworkOrganisations = networkService.findOrganisationIdsFromNetworks(updatedNetworks.stream().map(CooperationNetwork::getId).toList());
+                List<String> originalNetworkOrganisations = networkService.findOrganisationIdsFromNetworks(originalNetworks.stream().map(CooperationNetworkEntity::getId).toList());
+                List<String> updatedNetworkOrganisations = networkService.findOrganisationIdsFromNetworks(updatedNetworks.stream().map(CooperationNetworkEntity::getId).toList());
 
                 populateReferences(organizingOrganisationId, notificationsByOrganisation, result, originalNetworkOrganisations, updatedNetworkOrganisations);
             } else {
-                List<CooperationNetwork> cooperationNetworks = null;
+                List<CooperationNetworkEntity> cooperationNetworks = null;
 
                 if(result.getOperationType() == ModificationOperationType.CREATE) {
                     cooperationNetworks = !CollectionUtils.isEmpty(current.getCooperationNetworks()) ? current.getCooperationNetworks() : new ArrayList<>();
@@ -86,7 +86,7 @@ public abstract class AbstractCompositeIdentifiedEntityProcessor<T extends Compo
                     cooperationNetworks = !CollectionUtils.isEmpty(previous.getCooperationNetworks()) ? previous.getCooperationNetworks() : new ArrayList<>();
                 }
 
-                List<String> orgs = networkService.findOrganisationIdsFromNetworks(cooperationNetworks.stream().map(CooperationNetwork::getId).toList());
+                List<String> orgs = networkService.findOrganisationIdsFromNetworks(cooperationNetworks.stream().map(CooperationNetworkEntity::getId).toList());
 
                 for(String organisationId : orgs) {
                     CompositeIdentifiedEntityModifiedNotification notification = notificationsByOrganisation.get(organisationId);

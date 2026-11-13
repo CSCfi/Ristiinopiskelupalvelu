@@ -55,7 +55,7 @@ public class StudiesControllerV9 {
                                                    @Parameter(description = "Opintojakson tunnistekoodi") @RequestParam(value = "courseUnitIdentifierCode", required = false) String courseUnitIdentifierCode,
                                                    @Parameter(description = "Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
                                                    @Parameter(description = "Opintojaksojen tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
-                                                   @Parameter(description = "Palautetaanko inaktiiviset") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
+                                                   @Parameter(description = "Palautetaanko vain voimassaolevaa tarjontaa voimassaolevista verkostoista") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
                                                    @Parameter(description = "Sivunumero") @RequestParam(defaultValue = "0", required = false) Integer page,
                                                    @Parameter(description = "Sivun koko") @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
 
@@ -68,11 +68,11 @@ public class StudiesControllerV9 {
     @GetMapping(value = "/courseunits/{courseUnitId}/realisations")
     public List<RealisationReadDTO> findCourseUnitRealisations(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
                                                                    @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
-                                                               @Parameter(description ="Opintojakson tunniste") @PathVariable("courseUnitId") String courseUnitId,
-                                                               @Parameter(description ="Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
-                                                               @Parameter(description ="Toteutusten tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
-                                                               @Parameter(description ="Sivunumero") @RequestParam(defaultValue = "0", required = false) Integer page,
-                                                               @Parameter(description ="Sivun koko") @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
+                                                               @Parameter(description = "Opintojakson tunniste") @PathVariable("courseUnitId") String courseUnitId,
+                                                               @Parameter(description = "Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
+                                                               @Parameter(description = "Toteutusten tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
+                                                               @Parameter(description = "Sivunumero") @RequestParam(defaultValue = "0", required = false) Integer page,
+                                                               @Parameter(description = "Sivun koko") @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
 
         RealisationSearchParameters searchParameters = new RealisationSearchParameters();
         searchParameters.setIncludeInactive(true);
@@ -94,7 +94,7 @@ public class StudiesControllerV9 {
                                                      @Parameter(description = "Opintokokonaisuuden tunnistekoodi") @RequestParam(value = "studyModuleIdentifierCode", required = false) String studyModuleIdentifierCode,
                                                      @Parameter(description = "Opintojakson tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
                                                      @Parameter(description = "Opintokokonaisuuksien tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
-                                                     @Parameter(description = "Palautetaanko inaktiiviset") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
+                                                     @Parameter(description = "Palautetaanko vain voimassaolevaa tarjontaa voimassaolevista verkostoista") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
                                                      @Parameter(description = "Sivunumero") @RequestParam(defaultValue = "0", required = false) Integer page,
                                                      @Parameter(description = "Sivun koko") @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
 
@@ -109,14 +109,15 @@ public class StudiesControllerV9 {
     @GetMapping(value = "/realisations")
     public List<RealisationReadDTO> findRealisation(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
                                                         @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
-                                                    @Parameter(description ="Toteutuksen tunniste") @RequestParam(value = "realisationId", required = false) String realisationId,
-                                                    @Parameter(description ="Toteutuksen tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
-                                                    @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
+                                                    @Parameter(description = "Toteutuksen tunniste") @RequestParam(value = "realisationId", required = false) String realisationId,
+                                                    @Parameter(description = "Toteutuksen tarjoavan organisaation tilastokeskuskoodi") @RequestParam(value = "organizingOrganisationId", required = false) String organizingOrganisationId,
+                                                    @Parameter(description = "Toteutusten tilat") @RequestParam(defaultValue = "ACTIVE", required = false) List<StudyStatus> statuses,
+                                                    @Parameter(description = "Palautetaanko vain voimassaolevaa tarjontaa voimassaolevista verkostoista") @RequestParam(defaultValue = "true", required = false) boolean includeInactive,
                                                     @RequestParam(defaultValue = "0", required = false) Integer page,
                                                     @RequestParam(defaultValue = "100", required = false) Integer pageSize) {
 
         return new ArrayList<>(realisationService.searchByIds(SSL_CLIENT_S_DN_O, realisationId, organizingOrganisationId,
-                statuses, PageRequest.of(page, pageSize)).getResults());
+                statuses, includeInactive, PageRequest.of(page, pageSize)).getResults());
     }
 
     @Operation(summary = "Hae toteutuksia", description = "Operaatio hakee toteutuksia annetuilla hakuehdoilla. Hakee oletuksena toteutuksia, joissa ilmoittautumisaika on meneillään," +
@@ -136,7 +137,8 @@ public class StudiesControllerV9 {
             " Operaatio käyttää sivutusta ja palauttaa oletuksena 100 ensimmäistä tulosta.", tags ="studies")
     @PostMapping(value = "/search")
     public StudiesSearchResults search(@Parameter(name = "SSL_CLIENT_S_DN_O", description = "Sertifikaatista tuleva organisaatiotunnus (ei määritettävissä)", hidden = true)
-                                           @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O, @RequestBody StudiesSearchParameters searchParams) {
+                                           @RequestHeader("SSL_CLIENT_S_DN_O") String SSL_CLIENT_S_DN_O,
+                                       @RequestBody StudiesSearchParameters searchParams) {
         InternalStudiesSearchResults results = studiesService.search(SSL_CLIENT_S_DN_O, searchParams);
         results.getAggregations().removeIf(aggregation -> aggregation.getName().equals("realisationTeachingLanguages"));
 

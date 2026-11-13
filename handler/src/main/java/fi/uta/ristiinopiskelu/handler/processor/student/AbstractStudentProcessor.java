@@ -1,9 +1,11 @@
 package fi.uta.ristiinopiskelu.handler.processor.student;
 
+import fi.uta.ristiinopiskelu.datamodel.dto.current.common.StudyRightIdentifier;
 import fi.uta.ristiinopiskelu.datamodel.entity.OrganisationEntity;
 import fi.uta.ristiinopiskelu.datamodel.entity.RegistrationEntity;
 import fi.uta.ristiinopiskelu.handler.exception.validation.MessageForwardingFailedException;
 import fi.uta.ristiinopiskelu.handler.jms.JmsMessageForwarder;
+import fi.uta.ristiinopiskelu.messaging.message.MessageHeader;
 import fi.uta.ristiinopiskelu.messaging.message.current.MessageType;
 import fi.uta.ristiinopiskelu.messaging.message.current.student.AbstractForwardedStudentMessage;
 import org.apache.camel.Exchange;
@@ -25,8 +27,8 @@ public abstract class AbstractStudentProcessor  implements Processor {
 
     protected void forwardMessage(Exchange exchange, MessageType messageType,
                                   Map<OrganisationEntity, List<RegistrationEntity>> organisationsAndRegistrations,
-                                  AbstractForwardedStudentMessage forwardedRequest, Map<String, String> customHeaders) throws Exception {
-        String correlationId = exchange.getIn().getHeader("JMSMessageID", String.class);
+                                  AbstractForwardedStudentMessage forwardedRequest, Map<String, String> customHeaders) {
+        String correlationId = exchange.getIn().getHeader(MessageHeader.JMS_MESSAGEID, String.class);
         List<String> messageForwardingFailedOrganisations = new ArrayList<>();
         List<String> messageForwardingSucceededOrganisations = new ArrayList<>();
 
@@ -38,7 +40,7 @@ public abstract class AbstractStudentProcessor  implements Processor {
                 .filter(r -> r.getStudent().getHostStudyRight() != null
                     && r.getStudent().getHostStudyRight().getIdentifiers() != null
                     && r.getStudent().getHostStudyRight().getIdentifiers().getStudyRightId() != null)
-                .map(r -> r.getStudent().getHostStudyRight().getIdentifiers())
+                .map(r -> StudyRightIdentifier.from(r.getStudent().getHostStudyRight().getIdentifiers()))
                 .distinct()
                 .collect(Collectors.toList()));
 

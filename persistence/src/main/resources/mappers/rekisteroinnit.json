@@ -27,6 +27,12 @@
       "type": "date",
       "format": "uuuu-MM-dd'T'HH:mm:ss.SSSXXX"
     },
+    "receivingTimestamp": {
+      "type": "long"
+    },
+    "receivingSequence": {
+      "type": "long"
+    },
     "enrolmentDateTime": {
       "type": "date",
       "format": "uuuu-MM-dd'T'HH:mm:ss.SSSXXX"

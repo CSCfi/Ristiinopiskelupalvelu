@@ -1,8 +1,19 @@
-import Vue from 'vue';
-import Router from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 
-Vue.use(Router);
+const routes = [
+  {
+    path: '/',
+    component: { template: '<div />' }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
+  }
+];
 
-export default new Router({
-  routes: []
+const router = createRouter({
+  history: createWebHistory('/admin-ui'),
+  routes
 });
+
+export default router;
